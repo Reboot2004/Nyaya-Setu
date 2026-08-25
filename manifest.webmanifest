@@ -1,0 +1,10 @@
+{
+    "name": "Nyaya-Setu Legal Co-Pilot",
+    "short_name": "Nyaya-Setu",
+    "description": "Offline client-side Indic legal co-pilot for BNS/BNSS complaint drafting",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#f1f5f9",
+    "theme_color": "#0f172a",
+    "icons": []
+}

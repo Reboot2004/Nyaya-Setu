@@ -1,0 +1,17 @@
+{
+    "name": "nyaya-setu",
+    "version": "0.1.0",
+    "description": "Client-Side Indic Legal Co-Pilot for Formal Grievance Redressal and BNS Statutory Drafting",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --host",
+        "build": "vite build",
+        "preview": "vite preview --host"
+    },
+    "dependencies": {
+        "@mlc-ai/web-llm": "^0.2.79"
+    },
+    "devDependencies": {
+        "vite": "^6.3.5"
+    }
+}
