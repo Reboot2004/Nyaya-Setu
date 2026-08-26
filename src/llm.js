@@ -180,7 +180,7 @@ function buildDeterministicComplaint(entities, retrieved, langLabel) {
         ? retrieved.map(({ statute }) => `${statute.code} Section ${statute.section} - ${statute.title}`).join(', ')
         : 'BNS Section 351, BNS Section 352, BNSS Section 173';
 
-    const selectedLanguage = normalizeLanguageCode(langLabel) || detectLanguage(`${summary} ${location} ${date} ${aggressor}`);
+    const selectedLanguage = normalizeLanguageCode(langLabel) || detectLanguage(`${summary} ${location} ${todayDate} ${aggressor}`);
     const template = getLanguageTemplate(selectedLanguage, summary, location, todayDate, aggressor, statuteList);
     const englishText = [template.intro, '', template.body, '', template.note].join('\n');
 

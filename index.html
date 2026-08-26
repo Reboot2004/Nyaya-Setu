@@ -215,10 +215,70 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+
+        .gate {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 16px;
+        }
+
+        .gate-card {
+            width: min(560px, 100%);
+            background: #ffffff;
+            border-radius: 14px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+            padding: 22px;
+        }
+
+        .gate-card h2 {
+            font-size: 1.05rem;
+            margin-bottom: 8px;
+            color: #0f172a;
+        }
+
+        .gate-card p {
+            font-size: 0.84rem;
+            color: #475569;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
     </style>
 </head>
 
 <body>
+    <section class="gate" id="langGate">
+        <div class="gate-card">
+            <h2 id="gateTitle">Choose your language</h2>
+            <p id="gateSubtitle">We will load the full app interface in your selected language. We also try to detect
+                approximate location and language from IP.</p>
+            <div class="row" style="margin-top:0; margin-bottom:12px;">
+                <label for="initialLangSelect" id="initialLangLabel"
+                    style="font-size:.78rem; color:#475569; font-weight:600;">Language</label>
+                <select id="initialLangSelect"
+                    style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.9rem; min-width:190px;">
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="te">Telugu</option>
+                    <option value="ta">Tamil</option>
+                    <option value="bn">Bengali</option>
+                    <option value="mr">Marathi</option>
+                    <option value="kn">Kannada</option>
+                    <option value="ml">Malayalam</option>
+                </select>
+                <button id="startAppBtn" type="button">Continue</button>
+            </div>
+            <p id="ipHint" style="margin-bottom:0; font-size:.78rem; color:#64748b;">Detecting approximate location from
+                IP...</p>
+        </div>
+    </section>
+
     <header>
         <div>
             <h1 id="appTitle">NYAYA-SETU</h1>
@@ -232,7 +292,8 @@
         <section class="card">
             <h2 id="ingestionTitle">1 · Describe your grievance (व्याख्या करें)</h2>
             <div class="row" style="margin-top:0; margin-bottom:10px;">
-                <label for="langSelect" id="langLabel" style="font-size:.78rem; color:#475569; font-weight:600;">Language</label>
+                <label for="langSelect" id="langLabel"
+                    style="font-size:.78rem; color:#475569; font-weight:600;">Language</label>
                 <select id="langSelect"
                     style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.8rem; min-width:165px;">
                     <option value="en">English</option>
@@ -296,7 +357,8 @@
         </section>
     </main>
 
-    <footer id="appFooter">100% on-device processing · No grievance data leaves this device · Not legal advice · NALSA Helpline 15100
+    <footer id="appFooter">100% on-device processing · No grievance data leaves this device · Not legal advice · NALSA
+        Helpline 15100
     </footer>
 
     <script type="module" src="/src/main.js"></script>

@@ -8,6 +8,7 @@ let lastComplaint = null;
 let lastRetrieved = [];
 let activeView = 'native';
 let recognition = null;
+let ipGeoSnapshot = null;
 
 const UI_TEXT = {
     en: {
@@ -47,7 +48,13 @@ const UI_TEXT = {
         msgLangSet: 'Draft and UI language set to',
         msgDetectedLanguage: 'Detected language:',
         msgAutoLanguage: 'Language selected from input',
-        msgPipelineError: 'Pipeline error:'
+        msgPipelineError: 'Pipeline error:',
+        msgInsufficientComplaint: 'Your text does not look like a complaint yet. Please include what happened, who did it, when, and harm/threat details before generating FIR draft.',
+        gateTitle: 'Choose your language',
+        gateSubtitle: 'We load the full app in your chosen language. We also try approximate IP-based language and location.',
+        gateContinue: 'Continue',
+        ipDetecting: 'Detecting approximate location from IP...',
+        ipDetected: 'Approximate IP location detected:'
     },
     hi: {
         appSub: 'क्लाइंट-साइड इंडिक लीगल को-पायलट · BNS/BNSS वैधानिक ड्राफ्टिंग',
@@ -86,7 +93,13 @@ const UI_TEXT = {
         msgLangSet: 'ड्राफ्ट और UI भाषा सेट की गई:',
         msgDetectedLanguage: 'पहचानी गई भाषा:',
         msgAutoLanguage: 'इनपुट से भाषा चुनी गई',
-        msgPipelineError: 'पाइपलाइन त्रुटि:'
+        msgPipelineError: 'पाइपलाइन त्रुटि:',
+        msgInsufficientComplaint: 'आपका टेक्स्ट अभी शिकायत जैसा नहीं लग रहा। कृपया क्या हुआ, किसने किया, कब हुआ, और नुकसान/धमकी का विवरण लिखें, फिर FIR ड्राफ्ट बनाएं।',
+        gateTitle: 'अपनी भाषा चुनें',
+        gateSubtitle: 'पूरा ऐप चुनी गई भाषा में लोड होगा। हम IP से अनुमानित भाषा और लोकेशन भी पहचानने की कोशिश करते हैं।',
+        gateContinue: 'आगे बढ़ें',
+        ipDetecting: 'IP से अनुमानित लोकेशन पहचान रहे हैं...',
+        ipDetected: 'IP से अनुमानित लोकेशन मिली:'
     },
     te: {
         appSub: 'క్లయింట్-సైడ్ ఇండిక్ లీగల్ కో-పైలట్ · BNS/BNSS చట్ట రచన',
@@ -351,21 +364,116 @@ function applyUiLanguage() {
     $('audioBtn').textContent = t('audioBtn');
     $('stopAudioBtn').textContent = t('stopAudioBtn');
     $('appFooter').textContent = t('footer');
+    if ($('gateTitle')) $('gateTitle').textContent = t('gateTitle');
+    if ($('gateSubtitle')) $('gateSubtitle').textContent = t('gateSubtitle');
+    if ($('initialLangLabel')) $('initialLangLabel').textContent = t('langLabel');
+    if ($('startAppBtn')) $('startAppBtn').textContent = t('gateContinue');
     if (!recognizing) {
         $('recBtn').textContent = t('recBtnIdle');
     }
     $('langHint').textContent = t('langHintDefault');
+    if ($('ipHint') && !$('ipHint').textContent.trim()) {
+        $('ipHint').textContent = t('ipDetecting');
+    }
 }
 
 function getSelectedLanguage() {
     return $('langSelect')?.value || 'en';
 }
 
+function languageFromCountryRegion(countryCode, regionName = '') {
+    if ((countryCode || '').toUpperCase() !== 'IN') return 'en';
+    const r = (regionName || '').toLowerCase();
+    if (r.includes('telangana') || r.includes('andhra')) return 'te';
+    if (r.includes('tamil')) return 'ta';
+    if (r.includes('west bengal')) return 'bn';
+    if (r.includes('maharashtra')) return 'mr';
+    if (r.includes('karnataka')) return 'kn';
+    if (r.includes('kerala')) return 'ml';
+    return 'hi';
+}
+
+function applyLanguageSelection(langCode) {
+    const lang = langCode || 'en';
+    if ($('langSelect')) $('langSelect').value = lang;
+    if ($('initialLangSelect')) $('initialLangSelect').value = lang;
+    applyUiLanguage();
+    if (recognition) {
+        const map = {
+            en: 'en-IN',
+            hi: 'hi-IN',
+            te: 'te-IN',
+            ta: 'ta-IN',
+            bn: 'bn-IN',
+            mr: 'mr-IN',
+            kn: 'kn-IN',
+            ml: 'ml-IN'
+        };
+        recognition.lang = map[lang] || 'en-IN';
+    }
+}
+
+function isActionableComplaint(text, entities, retrieved) {
+    const value = (text || '').trim();
+    if (!value || value.length < 40) return false;
+
+    const low = value.toLowerCase();
+    const words = value.split(/\s+/).filter(Boolean);
+    if (words.length < 10) return false;
+
+    const junkPatterns = [
+        /\bi am doing good\b/,
+        /\bhow are you\b/,
+        /\bgood morning\b/,
+        /\bjust testing\b/,
+        /\brandom\b/,
+        /\bhello\b.*\bthank you\b/
+    ];
+    if (junkPatterns.some((p) => p.test(low))) return false;
+
+    const issueKeywords = [
+        'threat', 'threatened', 'assault', 'hit', 'abuse', 'harass', 'fraud', 'cheat', 'stole', 'extortion', 'wage', 'salary', 'payment',
+        'dhamki', 'maar', 'marpit', 'gaali', 'paisa', 'rok liya', 'dhokha', 'बेधड़क', 'धमकी', 'मारपीट', 'गाली', 'वेतन', 'पैसे', 'हमला',
+        'దాడి', 'బెదిరింపు', 'డబ్బు', 'హింస', 'அச்சுறுத்தல்', 'தாக்குதல்', 'சம்பளம்', 'হুমকি', 'মারধর', 'মজুরি', 'धमकी', 'मारहाण', 'ಬೆದರಿಕೆ', 'ಹಲ್ಲೆ', 'ഭീഷണി', 'മർദ്ദനം'
+    ];
+    const hasIssueSignal = issueKeywords.some((k) => low.includes(k.toLowerCase()));
+    const hasEntitySignal = entities && (entities.aggressor && entities.aggressor !== 'unknown' || (entities.events || []).length > 0);
+    const hasStatuteSignal = Array.isArray(retrieved) && retrieved.length > 0;
+
+    return hasIssueSignal || hasEntitySignal || hasStatuteSignal;
+}
+
+async function bootstrapLanguageGate() {
+    if ($('ipHint')) $('ipHint').textContent = t('ipDetecting');
+    const fallback = (navigator.language || 'en').slice(0, 2).toLowerCase();
+    let selected = ['en', 'hi', 'te', 'ta', 'bn', 'mr', 'kn', 'ml'].includes(fallback) ? fallback : 'en';
+
+    try {
+        const res = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+        if (res.ok) {
+            const geo = await res.json();
+            ipGeoSnapshot = geo;
+            selected = languageFromCountryRegion(geo.country_code, geo.region);
+            const lat = Number.isFinite(+geo.latitude) ? Number(geo.latitude).toFixed(3) : 'NA';
+            const lon = Number.isFinite(+geo.longitude) ? Number(geo.longitude).toFixed(3) : 'NA';
+            const place = [geo.city, geo.region, geo.country_name].filter(Boolean).join(', ');
+            if ($('ipHint')) $('ipHint').textContent = `${t('ipDetected')} ${place} (${lat}, ${lon})`;
+        } else if ($('ipHint')) {
+            $('ipHint').textContent = t('ipDetecting');
+        }
+    } catch {
+        if ($('ipHint')) $('ipHint').textContent = t('ipDetecting');
+    }
+
+    applyLanguageSelection(selected);
+}
+
 function applyLanguageHint(text) {
     const selected = getSelectedLanguage();
     $('langHint').textContent = `${t('msgLangSet')} ${selected.toUpperCase()}`;
-    if (!selected) {
-        $('langHint').textContent = `${t('msgDetectedLanguage')} ${detectLanguage(text).toUpperCase()}`;
+    const detected = detectLanguage(text);
+    if (detected && detected !== selected) {
+        $('langHint').textContent += ` · ${t('msgDetectedLanguage')} ${detected.toUpperCase()}`;
     }
 }
 
@@ -452,6 +560,20 @@ if (SR) {
 }
 
 applyUiLanguage();
+bootstrapLanguageGate();
+
+if ($('initialLangSelect')) {
+    $('initialLangSelect').addEventListener('change', () => {
+        applyLanguageSelection($('initialLangSelect').value);
+    });
+}
+
+if ($('startAppBtn')) {
+    $('startAppBtn').addEventListener('click', () => {
+        applyLanguageSelection($('initialLangSelect')?.value || 'en');
+        $('langGate').style.display = 'none';
+    });
+}
 
 // ---- Pipeline step indicator ----
 function setStep(n) {
@@ -493,6 +615,13 @@ $('runBtn').onclick = async () => {
             entities = await extractEntities(narrative);
         }
 
+        const retrievedPreview = retrieveSections(narrative, 2);
+        if (!isActionableComplaint(narrative, entities, retrievedPreview)) {
+            alert(t('msgInsufficientComplaint'));
+            $('langHint').textContent = t('msgInsufficientComplaint');
+            return;
+        }
+
         setStep(3);
         const retrieved = retrieveSections(narrative);
         lastRetrieved = retrieved;
@@ -526,22 +655,8 @@ $('pdfBtn').onclick = () => {
     downloadComplaint(complaintToHtml({ english: draft, hindi: draft, native: draft }, {}, lastRetrieved, getSelectedLanguage()));
 };
 $('langSelect').addEventListener('change', () => {
-    applyUiLanguage();
-    const selected = getSelectedLanguage();
-    $('langHint').textContent = `${t('msgLangSet')} ${selected.toUpperCase()}`;
-    if (recognition) {
-        const map = {
-            en: 'en-IN',
-            hi: 'hi-IN',
-            te: 'te-IN',
-            ta: 'ta-IN',
-            bn: 'bn-IN',
-            mr: 'mr-IN',
-            kn: 'kn-IN',
-            ml: 'ml-IN'
-        };
-        recognition.lang = map[selected] || 'en-IN';
-    }
+    applyLanguageSelection($('langSelect').value);
+    $('langHint').textContent = `${t('msgLangSet')} ${getSelectedLanguage().toUpperCase()}`;
 });
 
 $('geoBtn').addEventListener('click', useBrowserLocation);
