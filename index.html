@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nyaya-Setu — Indic Legal Co-Pilot</title>
+    <title>Nyaya-Setu â€” Indic Legal Co-Pilot</title>
     <link rel="manifest" href="./manifest.webmanifest">
     <style>
         * {
@@ -284,7 +284,7 @@
             <h1 id="appTitle">NYAYA-SETU</h1>
             <div class="sub" id="appSub">Client-side Indic Legal Co-Pilot · BNS/BNSS Statutory Drafting</div>
         </div>
-        <span class="badge" id="engineBadge">Engine: not loaded</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge" style="border-color:#38bdf8;color:#7dd3fc;">AIKosh & Bhashini</span><span class="badge" id="engineBadge">Engine: not loaded</span></div>
     </header>
 
     <main>
@@ -332,9 +332,9 @@
             <div class="pipeline">
                 <div class="step" data-step="1" id="step1">Vernacular Input</div>
                 <div class="step" data-step="2" id="step2">Entity Extraction</div>
-                <div class="step" data-step="3" id="step3">BNS Retrieval</div>
+                <div class="step" data-step="3" id="step3">AIKosh BNS Retrieval</div>
                 <div class="step" data-step="4" id="step4">Local LLM Drafting</div>
-                <div class="step" data-step="5" id="step5">Bilingual Output</div>
+                <div class="step" data-step="5" id="step5">Bhashini Bilingual Output</div>
             </div>
         </section>
 
@@ -357,9 +357,7 @@
         </section>
     </main>
 
-    <footer id="appFooter">100% on-device processing · No grievance data leaves this device · Not legal advice · NALSA
-        Helpline 15100
-    </footer>
+    <footer id="appFooter">100% on-device processing · IndiaAI AIKosh Legislative Corpus · Bhashini Indic Normalizer · Not legal advice · NALSA Helpline 15100</footer>
 
     <script type="module" src="/src/main.js"></script>
 </body>
