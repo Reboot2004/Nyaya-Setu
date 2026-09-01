@@ -309,18 +309,13 @@
     <section class="gate" id="langGate">
         <div class="gate-card">
             <h2 id="gateTitle">Choose Your Language & Grant Permissions</h2>
-            <p id="gateSubtitle">Nyaya-Setu runs 100% on your device. Microphones and location permissions are requested upfront for voice recording and accurate police station mapping.</p>
+            <p id="gateSubtitle">Choose a language to begin. Nyaya-Setu asks for microphone or location access only if you choose to use those features. This prototype creates a reviewable police-complaint draft; it does not file an FIR or provide legal advice.</p>
             <div class="row" style="margin-top:0; margin-bottom:12px;">
                 <label for="initialLangSelect" id="initialLangLabel" style="font-size:.8rem; color:#475569; font-weight:600;">Language</label>
                 <select id="initialLangSelect" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.92rem; min-width:200px;">
                     <option value="en">English</option>
                     <option value="hi">हिन्दी (Hindi)</option>
                     <option value="te">తెలుగు (Telugu)</option>
-                    <option value="ta">தமிழ் (Tamil)</option>
-                    <option value="bn">বাংলা (Bengali)</option>
-                    <option value="mr">मराठी (Marathi)</option>
-                    <option value="kn">ಕನ್ನಡ (Kannada)</option>
-                    <option value="ml">മലയാളം (Malayalam)</option>
                 </select>
                 <button id="startAppBtn" type="button">Start Legal Co-Pilot</button>
             </div>
@@ -332,7 +327,7 @@
     <header>
         <div>
             <h1 id="appTitle">NYAYA-SETU</h1>
-            <div class="sub" id="appSub">Client-side Indic Legal Co-Pilot · BNS/BNSS Statutory Drafting</div>
+            <div class="sub" id="appSub">Offline-first legal intake · Reviewable police-complaint drafts</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
             <span class="badge" style="border-color:#38bdf8;color:#7dd3fc;">AIKosh & Bhashini</span>
@@ -351,11 +346,6 @@
                     <option value="en">English</option>
                     <option value="hi">हिन्दी (Hindi)</option>
                     <option value="te">తెలుగు (Telugu)</option>
-                    <option value="ta">தமிழ் (Tamil)</option>
-                    <option value="bn">বাংলা (Bengali)</option>
-                    <option value="mr">मराठी (Marathi)</option>
-                    <option value="kn">ಕನ್ನಡ (Kannada)</option>
-                    <option value="ml">മലയാളം (Malayalam)</option>
                 </select>
                 <button id="geoBtn" class="secondary" type="button">📍 Capture Verified Location</button>
             </div>
@@ -399,7 +389,7 @@
             
             <div class="row">
                 <button id="recBtn">🎙️ Record Voice</button>
-                <button id="runBtn">Generate Formal Police FIR Draft</button>
+                <button id="runBtn">Review Facts & Suggested Provisions</button>
                 <span id="langHint" style="font-size:.75rem;color:#64748b">Voice input ready. Tap record to speak.</span>
             </div>
         </section>
@@ -420,20 +410,31 @@
                 <div class="step" data-step="1" id="step1">Vernacular Ingestion</div>
                 <div class="step" data-step="2" id="step2">Entity Extraction</div>
                 <div class="step" data-step="3" id="step3">AIKosh BNS Retrieval</div>
-                <div class="step" data-step="4" id="step4">Police FIR Drafting</div>
+                <div class="step" data-step="4" id="step4">Citizen Fact Review</div>
                 <div class="step" data-step="5" id="step5">Bilingual Output</div>
             </div>
         </section>
 
         <!-- Retrieved Sections -->
         <section class="card hidden" id="secCard">
-            <h2 id="sectionsTitle">Retrieved Statutory Provisions (Grounded in IndiaAI AIKosh)</h2>
+            <h2 id="sectionsTitle">Suggested statutory provisions (verify before submission)</h2>
             <ul class="sections" id="secList"></ul>
+            <p style="font-size:.78rem;color:#92400e;margin-top:10px;line-height:1.45;">These are retrieval suggestions from the prototype corpus, not a legal determination. Check the quoted facts and provisions with a legal-aid service or official source before submission.</p>
+        </section>
+
+        <section class="card hidden" id="reviewCard">
+            <h2>4 · Review extracted facts before drafting</h2>
+            <p style="font-size:.83rem;color:#475569;margin-bottom:10px;">Edit the narrative above if anything is incomplete or wrong. Nyaya-Setu does not infer guilt, offence classification, or whether an FIR must be registered.</p>
+            <div id="reviewFacts" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:.84rem;line-height:1.55;"></div>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:.8rem;color:#334155;cursor:pointer;">
+                <input id="reviewConfirm" type="checkbox" style="margin-top:3px;"> I have reviewed the facts and understand that this is only a computer-assisted complaint draft, not legal advice or an FIR.
+            </label>
+            <div class="row"><button id="draftBtn" disabled>Generate Police-Complaint Draft</button></div>
         </section>
 
         <!-- Output Draft -->
         <section class="card hidden" id="outCard">
-            <h2 id="outputTitle">Formal Police Complaint / FIR Draft</h2>
+            <h2 id="outputTitle">Reviewable Police-Complaint Draft</h2>
             <pre class="output" id="complaintOut"></pre>
             <div class="row">
                 <button id="pdfBtn">📄 Open / Print PDF Complaint</button>
@@ -443,22 +444,22 @@
             </div>
         </section>
 
-        <!-- Laws Explorer & Dynamic AIKosh Sync Card -->
+        <!-- Laws Explorer & Corpus Provenance Card -->
         <section class="card" id="explorerCard">
             <h2 id="explorerTitle">📜 Official Laws Explorer (BNS 2023 / BNSS 2023)</h2>
-            <p id="explorerSubtitle" style="font-size:0.8rem;color:#64748b;margin-bottom:10px;">Browse all enacted penal sections, search keywords, or sync latest gazette amendments.</p>
+            <p id="explorerSubtitle" style="font-size:0.8rem;color:#64748b;margin-bottom:10px;">Browse the prototype corpus and inspect its version. It is not a complete or live legal database.</p>
             
             <div class="row" style="margin-top:0;margin-bottom:12px;">
                 <input type="text" id="statuteSearch" placeholder="Search section number, crime keyword, or Hindi/Indic phrase..." style="flex:1;min-width:220px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.85rem;">
-                <button id="syncBtn" class="secondary" type="button">🔄 Check & Sync AIKosh Updates</button>
-                <button id="resetStatutesBtn" class="secondary" type="button" style="font-size:0.75rem;padding:8px 12px;">Reset to Official Gazette 2023 Base</button>
+                <button id="syncBtn" class="secondary" type="button">ⓘ Corpus version & sources</button>
+                <button id="resetStatutesBtn" class="secondary" type="button" style="font-size:0.75rem;padding:8px 12px;">Reset local prototype corpus</button>
             </div>
 
             <div id="explorerList" style="max-height:280px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:8px 14px;background:#fcfcfc;"></div>
         </section>
     </main>
 
-    <footer id="appFooter">100% on-device processing · IndiaAI AIKosh Legislative Corpus · Bhashini Indic Normalizer · Not legal advice · NALSA Helpline 15100</footer>
+    <footer id="appFooter">Local drafting where supported · Prototype statutory corpus · Verify before submission · Not legal advice · NALSA Helpline 15100</footer>
 
     <script type="module" src="/src/main.js"></script>
 </body>

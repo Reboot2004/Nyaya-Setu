@@ -1,17 +1,16 @@
 ﻿// Nyaya-Setu Statutory Corpus & Dynamic Registry
-// Curated from IndiaAI AIKosh Legislative Corpus, Official Gazette of India 2023, and Legislative Department (Ministry of Law & Justice).
-// Fully synced with Bhashini Indic parallel dialectal terminology for 100% deterministic grounding.
+// Small prototype corpus derived from official BNS/BNSS text for demonstration only.
+// It is not a complete or authoritative legal database and must be independently verified.
 
 export const STATUTE_METADATA = {
-    source: "IndiaAI AIKosh Legislative Corpus & Gazette of India (BNS, BNSS, BSA 2023)",
-    lexicon: "Bhashini Indic Multilingual Parallel Corpora",
-    jurisdiction: "Republic of India",
-    version: "2023-BNS-BNSS-BSA-v2.1",
-    lastUpdated: "2026-08-27",
+    source: "PROTOTYPE CORPUS — Hand-curated subset from BNS/BNSS 2023 (NOT AUTHORITATIVE)",
+    disclaimer: "This corpus is for demonstration only. Users MUST independently verify all sections against official India Code: https://www.indiacode.nic.in/",
+    lexicon: "Local prototype keyword-based triggers (not comprehensive)",
+    jurisdiction: "Republic of India (prototype, not production-grade)",
+    version: "prototype-0.3-disclaimer",
+    lastUpdated: "2026-09-01",
     officialMirrors: [
-        "https://aikosh.indiaai.gov.in/datasets/legislative-bns-2023",
-        "https://egazette.gov.in/WriteReadData/2023/250883.pdf",
-        "https://legislative.gov.in/acts/bharatiya-nyaya-sanhita-2023"
+        "https://www.indiacode.nic.in/ (AUTHORITATIVE: BNS, BNSS, BSA 2023)"
     ]
 };
 
@@ -163,24 +162,13 @@ export const BASE_STATUTES = [
         id: 'BNSS-173',
         code: 'BNSS',
         section: '173',
-        title: 'Information in cognizable cases (Zero FIR mandate) (संज्ञेय मामलों में सूचना - जीरो एफआईआर)',
+        title: 'Information in cognizable cases (Duty to register complaint) (संज्ञेय मामलों में सूचना)',
         text: 'Every information relating to the commission of a cognizable offence shall be registered, irrespective of the area where the offence is committed (Zero FIR). The officer shall give a copy of the information free of cost to the informant.',
         punishment: 'Mandatory statutory duty for police officer.',
         triggers: ['fir', 'zero fir', 'police station', 'complaint registration', 'report crime', 'thana', 'station', 'police'],
         category: 'procedure',
-        source: 'AIKosh Gazette BNSS 2023 Ch.XII'
+        source: 'AIKosh Gazette BNSS 2023 Ch.XII (Verify text against official India Code)'
     },
-    {
-        id: 'BNSS-175',
-        code: 'BNSS',
-        section: '175',
-        title: 'Investigation & SP Escalation under 175(3) (अन्वेषण शक्ति एवं पुलिस अधीक्षक को शिकायत)',
-        text: 'If an officer in charge of a police station refuses to record information, the informant may send the substance of the information to the Superintendent of Police under Section 175(3), who may investigate or direct investigation.',
-        punishment: 'Procedural escalation remedy.',
-        triggers: ['police refused', 'not registering fir', 'superintendent of police', 'sp complaint', 'refused complaint', 'police refused fir'],
-        category: 'procedure',
-        source: 'AIKosh Gazette BNSS 2023 Ch.XII'
-    }
 ];
 
 const LOCAL_STORAGE_KEY = 'nyaya_setu_dynamic_statutes';
@@ -226,23 +214,18 @@ export const STATUTES = getLoadedStatutes();
 
 export const RIGHTS_BRIEFING = {
     en: [
-        'You have the legal right to register a First Information Report (FIR) for any cognizable offence. Under Section 173 BNSS, a Zero FIR can be registered at ANY police station irrespective of jurisdictional boundaries.',
-        'The police officer in charge is statutorily required to provide you an authenticated copy of your recorded complaint free of cost immediately.',
-        'If the police station refuses to register your FIR, under Section 175(3) BNSS you have the right to submit your complaint in writing to the Superintendent of Police (SP).',
-        'If the Superintendent of Police fails to act, you may approach the competent Judicial Magistrate under Section 175(4) BNSS.',
-        'Free legal aid is guaranteed under Article 39A of the Constitution. Call the NALSA National Legal Helpline at 15100 for immediate assistance.'
+        'This application prepares a complaint draft only. Verify all facts and legal provisions before submission.',
+        'If you are in immediate danger, contact local emergency services or a trusted person now.',
+        'For free legal-aid guidance in India, contact the NALSA National Legal Helpline at 15100.'
     ],
     hi: [
-        'आपको किसी भी संज्ञेय अपराध के लिए प्राथमिकी (FIR) दर्ज कराने का पूर्ण कानूनी अधिकार है। BNSS की धारा 173 के तहत किसी भी थाने में जीरो एफआईआर दर्ज कराई जा सकती है।',
-        'पुलिस अधिकारी को दर्ज शिकायत की एक प्रमाणित प्रति आपको तुरंत निःशुल्क प्रदान करनी होगी।',
-        'यदि थाना आपकी प्राथमिकी दर्ज करने से मना करता है, तो BNSS की धारा 175(3) के तहत आप पुलिस अधीक्षक (SP) को लिखित शिकायत भेज सकते हैं।',
-        'यदि पुलिस अधीक्षक भी कार्रवाई नहीं करते, तो धारा 175(4) BNSS के तहत न्यायिक मजिस्ट्रेट के समक्ष आवेदन किया जा सकता है।',
-        'संविधान के अनुच्छेद 39A के तहत निःशुल्क विधिक सहायता आपका अधिकार है। राष्ट्रीय कानूनी सेवा प्राधिकरण (NALSA) हेल्पलाइन 15100 पर संपर्क करें।'
+        'यह ऐप केवल शिकायत का ड्राफ्ट बनाता है। जमा करने से पहले तथ्यों और कानूनी प्रावधानों की जाँच करें।',
+        'तत्काल खतरा होने पर स्थानीय आपातकालीन सेवाओं या किसी विश्वसनीय व्यक्ति से संपर्क करें।',
+        'निःशुल्क कानूनी सहायता के लिए NALSA हेल्पलाइन 15100 पर संपर्क करें।'
     ],
     te: [
-        'ఏదైనా తీవ్రమైన నేరానికి సంబంధించి ఎఫ్ఐఆర్ (FIR) నమోదు చేసే చట్టబద్ధమైన హక్కు మీకు ఉంది. BNSS సెక్షన్ 173 ప్రకారం, పరిధితో సంబంధం లేకుండా ఏ పోలీస్ స్టేషన్‌లోనైనా జీరో ఎఫ్ఐఆర్ నమోదు చేయవచ్చు.',
-        'నమోదు చేసిన ఫిర్యాదు కాపీని పోలీసులు మీకు ఉచితంగా వెంటనే అందించాలి.',
-        'పోలీసులు ఎఫ్ఐఆర్ నమోదు చేయడానికి నిరాకరిస్తే, BNSS సెక్షన్ 175(3) కింద మీరు రాతపూర్వకంగా జిల్లా పోలీస్ సూపరింటెండెంట్ (SP)కి పంపవచ్చు.',
+        'ఈ యాప్ కేవలం ఫిర్యాదు డ్రాఫ్ట్‌ను రూపొందిస్తుంది. సమర్పించే ముందు వాస్తవాలు మరియు చట్ట విభాగాలను ధృవీకరించండి.',
+        'తక్షణ ప్రమాదం ఉంటే స్థానిక అత్యవసర సేవలు లేదా నమ్మకమైన వ్యక్తిని సంప్రదించండి.',
         'ఉచిత న్యాయ సహాయం కోసం NALSA హెల్ప్‌లైన్ 15100 కు కాల్ చేయండి.'
     ]
 };

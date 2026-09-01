@@ -118,12 +118,12 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
     const psName = (complainantInfo?.station || '').trim() || 'Jurisdictional Police Station / District';
     const incidentLoc = (complainantInfo?.location || '').trim() || (entities?.location && entities.location !== 'unknown' ? entities.location : 'Within the territorial jurisdiction of this Police Station');
     const aggressor = (complainantInfo?.accused || '').trim() || (entities?.aggressor && entities.aggressor !== 'unknown' ? entities.aggressor : 'The Accused Person(s) / Identified in narrative');
-    const incidentDate = (complainantInfo?.date || '').trim() || todayDate;
-    const summaryFacts = (entities?.summary || complainantInfo?.narrative || 'The accused committed unlawful acts of intimidation, assault, extortion or harassment against the complainant.').trim();
+    const incidentDate = (complainantInfo?.date || '').trim() || (entities?.date && entities.date !== 'unknown' ? entities.date : 'Not specified by the complainant');
+    const summaryFacts = (entities?.summary || complainantInfo?.narrative || 'Facts require completion by the complainant.').trim();
 
     const sectionsList = retrieved.length
         ? retrieved.map(({ statute }) => `${statute.code} Section ${statute.section} (${statute.title.split('(')[0].trim()})`).join(', ')
-        : 'Section 115, Section 351, Section 352 of Bharatiya Nyaya Sanhita, 2023 & Section 173 of BNSS, 2023';
+        : 'No provision was suggested with sufficient confidence. Please seek legal-aid guidance.';
 
     // 1. ENGLISH DRAFT
     const englishDraft = 
@@ -131,7 +131,7 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
 THE STATION HOUSE OFFICER / OFFICER-IN-CHARGE,
 POLICE STATION: ${psName.toUpperCase()}
 
-SUBJECT: WRITTEN COMPLAINT FOR REGISTRATION OF FIRST INFORMATION REPORT (FIR) UNDER SECTION 173 OF BHARATIYA NAGARIK SURAKSHA SANHITA (BNSS), 2023 FOR OFFENCES UNDER BHARATIYA NYAYA SANHITA (BNS), 2023.
+SUBJECT: WRITTEN POLICE COMPLAINT — FACTS FOR REVIEW AND APPROPRIATE ACTION UNDER APPLICABLE LAW.
 
 1. COMPLAINANT PARTICULARS:
    • Full Name: ${cName}${cParent ? ` (S/o, D/o, W/o: ${cParent})` : ''}
@@ -147,20 +147,19 @@ SUBJECT: WRITTEN COMPLAINT FOR REGISTRATION OF FIRST INFORMATION REPORT (FIR) UN
 
 4. STATEMENT OF FACTS:
    I, the Complainant named above, solemnly state the chronological facts of the incident as follows:
-   (a) On ${incidentDate}, at approximately ${incidentLoc}, the above-named accused person(s) unlawfully and intentionally committed the following acts against me:
+   (a) On ${incidentDate}, at / near ${incidentLoc}, I state that the above-named person(s) committed the following alleged acts:
    (b) ${summaryFacts}
-   (c) The acts of the accused caused direct injury, wrongful loss, physical intimidation, and breach of peace, leaving me in fear of further harm.
+   (c) Any details not stated above are unknown to me at present. I request that this complaint be recorded and assessed under applicable law.
 
-5. APPLICABLE STATUTORY PENAL PROVISIONS:
-   The aforementioned acts attract cognizable penal liability under the Bharatiya Nyaya Sanhita, 2023, specifically:
+5. SUGGESTED PROVISIONS FOR HUMAN VERIFICATION:
+   The following provisions were retrieved from a prototype corpus and require verification by the receiving authority or qualified legal-aid provider:
    • ${sectionsList}
-   • Section 173 BNSS, 2023 (Mandatory registration of FIR for cognizable offence).
 
 6. PRAYER FOR STATUTORY ACTION:
    In view of the aforesaid facts, it is formally requested that:
-   (i) An FIR be registered forthwith under Section 173 of the Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023;
-   (ii) Prompt investigation be initiated against the accused person(s) in accordance with the law;
-   (iii) An authenticated copy of the FIR / recorded complaint be provided to me free of cost as mandated under Section 173(2) BNSS.
+   (i) This written complaint be received and acknowledged;
+   (ii) The facts and any applicable provisions be assessed in accordance with law;
+   (iii) I be informed of the appropriate next step and available legal-aid support.
 
 VERIFICATION:
 I verify that the contents stated above are true and correct to the best of my knowledge and personal belief, and nothing material has been concealed.
@@ -179,7 +178,7 @@ Contact: ${cPhone || '________________'}`;
 थाना प्रभारी / अधिकारी महोदय,
 थाना: ${psName}
 
-विषय: भारतीय नागरिक सुरक्षा संहिता (BNSS), 2023 की धारा 173 के अंतर्गत भारतीय न्याय संहिता (BNS), 2023 के तहत प्राथमिकी (FIR) दर्ज करने हेतु औपचारिक शिकायत पत्र।
+विषय: लिखित पुलिस शिकायत — तथ्यों की समीक्षा एवं लागू कानून के तहत उचित कार्रवाई हेतु।
 
 1. शिकायतकर्ता का विवरण:
    • पूरा नाम: ${cName}${cParent ? ` (आत्मज/पत्नी: ${cParent})` : ''}
@@ -195,20 +194,19 @@ Contact: ${cPhone || '________________'}`;
 
 4. घटना का विवरण (तथ्य):
    मैं, शिकायतकर्ता, शपथपूर्वक निम्नलिखित तथ्य प्रस्तुत करता/करती हूँ:
-   (क) दिनांक ${incidentDate} को स्थान ${incidentLoc} पर उपरोक्त आरोपी व्यक्ति(यों) द्वारा गैर-कानूनी ढंग से मेरे साथ कृत्य किया गया।
+   (क) दिनांक ${incidentDate} को स्थान / निकट ${incidentLoc} पर मैं यह कथन करता/करती हूँ कि उपरोक्त व्यक्ति(यों) ने निम्न कथित कृत्य किए।
    (ख) ${summaryFacts}
-   (ग) आरोपी के इस कृत्य से मुझे शारीरिक चोट, मानसिक प्रताड़ना एवं गंभीर नुकसान पहुंचा है।
+   (ग) जो विवरण ऊपर नहीं दिया गया है, वह वर्तमान में मुझे ज्ञात नहीं है। कृपया इस शिकायत के तथ्यों का कानून के अनुसार आकलन किया जाए।
 
-5. लागू वैधानिक धाराएं:
-   उपरोक्त कृत्य भारतीय न्याय संहिता, 2023 एवं भारतीय नागरिक सुरक्षा संहिता, 2023 के निम्नलिखित प्रावधानों के तहत दंडनीय है:
+5. मानव सत्यापन हेतु सुझाई गई धाराएं:
+   निम्न प्रावधान प्रोटोटाइप कॉर्पस से प्राप्त सुझाव हैं; प्राप्तकर्ता अधिकारी या विधिक सहायता प्रदाता से इनका सत्यापन आवश्यक है:
    • ${sectionsList}
-   • धारा 173 BNSS, 2023 (संज्ञेय अपराध में अनिवार्य FIR पंजीकरण)।
 
 6. कानूनी कार्रवाई हेतु औपचारिक मांग (Prayer for Action):
    अतः श्रीमान से औपचारिक निवेदन है कि:
-   (1) धारा 173 BNSS, 2023 के अंतर्गत तत्काल प्रथम सूचना रिपोर्ट (FIR) दर्ज की जाए;
-   (2) मामले की निष्पक्ष एवं त्वरित जांच कर आरोपी के विरुद्ध कठोर कानूनी कार्रवाई की जाए;
-   (3) धारा 173(2) BNSS के तहत दर्ज FIR की एक प्रमाणित प्रति मुझे निःशुल्क प्रदान की जाए।
+   (1) इस लिखित शिकायत को प्राप्त कर पावती दी जाए;
+   (2) तथ्यों और लागू प्रावधानों का कानून के अनुसार आकलन किया जाए;
+   (3) मुझे उचित अगली प्रक्रिया और उपलब्ध निःशुल्क विधिक सहायता की जानकारी दी जाए।
 
 सत्यापन:
 मैं सत्यापित करता/करती हूँ कि ऊपर वर्णित सभी तथ्य मेरी व्यक्तिगत जानकारी के अनुसार पूर्णतः सत्य एवं सही हैं।
@@ -226,7 +224,7 @@ _____________________________
 `గౌరవనీయులైన స్టేషన్ హౌస్ ఆఫీసర్ గారికి,
 పోలీస్ స్టేషన్: ${psName}
 
-విషయం: భారతీయ పౌర సురక్షా సంహిత (BNSS), 2023 సెక్షన్ 173 ప్రకారం భారతీయ న్యాయ సంహిత (BNS), 2023 కింద ప్రథమ సమాచార నివేదిక (FIR) నమోదు కొరకు అధికారిక ఫిర్యాదు.
+విషయం: లిఖిత పోలీస్ ఫిర్యాదు — వాస్తవాల సమీక్ష మరియు వర్తించే చట్టం ప్రకారం తగిన చర్య కోసం.
 
 1. ఫిర్యాదుదారుని వివరాలు:
    • పూర్తి పేరు: ${cName}${cParent ? ` (తండ్రి/భర్త: ${cParent})` : ''}
@@ -244,14 +242,13 @@ _____________________________
    (ఎ) ${incidentDate} తేదీన, ${incidentLoc} వద్ద పైన పేర్కొన్న నిందితుడు నాపై దౌర్జన్యపూరితమైన నేరానికి పాల్పడ్డాడు.
    (బి) ${summaryFacts}
 
-5. వర్తించే చట్ట విభాగాలు:
+5. మానవ ధృవీకరణ కోసం సూచించిన చట్ట విభాగాలు:
    • ${sectionsList}
-   • సెక్షన్ 173 BNSS, 2023 (జీరో ఎఫ్ఐఆర్ మరియు విధిగా కేసు నమోదు).
 
 6. చట్టబద్ధమైన అభ్యర్థన:
-   (1) సెక్షన్ 173 BNSS ప్రకారం వెంటనే FIR నమోదు చేయాలని;
-   (2) విచారణ ప్రారంభించి తగిన చర్యలు తీసుకోవాలని;
-   (3) FIR కాపీని ఉచితంగా అందించాలని కోరుతున్నాను.
+   (1) ఈ లిఖిత ఫిర్యాదును స్వీకరించి రసీదు ఇవ్వాలని;
+   (2) వాస్తవాలను మరియు వర్తించే చట్టాన్ని సమీక్షించాలని;
+   (3) సరైన తదుపరి చర్య మరియు అందుబాటులో ఉన్న ఉచిత న్యాయ సహాయం గురించి తెలియజేయాలని.
 
 సంతకం: _____________________________ (${cName})`;
 
@@ -272,11 +269,11 @@ export async function extractEntities(narrative) {
     if (!isWebGPUSupported()) {
         return {
             summary: narrative.slice(0, 300),
-            date: new Date().toLocaleDateString('en-IN'),
-            location: 'Jurisdictional location',
-            aggressor: 'Accused persons identified in statement',
+            date: 'unknown',
+            location: 'unknown',
+            aggressor: 'unknown',
             events: [narrative],
-            category: 'assault'
+            category: 'needs_human_review'
         };
     }
 
@@ -298,11 +295,11 @@ export async function extractEntities(narrative) {
     } catch {
         return { 
             summary: narrative.slice(0, 300), 
-            date: new Date().toLocaleDateString('en-IN'), 
-            location: 'Jurisdictional location', 
-            aggressor: 'Accused persons named in narrative', 
+            date: 'unknown', 
+            location: 'unknown', 
+            aggressor: 'unknown', 
             events: [narrative], 
-            category: 'assault' 
+            category: 'needs_human_review' 
         };
     }
 }

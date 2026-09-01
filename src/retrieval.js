@@ -1,7 +1,6 @@
-﻿// Deterministic statutory retrieval over IndiaAI AIKosh Legislative Corpus & Gazette Mirrors
-// Augmented with Bhashini Indic Dialectal Normalizer for multilingual vernacular grounding.
+﻿// Deterministic statutory retrieval over a hand-curated prototype corpus (not comprehensive).
+// This is NOT a complete legal database. Official references: https://www.indiacode.nic.in/
 import { getLoadedStatutes, STATUTE_METADATA, saveDynamicStatutes, resetToDefaultStatutes, BASE_STATUTES } from '../data/statutes.js';
-import { normalizeWithBhashini } from '../data/bhashini_lexicon.js';
 
 const STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'my', 'me', 'i', 'was', 'is', 'he', 'she', 'they', 'his', 'her', 'at', 'by', 'for', 'with', 'from', 'it', 'this', 'that', 'me', 'mera', 'meri', 'mere', 'ko', 'ne', 'ka', 'ki', 'ke', 'aur', 'par', 'se']);
 
@@ -14,24 +13,17 @@ function tokenize(text) {
 }
 
 /**
- * Retrieves matching BNS / BNSS statutory provisions using hybrid Bhashini normalization + AIKosh indexing.
+ * Retrieves matching BNS / BNSS provisions using keyword-based scoring.
+ * This is a prototype retrieval; users must independently verify statute applicability.
  */
 export function retrieveSections(narrative, topK = 4) {
     const statutesList = getLoadedStatutes();
     const tokens = tokenize(narrative);
-    
-    // 1. Pass through Bhashini Vernacular Normalizer
-    const { normalizedConcepts, suggestedSections } = normalizeWithBhashini(narrative);
 
-    // 2. Score against active statutory corpus
+    // Score against active statutory corpus using triggers and keyword matching
     const scored = statutesList.map((s) => {
         let score = 0;
         const hay = `${s.title} ${s.text} ${s.triggers.join(' ')}`.toLowerCase();
-
-        // Direct section boost if matched by Bhashini dialectal lexicon
-        if (suggestedSections.includes(s.section)) {
-            score += 5;
-        }
 
         // Trigger phrases match
         for (const tok of tokens) {
@@ -42,11 +34,11 @@ export function retrieveSections(narrative, topK = 4) {
             }
         }
 
-        return { 
-            statute: s, 
+        return {
+            statute: s,
             score,
             source: s.source || STATUTE_METADATA.source,
-            bhashiniNormalized: normalizedConcepts.length > 0
+            confidence: score > 5 ? 'high' : score > 2 ? 'medium' : 'low'
         };
     })
         .filter((r) => r.score > 0)
@@ -57,7 +49,8 @@ export function retrieveSections(narrative, topK = 4) {
 }
 
 /**
- * Sync / Hot-Reload statutory database from a remote JSON feed or uploaded dataset.
+ * Sync / Hot-Reload statutory database from a verified source.
+ * DO NOT call this in production until corpus is verified against official India Code.
  */
 export async function syncStatutesFromSource(sourceUrl) {
     try {
@@ -67,6 +60,7 @@ export async function syncStatutesFromSource(sourceUrl) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
             saveDynamicStatutes(data);
+            console.warn('Remote statute sync applied. Verify corpus against official India Code before using in production.');
             return { success: true, count: data.length, source: url };
         }
         throw new Error('Invalid statute schema array.');

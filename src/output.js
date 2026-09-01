@@ -1,24 +1,24 @@
 ﻿// Complaint PDF generation (client-side, print-based) + audio rights briefing (Web Speech API)
-// Aligned with Bhashini Indic voice synthesis and IndiaAI AIKosh Legislative Corpus.
+// Uses browser speech synthesis when available; it may not be fully offline in every browser.
 
 const PDF_TEXT = {
     en: {
         title: 'FORMAL COMPLAINT',
-        meta: 'Drafted with Nyaya-Setu · AIKosh BNS Index · Bhashini Vernacular Mapping',
+        meta: 'Computer-assisted draft · Prototype statutory corpus · Verify before submission',
         dateLabel: 'Date',
-        sectionsTitle: 'Applicable Statutory Provisions (IndiaAI AIKosh Corpus)',
-        disclaimer: 'Disclaimer: This is a computer-assisted draft, not legal advice from an advocate. Verify facts before submission. Free legal aid: NALSA helpline 15100.'
+        sectionsTitle: 'Suggested statutory provisions (human verification required)',
+        disclaimer: 'Disclaimer: This is a computer-assisted complaint draft, not legal advice or an FIR. Verify facts and provisions before submission. Free legal aid: NALSA helpline 15100.'
     },
     hi: {
         title: 'औपचारिक शिकायत पत्र',
-        meta: 'Nyaya-Setu द्वारा तैयार · AIKosh BNS इंडेक्स · भाषिणी वर्नाक्युलर मैपिंग',
+        meta: 'कंप्यूटर-सहायित ड्राफ्ट · प्रोटोटाइप कॉर्पस · जमा करने से पहले सत्यापित करें',
         dateLabel: 'दिनांक',
         sectionsTitle: 'लागू वैधानिक प्रावधान (IndiaAI AIKosh कॉरपस)',
         disclaimer: 'अस्वीकरण: यह कंप्यूटर-सहायित मसौदा है, अधिवक्ता की कानूनी सलाह नहीं। जमा करने से पहले तथ्यों की जांच करें। निःशुल्क कानूनी सहायता: NALSA हेल्पलाइन 15100।'
     },
     te: {
         title: 'అధికారిక ఫిర్యాదు పత్రం',
-        meta: 'Nyaya-Setu ద్వారా రూపొందించబడింది · AIKosh BNS ఇండెక్స్ · భాషిణి మ్యాపింగ్',
+        meta: 'కంప్యూటర్-సహాయిత డ్రాఫ్ట్ · ప్రోటోటైప్ కార్పస్ · సమర్పించే ముందు ధృవీకరించండి',
         dateLabel: 'తేదీ',
         sectionsTitle: 'వర్తించే చట్ట విభాగాలు (AIKosh డేటాసెట్)',
         disclaimer: 'గమనిక: ఇది కంప్యూటర్ సహాయంతో తయారైన డ్రాఫ్ట్ మాత్రమే; న్యాయవాది సలహా కాదు. సమర్పించే ముందు వాస్తవాలు తనిఖీ చేయండి. ఉచిత న్యాయ సహాయం: NALSA హెల్ప్‌లైన్ 15100.'
@@ -61,12 +61,12 @@ const PDF_TEXT = {
 };
 
 export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en') {
-    const sections = retrieved.map(({ statute, source }) => `<li><strong>${statute.code} Section ${statute.section}</strong> — ${statute.title} <span style="font-size:8pt;color:#64748b">(${source || 'AIKosh'})</span></li>`).join('');
+    const sections = retrieved.map(({ statute, source }) => `<li><strong>${statute.code} Section ${statute.section}</strong> — ${statute.title} <span style="font-size:8pt;color:#64748b">(${source || 'Prototype corpus'})</span></li>`).join('');
     const englishText = complaint?.english || complaint?.native || complaint?.hindi || '';
     const nativeText = complaint?.native || complaint?.hindi || complaint?.english || '';
     const lang = (uiLanguage || 'en').toLowerCase();
     const labels = PDF_TEXT[lang] || PDF_TEXT.en;
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Formal Complaint — Nyaya-Setu</title>
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Police-Complaint Draft — Nyaya-Setu</title>
   <style>body{font-family:Georgia,serif;max-width:170mm;margin:20mm auto;line-height:1.5;color:#111}
   h1{font-size:14pt;text-align:center;border-bottom:2px solid #111;padding-bottom:6px}
   .meta{font-size:9pt;color:#444;text-align:center;margin-bottom:18px}
