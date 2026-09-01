@@ -572,6 +572,77 @@ if ($('startAppBtn')) {
     });
 }
 
+// ---- Uncertainty Review Screen ----
+function showExtractedFactsReview(entities, retrieved) {
+    return new Promise((resolve) => {
+        const modalEl = $('factReviewModal');
+        const contentEl = $('factReviewContent');
+        const previewEl = $('statutePreviewContent');
+        const checkboxEl = $('factVerifyCheckbox');
+        const proceedBtn = $('factReviewProceedBtn');
+        const goBackBtn = $('factReviewGoBackBtn');
+
+        // Build extracted facts display
+        const factsHtml = `
+            <div class="fact-field ${entities.summary === 'unknown' || !entities.summary ? 'unknown' : ''}">
+                <div class="fact-label">Summary of Events</div>
+                <div class="fact-value">${entities.summary || '(not extracted)'}</div>
+            </div>
+            <div class="fact-field ${entities.aggressor === 'unknown' ? 'unknown' : ''}">
+                <div class="fact-label">Accused/Aggressor</div>
+                <div class="fact-value">${entities.aggressor || '(not identified)'}</div>
+            </div>
+            <div class="fact-field ${entities.date === 'unknown' || !entities.date ? 'unknown' : ''}">
+                <div class="fact-label">Date of Incident</div>
+                <div class="fact-value">${entities.date || '(not specified)'}</div>
+            </div>
+            <div class="fact-field ${entities.location === 'unknown' || !entities.location ? 'unknown' : ''}">
+                <div class="fact-label">Location</div>
+                <div class="fact-value">${entities.location || '(not specified)'}</div>
+            </div>
+            <div class="fact-field">
+                <div class="fact-label">Category</div>
+                <div class="fact-value">${entities.category || 'Unclassified'}</div>
+            </div>
+        `;
+        contentEl.innerHTML = factsHtml;
+
+        // Build statute preview
+        const statuteHtml = retrieved.length ? 
+            `<strong>Potentially Applicable Statutes:</strong><ul style="margin:6px 0 0 16px;">
+                ${retrieved.slice(0, 3).map(({ statute, confidence }) => 
+                    `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title}<br><small>Confidence: ${confidence}</small></li>`
+                ).join('')}
+            </ul>`
+            : '<strong>No statutes matched.</strong> You may still proceed to review manually.';
+        previewEl.innerHTML = statuteHtml;
+
+        // Checkbox toggle
+        checkboxEl.checked = false;
+        checkboxEl.onchange = () => {
+            proceedBtn.disabled = !checkboxEl.checked;
+            proceedBtn.style.background = checkboxEl.checked ? '#2563eb' : '#e5e7eb';
+            proceedBtn.style.borderColor = checkboxEl.checked ? '#1d4ed8' : '#d1d5db';
+            proceedBtn.style.color = checkboxEl.checked ? '#ffffff' : '#6b7280';
+            proceedBtn.style.cursor = checkboxEl.checked ? 'pointer' : 'not-allowed';
+        };
+
+        // Button handlers
+        proceedBtn.onclick = () => {
+            modalEl.classList.add('hidden');
+            resolve(true);
+        };
+
+        goBackBtn.onclick = () => {
+            modalEl.classList.add('hidden');
+            resolve(false);
+        };
+
+        // Show modal
+        modalEl.classList.remove('hidden');
+    });
+}
+
 // ---- Pipeline step indicator ----
 function setStep(n) {
     document.querySelectorAll('.step').forEach((el) => {
@@ -619,6 +690,16 @@ $('runBtn').onclick = async () => {
             return;
         }
 
+        // ---- Show Fact Review Modal (Step 4 - Citizen Fact Review) ----
+        setStep(4);
+        const userVerified = await showExtractedFactsReview(entities, retrievedPreview);
+        if (!userVerified) {
+            // User clicked "Go Back"; reset pipeline
+            $('runBtn').disabled = false;
+            return;
+        }
+
+        // ---- Continue to Statute Retrieval (Step 3) ----
         setStep(3);
         const retrieved = retrieveSections(narrative);
         lastRetrieved = retrieved;
@@ -627,11 +708,11 @@ $('runBtn').onclick = async () => {
             : `<li>${t('noMatch')}</li>`;
         $('secCard').classList.remove('hidden');
 
-        setStep(4);
+        setStep(5);
         lastComplaint = await draftComplaint(entities, retrieved, selectedLanguage || detectLanguage(narrative));
         activeView = 'native';
 
-        setStep(5);
+        setStep(6);
         refreshComplaintView();
         $('outCard').classList.remove('hidden');
 
