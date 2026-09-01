@@ -1,115 +1,128 @@
 {
-  "metadata": {
-    "version": "1.0",
-    "description": "Evaluation dataset for Nyaya-Setu complaint processing pipeline (Fix #7)",
-    "disclaimer": "All complaints are synthetic/anonymized for testing. Not based on real cases.",
-    "languages": ["en", "hi", "te"],
-    "corpus_version": "prototype-0.3"
-  },
-  "test_cases": [
-    {
-      "id": "TEST-001",
-      "language": "en",
-      "narrative": "Last Tuesday around 2 PM, Mohan Singh beat me badly with a lathi outside the market. He hit my head and I bled a lot. I had to go to the hospital and got 5 stitches.",
-      "expected_entities": {
-        "summary": "Physical assault with lathi resulting in bleeding and hospitalization",
-        "aggressor": "Mohan Singh",
-        "date": "Tuesday",
-        "location": "market",
-        "category": "grievous_hurt"
-      },
-      "expected_sections": ["BNS-117"],
-      "should_accept": true,
-      "confidence": "high"
+    "metadata": {
+        "version": "1.0",
+        "description": "Evaluation dataset for Nyaya-Setu complaint processing pipeline (Fix #7)",
+        "disclaimer": "All complaints are synthetic/anonymized for testing. Not based on real cases.",
+        "languages": [
+            "en",
+            "hi",
+            "te"
+        ],
+        "corpus_version": "prototype-0.3"
     },
-    {
-      "id": "TEST-002",
-      "language": "hi",
-      "narrative": "मेरे पड़ोसी ने मुझे धमकी दी कि अगर मैंने उनसे पैसे नहीं दिए तो वह मेरा घर जला देंगे और मेरे परिवार को मार देंगे।",
-      "expected_entities": {
-        "summary": "Criminal intimidation with threats to property and life",
-        "aggressor": "neighbor",
-        "date": "unknown",
-        "location": "residence",
-        "category": "intimidation"
-      },
-      "expected_sections": ["BNS-351"],
-      "should_accept": true,
-      "confidence": "high"
-    },
-    {
-      "id": "TEST-003",
-      "language": "te",
-      "narrative": "నా వారు అందరూ నన్ను చెడ్డ పదాలతో అసహ్యం చెప్పారు మరియు నా గుర్తింపుకు హాని కలిగించారు. ఇది ఎక్కువ రోజులుగా సామాజిక మాధ్యమంలో చేస్తున్నారు.",
-      "expected_entities": {
-        "summary": "Abusive language and defamation via social media",
-        "aggressor": "multiple persons",
-        "date": "ongoing",
-        "location": "social media",
-        "category": "defamation"
-      },
-      "expected_sections": ["BNS-352"],
-      "should_accept": true,
-      "confidence": "medium"
-    },
-    {
-      "id": "TEST-004",
-      "language": "en",
-      "narrative": "My boss yelled at me during work.",
-      "expected_entities": {
-        "summary": "Workplace verbal conflict",
-        "aggressor": "boss",
-        "date": "unknown",
-        "location": "workplace",
-        "category": "unknown"
-      },
-      "expected_sections": [],
-      "should_accept": false,
-      "rejection_reason": "insufficient_legal_basis"
-    },
-    {
-      "id": "TEST-005",
-      "language": "hi",
-      "narrative": "मुझे अपना सामान खो गया। क्या पुलिस को रिपोर्ट करनी चाहिए?",
-      "expected_entities": {
-        "summary": "Lost property inquiry",
-        "aggressor": "unknown",
-        "date": "unknown",
-        "location": "unknown",
-        "category": "unknown"
-      },
-      "expected_sections": [],
-      "should_accept": false,
-      "rejection_reason": "not_actionable_complaint"
-    },
-    {
-      "id": "TEST-006",
-      "language": "en",
-      "narrative": "On March 15th, policeman Rajesh Kumar used abusive language against me and slapped me during questioning. He said he would arrest my family if I didn't confess. I have bruises on my face.",
-      "expected_entities": {
-        "summary": "Police brutality and criminal intimidation",
-        "aggressor": "Rajesh Kumar (policeman)",
-        "date": "March 15",
-        "location": "police station",
-        "category": "abuse_of_authority"
-      },
-      "expected_sections": ["BNS-115", "BNS-351"],
-      "should_accept": true,
-      "confidence": "high"
+    "test_cases": [
+        {
+            "id": "TEST-001",
+            "language": "en",
+            "narrative": "Last Tuesday around 2 PM, Mohan Singh beat me badly with a lathi outside the market. He hit my head and I bled a lot. I had to go to the hospital and got 5 stitches.",
+            "expected_entities": {
+                "summary": "Physical assault with lathi resulting in bleeding and hospitalization",
+                "aggressor": "Mohan Singh",
+                "date": "Tuesday",
+                "location": "market",
+                "category": "grievous_hurt"
+            },
+            "expected_sections": [
+                "BNS-117"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-002",
+            "language": "hi",
+            "narrative": "मेरे पड़ोसी ने मुझे धमकी दी कि अगर मैंने उनसे पैसे नहीं दिए तो वह मेरा घर जला देंगे और मेरे परिवार को मार देंगे।",
+            "expected_entities": {
+                "summary": "Criminal intimidation with threats to property and life",
+                "aggressor": "neighbor",
+                "date": "unknown",
+                "location": "residence",
+                "category": "intimidation"
+            },
+            "expected_sections": [
+                "BNS-351"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-003",
+            "language": "te",
+            "narrative": "నా వారు అందరూ నన్ను చెడ్డ పదాలతో అసహ్యం చెప్పారు మరియు నా గుర్తింపుకు హాని కలిగించారు. ఇది ఎక్కువ రోజులుగా సామాజిక మాధ్యమంలో చేస్తున్నారు.",
+            "expected_entities": {
+                "summary": "Abusive language and defamation via social media",
+                "aggressor": "multiple persons",
+                "date": "ongoing",
+                "location": "social media",
+                "category": "defamation"
+            },
+            "expected_sections": [
+                "BNS-352"
+            ],
+            "should_accept": true,
+            "confidence": "medium"
+        },
+        {
+            "id": "TEST-004",
+            "language": "en",
+            "narrative": "My boss yelled at me during work.",
+            "expected_entities": {
+                "summary": "Workplace verbal conflict",
+                "aggressor": "boss",
+                "date": "unknown",
+                "location": "workplace",
+                "category": "unknown"
+            },
+            "expected_sections": [],
+            "should_accept": false,
+            "rejection_reason": "insufficient_legal_basis"
+        },
+        {
+            "id": "TEST-005",
+            "language": "hi",
+            "narrative": "मुझे अपना सामान खो गया। क्या पुलिस को रिपोर्ट करनी चाहिए?",
+            "expected_entities": {
+                "summary": "Lost property inquiry",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "unknown"
+            },
+            "expected_sections": [],
+            "should_accept": false,
+            "rejection_reason": "not_actionable_complaint"
+        },
+        {
+            "id": "TEST-006",
+            "language": "en",
+            "narrative": "On March 15th, policeman Rajesh Kumar used abusive language against me and slapped me during questioning. He said he would arrest my family if I didn't confess. I have bruises on my face.",
+            "expected_entities": {
+                "summary": "Police brutality and criminal intimidation",
+                "aggressor": "Rajesh Kumar (policeman)",
+                "date": "March 15",
+                "location": "police station",
+                "category": "abuse_of_authority"
+            },
+            "expected_sections": [
+                "BNS-115",
+                "BNS-351"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        }
+    ],
+    "evaluation_metrics": {
+        "entity_extraction": {
+            "description": "Measure accuracy of extracted facts",
+            "metric": "Exact match on aggressor, date, location fields"
+        },
+        "section_retrieval": {
+            "description": "Measure statute retrieval recall",
+            "metric": "% of expected sections found in top-5 results"
+        },
+        "complaint_filtering": {
+            "description": "Measure filtering accuracy",
+            "metric": "TP / (TP + FP + FN) for actionability decision"
+        }
     }
-  ],
-  "evaluation_metrics": {
-    "entity_extraction": {
-      "description": "Measure accuracy of extracted facts",
-      "metric": "Exact match on aggressor, date, location fields"
-    },
-    "section_retrieval": {
-      "description": "Measure statute retrieval recall",
-      "metric": "% of expected sections found in top-5 results"
-    },
-    "complaint_filtering": {
-      "description": "Measure filtering accuracy",
-      "metric": "TP / (TP + FP + FN) for actionability decision"
-    }
-  }
 }

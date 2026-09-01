@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nyaya-Setu — Indic Legal Co-Pilot (BNS 2023)</title>
+    <title>Nyaya-Setu ï¿½ Indic Legal Co-Pilot (BNS 2023)</title>
     <link rel="manifest" href="./manifest.webmanifest">
     <style>
         * {
@@ -335,18 +335,24 @@
     <section class="gate" id="langGate">
         <div class="gate-card">
             <h2 id="gateTitle">Choose Your Language & Grant Permissions</h2>
-            <p id="gateSubtitle">Choose a language to begin. Nyaya-Setu asks for microphone or location access only if you choose to use those features. This prototype creates a reviewable police-complaint draft; it does not file an FIR or provide legal advice.</p>
+            <p id="gateSubtitle">Choose a language to begin. Nyaya-Setu asks for microphone or location access only if
+                you choose to use those features. This prototype creates a reviewable police-complaint draft; it does
+                not file an FIR or provide legal advice.</p>
             <div class="row" style="margin-top:0; margin-bottom:12px;">
-                <label for="initialLangSelect" id="initialLangLabel" style="font-size:.8rem; color:#475569; font-weight:600;">Language</label>
-                <select id="initialLangSelect" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.92rem; min-width:200px;">
+                <label for="initialLangSelect" id="initialLangLabel"
+                    style="font-size:.8rem; color:#475569; font-weight:600;">Language</label>
+                <select id="initialLangSelect"
+                    style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.92rem; min-width:200px;">
                     <option value="en">English (Full Support)</option>
                     <option value="hi">?????? / Hindi (Full Support)</option>
                     <option value="te">?????? / Telugu (Full Support)</option>
                 </select>
-                <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">?? Only English, Hindi, and Telugu are fully supported. Other languages may have incomplete translations.</p>
+                <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">?? Only English, Hindi, and
+                    Telugu are fully supported. Other languages may have incomplete translations.</p>
                 <button id="startAppBtn" type="button">Start Legal Co-Pilot</button>
             </div>
-            <p id="ipHint" style="margin-bottom:0; font-size:.78rem; color:#64748b;">Detecting regional jurisdiction from network...</p>
+            <p id="ipHint" style="margin-bottom:0; font-size:.78rem; color:#64748b;">Detecting regional jurisdiction
+                from network...</p>
         </div>
     </section>
 
@@ -354,20 +360,32 @@
     <section class="gate hidden" id="factReviewModal">
         <div class="gate-card" style="max-width:600px; max-height:80vh; overflow-y:auto;">
             <h2 id="factReviewTitle" style="margin-bottom:6px;">Verify Extracted Facts</h2>
-            <p style="font-size:.85rem; color:#475569; margin-bottom:14px;">Review the information extracted from your narrative. Correct or confirm each field before proceeding to statute retrieval. Empty or unknown fields are highlighted.</p>
-            
-            <div id="factReviewContent" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:12px; margin-bottom:14px; font-size:.88rem; line-height:1.5;"></div>
-            
-            <div id="statutePreviewContent" style="background:#fef3c7; border:1px solid #fcd34d; border-radius:6px; padding:12px; margin-bottom:14px; font-size:.85rem; line-height:1.5;"></div>
-            
+            <p style="font-size:.85rem; color:#475569; margin-bottom:14px;">Review the information extracted from your
+                narrative. Correct or confirm each field before proceeding to statute retrieval. Empty or unknown fields
+                are highlighted.</p>
+
+            <div id="factReviewContent"
+                style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:12px; margin-bottom:14px; font-size:.88rem; line-height:1.5;">
+            </div>
+
+            <div id="statutePreviewContent"
+                style="background:#fef3c7; border:1px solid #fcd34d; border-radius:6px; padding:12px; margin-bottom:14px; font-size:.85rem; line-height:1.5;">
+            </div>
+
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
                 <input type="checkbox" id="factVerifyCheckbox" style="width:18px; height:18px; cursor:pointer;">
-                <label for="factVerifyCheckbox" style="cursor:pointer; font-size:.88rem; color:#1c1917;"><strong id="factVerifyLabel">I have reviewed and verified the above facts are accurate to the best of my knowledge.</strong></label>
+                <label for="factVerifyCheckbox" style="cursor:pointer; font-size:.88rem; color:#1c1917;"><strong
+                        id="factVerifyLabel">I have reviewed and verified the above facts are accurate to the best of my
+                        knowledge.</strong></label>
             </div>
-            
+
             <div style="display:flex; gap:8px; justify-content:flex-end;">
-                <button id="factReviewGoBackBtn" type="button" style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-weight:600; color:#334155;">Go Back</button>
-                <button id="factReviewProceedBtn" type="button" disabled style="padding:8px 16px; background:#e5e7eb; border:1px solid #d1d5db; border-radius:6px; cursor:not-allowed; font-weight:600; color:#6b7280;">Proceed to Statute Retrieval</button>
+                <button id="factReviewGoBackBtn" type="button"
+                    style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-weight:600; color:#334155;">Go
+                    Back</button>
+                <button id="factReviewProceedBtn" type="button" disabled
+                    style="padding:8px 16px; background:#e5e7eb; border:1px solid #d1d5db; border-radius:6px; cursor:not-allowed; font-weight:600; color:#6b7280;">Proceed
+                    to Statute Retrieval</button>
             </div>
         </div>
     </section>
@@ -376,7 +394,7 @@
     <header>
         <div>
             <h1 id="appTitle">NYAYA-SETU</h1>
-            <div class="sub" id="appSub">Offline-first legal intake · Reviewable police-complaint drafts</div>
+            <div class="sub" id="appSub">Offline-first legal intake ï¿½ Reviewable police-complaint drafts</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
             <span class="badge" style="border-color:#38bdf8;color:#7dd3fc;">AIKosh & Bhashini</span>
@@ -387,11 +405,14 @@
     <main>
         <!-- Step 1: Ingestion & Formal Details -->
         <section class="card">
-            <h2 id="ingestionTitle">1 · Describe Your Grievance</h2>
-            
+            <h2 id="ingestionTitle">1 ï¿½ Describe Your Grievance</h2>
+
             <div class="row" style="margin-top:0; margin-bottom:12px;">
-                <label for="langSelect" id="langLabel" style="font-size:.78rem; color:#475569; font-weight:600;">Language (Full Support: English, Hindi, Telugu)</label>
-                <select id="langSelect" style="padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.82rem; min-width:165px;">
+                <label for="langSelect" id="langLabel"
+                    style="font-size:.78rem; color:#475569; font-weight:600;">Language (Full Support: English, Hindi,
+                    Telugu)</label>
+                <select id="langSelect"
+                    style="padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.82rem; min-width:165px;">
                     <option value="en">English</option>
                     <option value="hi">?????? (Hindi)</option>
                     <option value="te">?????? (Telugu)</option>
@@ -401,7 +422,9 @@
 
             <!-- Optional Particulars to Eliminate Empty Placeholders -->
             <details style="margin-bottom:12px;" open>
-                <summary style="font-size:0.82rem;font-weight:700;color:#1e293b;cursor:pointer;margin-bottom:8px;" id="particularsTitle">Complainant & Police Station Details (Optional - avoids empty placeholders)</summary>
+                <summary style="font-size:0.82rem;font-weight:700;color:#1e293b;cursor:pointer;margin-bottom:8px;"
+                    id="particularsTitle">Complainant & Police Station Details (Optional - avoids empty placeholders)
+                </summary>
                 <div class="field-grid">
                     <div class="field-group">
                         <label id="lblFullName">Your Full Name</label>
@@ -434,12 +457,14 @@
                 </div>
             </details>
 
-            <textarea id="narrative" placeholder="Speak or type what happened - in your own words, any language. Example: 'On 25th August, near the village square, Ramu and two others blocked my path, physically assaulted me with a stick, and threatened to kill me if I demanded my pending wages...'"></textarea>
-            
+            <textarea id="narrative"
+                placeholder="Speak or type what happened - in your own words, any language. Example: 'On 25th August, near the village square, Ramu and two others blocked my path, physically assaulted me with a stick, and threatened to kill me if I demanded my pending wages...'"></textarea>
+
             <div class="row">
                 <button id="recBtn">??? Record Voice</button>
                 <button id="runBtn">Review Facts & Suggested Provisions</button>
-                <span id="langHint" style="font-size:.75rem;color:#64748b">Voice input ready. Tap record to speak.</span>
+                <span id="langHint" style="font-size:.75rem;color:#64748b">Voice input ready. Tap record to
+                    speak.</span>
             </div>
         </section>
 
@@ -469,15 +494,23 @@
         <section class="card hidden" id="secCard">
             <h2 id="sectionsTitle">Suggested statutory provisions (verify before submission)</h2>
             <ul class="sections" id="secList"></ul>
-            <p style="font-size:.78rem;color:#92400e;margin-top:10px;line-height:1.45;">These are retrieval suggestions from the prototype corpus, not a legal determination. Check the quoted facts and provisions with a legal-aid service or official source before submission.</p>
+            <p style="font-size:.78rem;color:#92400e;margin-top:10px;line-height:1.45;">These are retrieval suggestions
+                from the prototype corpus, not a legal determination. Check the quoted facts and provisions with a
+                legal-aid service or official source before submission.</p>
         </section>
 
         <section class="card hidden" id="reviewCard">
-            <h2>4 · Review extracted facts before drafting</h2>
-            <p style="font-size:.83rem;color:#475569;margin-bottom:10px;">Edit the narrative above if anything is incomplete or wrong. Nyaya-Setu does not infer guilt, offence classification, or whether an FIR must be registered.</p>
-            <div id="reviewFacts" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:.84rem;line-height:1.55;"></div>
-            <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:.8rem;color:#334155;cursor:pointer;">
-                <input id="reviewConfirm" type="checkbox" style="margin-top:3px;"> I have reviewed the facts and understand that this is only a computer-assisted complaint draft, not legal advice or an FIR.
+            <h2>4 ï¿½ Review extracted facts before drafting</h2>
+            <p style="font-size:.83rem;color:#475569;margin-bottom:10px;">Edit the narrative above if anything is
+                incomplete or wrong. Nyaya-Setu does not infer guilt, offence classification, or whether an FIR must be
+                registered.</p>
+            <div id="reviewFacts"
+                style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:.84rem;line-height:1.55;">
+            </div>
+            <label
+                style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:.8rem;color:#334155;cursor:pointer;">
+                <input id="reviewConfirm" type="checkbox" style="margin-top:3px;"> I have reviewed the facts and
+                understand that this is only a computer-assisted complaint draft, not legal advice or an FIR.
             </label>
             <div class="row"><button id="draftBtn" disabled>Generate Police-Complaint Draft</button></div>
         </section>
@@ -497,19 +530,26 @@
         <!-- Laws Explorer & Corpus Provenance Card -->
         <section class="card" id="explorerCard">
             <h2 id="explorerTitle">?? Official Laws Explorer (BNS 2023 / BNSS 2023)</h2>
-            <p id="explorerSubtitle" style="font-size:0.8rem;color:#64748b;margin-bottom:10px;">Browse the prototype corpus and inspect its version. It is not a complete or live legal database.</p>
-            
+            <p id="explorerSubtitle" style="font-size:0.8rem;color:#64748b;margin-bottom:10px;">Browse the prototype
+                corpus and inspect its version. It is not a complete or live legal database.</p>
+
             <div class="row" style="margin-top:0;margin-bottom:12px;">
-                <input type="text" id="statuteSearch" placeholder="Search section number, crime keyword, or Hindi/Indic phrase..." style="flex:1;min-width:220px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.85rem;">
+                <input type="text" id="statuteSearch"
+                    placeholder="Search section number, crime keyword, or Hindi/Indic phrase..."
+                    style="flex:1;min-width:220px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.85rem;">
                 <button id="syncBtn" class="secondary" type="button">? Corpus version & sources</button>
-                <button id="resetStatutesBtn" class="secondary" type="button" style="font-size:0.75rem;padding:8px 12px;">Reset local prototype corpus</button>
+                <button id="resetStatutesBtn" class="secondary" type="button"
+                    style="font-size:0.75rem;padding:8px 12px;">Reset local prototype corpus</button>
             </div>
 
-            <div id="explorerList" style="max-height:280px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:8px 14px;background:#fcfcfc;"></div>
+            <div id="explorerList"
+                style="max-height:280px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:8px 14px;background:#fcfcfc;">
+            </div>
         </section>
     </main>
 
-    <footer id="appFooter">Local drafting where supported · Prototype statutory corpus · Verify before submission · Not legal advice · NALSA Helpline 15100</footer>
+    <footer id="appFooter">Local drafting where supported ï¿½ Prototype statutory corpus ï¿½ Verify before submission ï¿½ Not
+        legal advice ï¿½ NALSA Helpline 15100</footer>
 
     <script type="module" src="/src/main.js"></script>
 </body>

@@ -1,5 +1,5 @@
 ﻿import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage } from './llm.js';
-import { retrieveSections } from './retrieval.js';
+import { retrieveSections, syncStatutesFromSource } from './retrieval.js';
 import { complaintToHtml, downloadComplaint, speakRightsBriefing, stopAudio } from './output.js';
 
 const $ = (id) => document.getElementById(id);
@@ -604,11 +604,11 @@ function showExtractedFactsReview(entities, retrieved) {
         contentEl.innerHTML = factsHtml;
 
         // Build statute preview
-        const statuteHtml = retrieved.length ? 
+        const statuteHtml = retrieved.length ?
             `<strong>Potentially Applicable Statutes:</strong><ul style="margin:6px 0 0 16px;">
-                ${retrieved.slice(0, 3).map(({ statute, confidence }) => 
-                    `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title}<br><small>Confidence: ${confidence}</small></li>`
-                ).join('')}
+                ${retrieved.slice(0, 3).map(({ statute, confidence }) =>
+                `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title}<br><small>Confidence: ${confidence}</small></li>`
+            ).join('')}
             </ul>`
             : '<strong>No statutes matched.</strong> You may still proceed to review manually.';
         previewEl.innerHTML = statuteHtml;
@@ -743,3 +743,27 @@ $('englishBtn').onclick = () => {
 
 $('audioBtn').onclick = speakRightsBriefing;
 $('stopAudioBtn').onclick = stopAudio;
+
+$('syncBtn').onclick = async () => {
+    const originalText = $('syncBtn').textContent;
+    $('syncBtn').textContent = '⏳ Syncing corpus...';
+    $('syncBtn').disabled = true;
+    try {
+        const result = await syncStatutesFromSource();
+        if (result.success) {
+            $('syncBtn').textContent = `✓ Synced ${result.count} statutes (${new Date().toLocaleDateString()})`;
+            alert(`Corpus updated: ${result.count} statutes loaded from verified source. Verify against https://www.indiacode.nic.in/ before production use.`);
+        } else {
+            $('syncBtn').textContent = '✗ Sync failed';
+            alert(`Sync failed: ${result.error || 'Unknown error'}. Using local corpus.`);
+        }
+    } catch (err) {
+        $('syncBtn').textContent = '✗ Sync error';
+        alert(`Sync error: ${err.message}`);
+    } finally {
+        setTimeout(() => {
+            $('syncBtn').textContent = originalText;
+            $('syncBtn').disabled = false;
+        }, 3000);
+    }
+};
