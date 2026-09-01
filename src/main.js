@@ -387,13 +387,9 @@ function getSelectedLanguage() {
 function languageFromCountryRegion(countryCode, regionName = '') {
     if ((countryCode || '').toUpperCase() !== 'IN') return 'en';
     const r = (regionName || '').toLowerCase();
+    // Narrow scope to en, hi, te only (per legal review Fix #5)
     if (r.includes('telangana') || r.includes('andhra')) return 'te';
-    if (r.includes('tamil')) return 'ta';
-    if (r.includes('west bengal')) return 'bn';
-    if (r.includes('maharashtra')) return 'mr';
-    if (r.includes('karnataka')) return 'kn';
-    if (r.includes('kerala')) return 'ml';
-    return 'hi';
+    return 'hi'; // Default for all other regions
 }
 
 function applyLanguageSelection(langCode) {

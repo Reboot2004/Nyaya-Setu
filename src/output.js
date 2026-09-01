@@ -61,7 +61,11 @@ const PDF_TEXT = {
 };
 
 export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en') {
-    const sections = retrieved.map(({ statute, source }) => `<li><strong>${statute.code} Section ${statute.section}</strong> — ${statute.title} <span style="font-size:8pt;color:#64748b">(${source || 'Prototype corpus'})</span></li>`).join('');
+    // Include source attribution for each statute (Fix #6)
+    const sections = retrieved.map(({ statute, source }) => {
+        const sourceUrl = statute.officialUrl || 'https://www.indiacode.nic.in/';
+        return `<li><strong>${statute.code} Section ${statute.section}</strong> — ${statute.title}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${source || 'India Code'}</a></span></li>`;
+    }).join('');
     const englishText = complaint?.english || complaint?.native || complaint?.hindi || '';
     const nativeText = complaint?.native || complaint?.hindi || complaint?.english || '';
     const lang = (uiLanguage || 'en').toLowerCase();
@@ -70,9 +74,12 @@ export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en
   <style>body{font-family:Georgia,serif;max-width:170mm;margin:20mm auto;line-height:1.5;color:#111}
   h1{font-size:14pt;text-align:center;border-bottom:2px solid #111;padding-bottom:6px}
   .meta{font-size:9pt;color:#444;text-align:center;margin-bottom:18px}
-  h2{font-size:11pt;margin-top:16px}.disc{font-size:8pt;color:#666;border-top:1px solid #ccc;margin-top:24px;padding-top:8px;font-style:italic}</style></head><body>
+  .version{font-size:7pt;color:#999;text-align:center;margin-bottom:12px}
+  h2{font-size:11pt;margin-top:16px}.disc{font-size:8pt;color:#666;border-top:1px solid #ccc;margin-top:24px;padding-top:8px;font-style:italic}
+  a{color:#0284c7;text-decoration:none}</style></head><body>
   <h1>${labels.title}</h1>
   <div class="meta">${labels.meta} | ${labels.dateLabel}: ${new Date().toLocaleDateString('en-IN')}</div>
+  <div class="version">${labels.corpusVersion}</div>
     <pre style="white-space:pre-wrap;font-family:Georgia,serif">${englishText}\n\n---\n\n${nativeText}</pre>
   <h2>${labels.sectionsTitle}</h2><ul>${sections}</ul>
   <p class="disc">${labels.disclaimer}</p>
