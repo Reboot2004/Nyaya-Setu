@@ -306,6 +306,11 @@
             padding: 16px;
         }
 
+        .gate.hidden,
+        .hidden {
+            display: none !important;
+        }
+
         .gate-card {
             width: min(580px, 100%);
             background: #ffffff;
@@ -344,11 +349,10 @@
                 <select id="initialLangSelect"
                     style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.92rem; min-width:200px;">
                     <option value="en">English (Full Support)</option>
-                    <option value="hi">?????? / Hindi (Full Support)</option>
-                    <option value="te">?????? / Telugu (Full Support)</option>
+                    <option value="hi">हिन्दी / Hindi (Full Support)</option>
+                    <option value="te">తెలుగు / Telugu (Full Support)</option>
                 </select>
-                <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">?? Only English, Hindi, and
-                    Telugu are fully supported. Other languages may have incomplete translations.</p>
+                <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">ℹ️ Only English, Hindi, and Telugu are fully supported. Other languages may have incomplete translations.</p>
                 <button id="startAppBtn" type="button">Start Legal Co-Pilot</button>
             </div>
             <p id="ipHint" style="margin-bottom:0; font-size:.78rem; color:#64748b;">Detecting regional jurisdiction
@@ -394,7 +398,7 @@
     <header>
         <div>
             <h1 id="appTitle">NYAYA-SETU</h1>
-            <div class="sub" id="appSub">Offline-first legal intake � Reviewable police-complaint drafts</div>
+            <div class="sub" id="appSub">Offline-first legal intake · Reviewable police-complaint drafts</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
             <span class="badge" style="border-color:#38bdf8;color:#7dd3fc;">AIKosh & Bhashini</span>
@@ -405,7 +409,7 @@
     <main>
         <!-- Step 1: Ingestion & Formal Details -->
         <section class="card">
-            <h2 id="ingestionTitle">1 � Describe Your Grievance</h2>
+            <h2 id="ingestionTitle">1 · Describe Your Grievance</h2>
 
             <div class="row" style="margin-top:0; margin-bottom:12px;">
                 <label for="langSelect" id="langLabel"
@@ -414,10 +418,10 @@
                 <select id="langSelect"
                     style="padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.82rem; min-width:165px;">
                     <option value="en">English</option>
-                    <option value="hi">?????? (Hindi)</option>
-                    <option value="te">?????? (Telugu)</option>
+                    <option value="hi">हिन्दी (Hindi)</option>
+                    <option value="te">తెలుగు (Telugu)</option>
                 </select>
-                <button id="geoBtn" class="secondary" type="button">?? Capture Verified Location</button>
+                <button id="geoBtn" class="secondary" type="button">📍 Capture Verified Location</button>
             </div>
 
             <!-- Optional Particulars to Eliminate Empty Placeholders -->
