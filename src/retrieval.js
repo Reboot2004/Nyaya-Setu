@@ -1,47 +1,81 @@
-﻿// Deterministic statutory retrieval over a hand-curated prototype corpus (not comprehensive).
-// This is NOT a complete legal database. Official references: https://www.indiacode.nic.in/
+// Statute retrieval with relevance scoring.
+// Uses per-statute minScore thresholds and negative trigger exclusion to prevent wrong sections from appearing.
+// Official sources: https://www.indiacode.nic.in/ | https://www.aikosh.in/
 import { getLoadedStatutes, STATUTE_METADATA, saveDynamicStatutes, resetToDefaultStatutes, BASE_STATUTES } from '../data/statutes.js';
 
-const STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'my', 'me', 'i', 'was', 'is', 'he', 'she', 'they', 'his', 'her', 'at', 'by', 'for', 'with', 'from', 'it', 'this', 'that', 'me', 'mera', 'meri', 'mere', 'ko', 'ne', 'ka', 'ki', 'ke', 'aur', 'par', 'se']);
+const HINDI_STOP = new Set(['है', 'था', 'थी', 'हैं', 'के', 'की', 'का', 'को', 'ने', 'से', 'में', 'पर', 'और', 'या', 'लेकिन', 'मैं', 'मेरा', 'मेरी', 'मुझे', 'उसने', 'वह', 'वे', 'यह', 'इस', 'उस', 'जो', 'तो', 'भी', 'ही', 'अब', 'कि', 'एक']);
+const EN_STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'my', 'me', 'i', 'was', 'is', 'he', 'she', 'they', 'his', 'her', 'at', 'by', 'for', 'with', 'from', 'it', 'this', 'that', 'mera', 'meri', 'mere', 'ko', 'ne', 'ka', 'ki', 'ke', 'aur', 'par', 'se']);
 
 function tokenize(text) {
+    // Split on whitespace and punctuation, but preserve complete Indic syllables intact
     return text
         .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
-        .split(/\s+/)
-        .filter((t) => t.length > 1 && !STOP.has(t));
+        .split(/[\s,।,.!?;:()\[\]{}"'—–\-\/\\|]+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length > 1 && !EN_STOP.has(t) && !HINDI_STOP.has(t));
 }
 
 /**
- * Retrieves matching BNS / BNSS provisions using keyword-based scoring.
- * This is a prototype retrieval; users must independently verify statute applicability.
+ * Score a statute against the narrative.
+ * Returns: { score, triggerHits, negHits }
+ */
+function scoreStatute(statute, tokens, lowerText) {
+    let score = 0;
+    let triggerHits = 0;
+    let negHits = 0;
+
+    // Check negative triggers first — if any neg trigger matches, statute is excluded
+    if (Array.isArray(statute.negTriggers)) {
+        for (const neg of statute.negTriggers) {
+            if (lowerText.includes(neg.toLowerCase())) {
+                negHits++;
+            }
+        }
+        // If narrative clearly is about something else (2+ neg triggers), skip this statute
+        if (negHits >= 2) return { score: 0, triggerHits: 0, negHits };
+    }
+
+    const haystack = `${statute.title} ${statute.text} ${(statute.triggers || []).join(' ')}`.toLowerCase();
+
+    for (const tok of tokens) {
+        const triggerMatch = (statute.triggers || []).some(
+            (t) => t.toLowerCase().includes(tok) || tok.includes(t.toLowerCase())
+        );
+        if (triggerMatch) {
+            score += 3;
+            triggerHits++;
+        } else if (haystack.includes(tok)) {
+            score += 1;
+        }
+    }
+
+    return { score, triggerHits, negHits };
+}
+
+/**
+ * Retrieve matching BNS/BNSS sections for a given narrative.
+ * Uses minScore per statute to prevent weak/irrelevant matches.
  */
 export function retrieveSections(narrative, topK = 4) {
     const statutesList = getLoadedStatutes();
     const tokens = tokenize(narrative);
+    const lowerText = (narrative || '').toLowerCase();
 
-    // Score against active statutory corpus using triggers and keyword matching
-    const scored = statutesList.map((s) => {
-        let score = 0;
-        const hay = `${s.title} ${s.text} ${s.triggers.join(' ')}`.toLowerCase();
-
-        // Trigger phrases match
-        for (const tok of tokens) {
-            if (s.triggers.some((t) => t.toLowerCase().includes(tok) || tok.includes(t.toLowerCase()))) {
-                score += 3;
-            } else if (hay.includes(tok)) {
-                score += 1;
-            }
-        }
-
-        return {
-            statute: s,
-            score,
-            source: s.source || STATUTE_METADATA.source,
-            confidence: score > 5 ? 'high' : score > 2 ? 'medium' : 'low'
-        };
-    })
-        .filter((r) => r.score > 0)
+    const scored = statutesList
+        .map((s) => {
+            const { score, triggerHits, negHits } = scoreStatute(s, tokens, lowerText);
+            const effectiveMinScore = s.minScore || 4;
+            return {
+                statute: s,
+                score,
+                triggerHits,
+                negHits,
+                source: s.source || STATUTE_METADATA.officialSources[0],
+                confidence: score > 8 ? 'high' : score > 5 ? 'medium' : 'low',
+                meetsThreshold: score >= effectiveMinScore && triggerHits >= 1
+            };
+        })
+        .filter((r) => r.meetsThreshold)
         .sort((a, b) => b.score - a.score)
         .slice(0, topK);
 
@@ -49,8 +83,7 @@ export function retrieveSections(narrative, topK = 4) {
 }
 
 /**
- * Sync / Hot-Reload statutory database from a verified source.
- * DO NOT call this in production until corpus is verified against official India Code.
+ * Sync statutory corpus from a remote verified JSON feed.
  */
 export async function syncStatutesFromSource(sourceUrl) {
     try {
@@ -60,12 +93,11 @@ export async function syncStatutesFromSource(sourceUrl) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
             saveDynamicStatutes(data);
-            console.warn('Remote statute sync applied. Verify corpus against official India Code before using in production.');
             return { success: true, count: data.length, source: url };
         }
-        throw new Error('Invalid statute schema array.');
+        throw new Error('Invalid statute schema.');
     } catch (err) {
-        console.warn('Remote sync error, maintaining local cache:', err);
+        console.warn('Remote sync error, using local corpus:', err);
         return { success: false, error: err.message };
     }
 }

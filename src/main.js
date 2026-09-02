@@ -1,4 +1,4 @@
-﻿import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage } from './llm.js';
+import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage } from './llm.js';
 import { retrieveSections, getLoadedStatutes, syncStatutesFromSource, resetToDefaultStatutes, STATUTE_METADATA } from './retrieval.js';
 import { complaintToHtml, downloadComplaint, speakRightsBriefing, stopAudio } from './output.js';
 import { UI_TEXT } from './ui_translations.js';
@@ -210,12 +210,20 @@ function useBrowserLocation() {
     );
 }
 
-// ---- Engine preload on interaction readiness ----
-if (!isWebGPUSupported()) {
-    badge.textContent = `⚡ ${t('statusEngineUnavailable')}`;
+// ---- Engine mode detection — no flags, no user action required ----
+// Rule-based extraction works on ALL devices instantly.
+// WebGPU AI mode is a silent enhancement — if available, it refines entity extraction.
+$('runBtn').disabled = false;
+
+if (isWebGPUSupported()) {
+    badge.textContent = '🚀 AI Mode (on-device)';
+    badge.style.borderColor = '#34d399';
+    badge.style.color = '#065f46';
 } else {
-    $('runBtn').disabled = false;
-    badge.textContent = t('statusEngineReady');
+    badge.textContent = '⚡ Instant Mode';
+    badge.style.borderColor = '#93c5fd';
+    badge.style.color = '#1e40af';
+    // Instant mode — rule-based NLP works fine without GPU, no user action needed
 }
 
 onLoadingProgress((report) => {
@@ -224,7 +232,9 @@ onLoadingProgress((report) => {
     $('loadBar').style.width = pct + '%';
     $('loadText').textContent = report.text || '';
     if (pct >= 100) {
-        badge.textContent = `✓ ${t('statusEngineLoaded')}`;
+        badge.textContent = '✓ AI Ready';
+        badge.style.borderColor = '#34d399';
+        badge.style.color = '#065f46';
         badge.classList.add('ok');
     }
 });

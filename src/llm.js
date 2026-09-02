@@ -1,6 +1,7 @@
-// WebLLM client-side inference module — Llama 3.2 1B Instruct via WebGPU (MLC runtime)
-// Zero-Friction Hybrid Architecture: Runs local WebGPU LLM when supported, with robust regex + Indic NLP extraction and full 8-language Indian Police complaint generator.
+// Nyaya-Setu LLM module — WebGPU AI + robust rule-based Indic entity extraction.
+// Helps citizens understand their rights and draft a police complaint in their language.
 import * as webllm from '@mlc-ai/web-llm';
+import { STATUTE_TITLE_MAP } from '../data/statutes.js';
 
 const MODEL_CANDIDATES = [
     'Llama-3.2-1B-Instruct-q4f32_1-MLC',
@@ -245,119 +246,155 @@ export async function extractEntities(narrative) {
 }
 
 /**
- * Standard Indian Police FIR Complaint Formatter across 8 Indian Languages.
- * Structure follows Section 173 BNSS (2023) / Section 154 CrPC (1973).
+ * Standard Indian Police Complaint Formatter across 8 Indian Languages.
+ * Structure follows BNSS 2023 Section 173. Language is kept simple and accessible.
  */
 function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, selectedLang) {
     const lang = normalizeLanguageCode(selectedLang) || 'en';
     const todayDate = new Date().toLocaleDateString('en-IN');
 
-    const cName = (complainantInfo?.name && complainantInfo.name !== 'unknown') ? complainantInfo.name : ((entities?.complainantName && entities.complainantName !== 'unknown') ? entities.complainantName : (lang === 'hi' ? 'शिकायतकर्ता (हस्ताक्षर अनुसार)' : 'The Complainant'));
-    const cParent = (complainantInfo?.parent && complainantInfo.parent !== 'unknown') ? complainantInfo.parent : ((entities?.parentName && entities.parentName !== 'unknown') ? entities.parentName : '');
-    const cPhone = (complainantInfo?.phone && complainantInfo.phone !== 'unknown') ? complainantInfo.phone : '';
-    const cAddress = (complainantInfo?.address && complainantInfo.address !== 'unknown') ? complainantInfo.address : (lang === 'hi' ? 'थाना क्षेत्र अंतर्गत निवासी' : 'Resident within the territorial jurisdiction of this Police Station');
-    const psName = (complainantInfo?.station && complainantInfo.station !== 'unknown') ? complainantInfo.station : (lang === 'hi' ? 'संबंधित स्थानीय थाना' : 'Jurisdictional Police Station / District');
-    const incidentLoc = (complainantInfo?.location && complainantInfo.location !== 'unknown') ? complainantInfo.location : ((entities?.location && entities.location !== 'unknown') ? entities.location : (lang === 'hi' ? 'थाना क्षेत्र अंतर्गत' : 'Within the territorial jurisdiction of this Police Station'));
-    const aggressor = (complainantInfo?.accused && complainantInfo.accused !== 'unknown') ? complainantInfo.accused : ((entities?.aggressor && entities.aggressor !== 'unknown') ? entities.aggressor : (lang === 'hi' ? 'आरोपी व्यक्ति (विवरण अनुसार)' : 'The Accused Person(s) / As described in Statement of Facts'));
-    const incidentDate = (complainantInfo?.date && complainantInfo.date !== 'unknown') ? complainantInfo.date : ((entities?.date && entities.date !== 'unknown') ? entities.date : (lang === 'hi' ? 'उल्लिखित तिथि अनुसार' : 'As stated in narrative'));
-    const summaryFacts = (entities?.summary || complainantInfo?.narrative || 'तथ्यों का विवरण।').trim();
+    // ---- Helper to get localized statute title ----
+    const localTitle = (statute) => {
+        if (!statute || !statute.id) return statute?.title || '';
+        const map = STATUTE_TITLE_MAP[statute.id];
+        return (map && map[lang]) ? map[lang] : (statute.title || '');
+    };
 
+    // ---- Resolve all fields, avoid "unknown" in final draft ----
+    const cName = (complainantInfo?.name && complainantInfo.name !== 'unknown') ? complainantInfo.name
+        : ((entities?.complainantName && entities.complainantName !== 'unknown') ? entities.complainantName
+        : ({ hi: 'शिकायतकर्ता', te: 'ఫిర్యాదుదారు', ta: 'புகார்தாரர்', bn: 'অভিযোগকারী', mr: 'तक्रारदार', kn: 'ದೂರುದಾರ', ml: 'പരാതിക്കാരൻ' }[lang] || 'The Complainant'));
+
+    const cParent = (complainantInfo?.parent && complainantInfo.parent !== 'unknown') ? complainantInfo.parent
+        : ((entities?.parentName && entities.parentName !== 'unknown') ? entities.parentName : '');
+
+    const cPhone = (complainantInfo?.phone && complainantInfo.phone !== 'unknown') ? complainantInfo.phone : '';
+
+    const cAddress = (complainantInfo?.address && complainantInfo.address !== 'unknown') ? complainantInfo.address
+        : ({ hi: 'थाना क्षेत्र के भीतर', te: 'పోలీస్ స్టేషన్ పరిధిలో', ta: 'காவல் நிலைய பகுதியில்', bn: 'থানা এলাকায়', mr: 'ठाण्याच्या हद्दीत', kn: 'ಠಾಣೆ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ', ml: 'സ്റ്റേഷൻ പരിധിക്കുള്ളിൽ' }[lang] || 'Within the police station area');
+
+    const psName = (complainantInfo?.station && complainantInfo.station !== 'unknown') ? complainantInfo.station
+        : ({ hi: 'स्थानीय थाना', te: 'స్థానిక పోలీస్ స్టేషన్', ta: 'உள்ளூர் காவல் நிலையம்', bn: 'স্থানীয় থানা', mr: 'स्थानिक पोलीस ठाणे', kn: 'ಸ್ಥಳೀಯ ಠಾಣೆ', ml: 'പ്രാദേശിക പോലീസ് സ്റ്റേഷൻ' }[lang] || 'Local Police Station');
+
+    const incidentLoc = (complainantInfo?.location && complainantInfo.location !== 'unknown') ? complainantInfo.location
+        : ((entities?.location && entities.location !== 'unknown') ? entities.location
+        : ({ hi: 'घटनास्थल (विवरण अनुसार)', te: 'సంఘటనా స్థలం', ta: 'சம்பவ இடம்', bn: 'ঘটনাস্থল', mr: 'घटनास्थळ', kn: 'ಘಟನಾ ಸ್ಥಳ', ml: 'സ്ഥലം' }[lang] || 'As described in the complaint'));
+
+    const aggressor = (complainantInfo?.accused && complainantInfo.accused !== 'unknown') ? complainantInfo.accused
+        : ((entities?.aggressor && entities.aggressor !== 'unknown') ? entities.aggressor
+        : ({ hi: 'आरोपी व्यक्ति (विवरण अनुसार)', te: 'నిందితుడు', ta: 'குற்றம் சாட்டப்பட்டவர்', bn: 'অভিযুক্ত ব্যক্তি', mr: 'आरोपी', kn: 'ಆರೋಪಿ', ml: 'പ്രതി' }[lang] || 'The accused person(s) as described below'));
+
+    const incidentDate = (complainantInfo?.date && complainantInfo.date !== 'unknown') ? complainantInfo.date
+        : ((entities?.date && entities.date !== 'unknown') ? entities.date
+        : ({ hi: 'वर्णित तिथि के अनुसार', te: 'వివరించిన తేదీ', ta: 'குறிப்பிட்ட தேதி', bn: 'উল্লেখিত তারিখ', mr: 'नमूद केलेली तारीख', kn: 'ವಿವರಿಸಿದ ದಿನಾಂಕ', ml: 'വിവരിച്ച തീയതി' }[lang] || 'As stated in the complaint'));
+
+    const summaryFacts = (entities?.summary || complainantInfo?.narrative || '').trim();
+
+    // ---- Build localized section list — title in selected language ----
     const sectionsList = (Array.isArray(retrieved) && retrieved.length)
-        ? retrieved.map(({ statute }) => `${statute.code} धारा ${statute.section} (${(statute.title || '').trim()})`).join(', ')
-        : (lang === 'hi' ? 'संज्ञेय अपराध प्रावधान (BNSS धारा 173)' : 'General cognizable offences provisions (BNSS Section 173)');
+        ? retrieved.map(({ statute }) => {
+            const title = localTitle(statute);
+            return `${statute.code} ${lang === 'hi' ? 'धारा' : lang === 'te' ? 'సెక్షన్' : lang === 'ta' ? 'பிரிவு' : lang === 'bn' ? 'ধারা' : lang === 'mr' ? 'कलम' : lang === 'kn' ? 'ಕಲಂ' : lang === 'ml' ? 'സെക്ഷൻ' : 'Section'} ${statute.section} — ${title}`;
+          }).join('\n   • ')
+        : '';
 
     // 1. ENGLISH DRAFT
-    const englishDraft = 
-`TO,
-THE STATION HOUSE OFFICER / OFFICER-IN-CHARGE,
-POLICE STATION: ${psName.toUpperCase()}
+    const sectionsBlock = sectionsList
+        ? `   • ${sectionsList}`
+        : '   (No specific section matched — general complaint to be processed under BNSS 173)';
 
-SUBJECT: WRITTEN POLICE COMPLAINT UNDER SECTION 173 BHARATIYA NAGARIK SURAKSHA SANHITA (BNSS), 2023 FOR REGISTRATION OF FIR AND PROMPT INVESTIGATION.
+    const englishDraft =
+`To,
+The Officer In-Charge,
+Police Station: ${psName}
 
-1. COMPLAINANT PARTICULARS:
-   • Full Name: ${cName}${cParent ? ` (S/o, D/o, W/o: ${cParent})` : ''}
-   • Residential Address: ${cAddress}
-   • Contact Number: ${cPhone || 'Provided at station'}
+Subject: Written complaint requesting registration of FIR under BNSS 2023, Section 173.
 
-2. PARTICULARS OF ACCUSED PERSON(S):
-   • Name(s) / Description: ${aggressor}
+My name is ${cName}${cParent ? `, son/daughter/spouse of ${cParent}` : ''}. I am writing to report an incident that happened to me and I am asking the police to register my complaint (FIR) and investigate it.
 
-3. DATE, TIME AND PLACE OF OCCURRENCE:
-   • Date / Time: ${incidentDate}
-   • Place of Incident: ${incidentLoc}
+1. MY DETAILS:
+   • Name: ${cName}${cParent ? ` (S/o, D/o, W/o: ${cParent})` : ''}
+   • Address: ${cAddress}
+   • Phone: ${cPhone || 'Will provide at station'}
 
-4. STATEMENT OF FACTS:
-   I, the Complainant named above, solemnly state the chronological facts of the incident as follows:
-   (a) On or about ${incidentDate}, at / near ${incidentLoc}, the above-named accused person(s) committed the following alleged acts against me:
-   (b) ${summaryFacts}
-   (c) The aforementioned acts caused severe harm, alarm, and distress to me and constitute cognizable offences under the law.
+2. PERSON(S) I AM COMPLAINING AGAINST:
+   • Name / Description: ${aggressor}
 
-5. SUGGESTED STATUTORY PROVISIONS (FOR VERIFICATION):
-   Based on the alleged facts, the following penal provisions are attracted and submitted for official registration:
-   • ${sectionsList}
+3. WHEN AND WHERE IT HAPPENED:
+   • Date: ${incidentDate}
+   • Place: ${incidentLoc}
 
-6. PRAYER FOR STATUTORY ACTION:
-   In view of the aforesaid facts, it is formally requested that:
-   (i) An FIR be immediately registered under Section 173 BNSS, 2023 against the accused person(s);
-   (ii) Prompt investigation be initiated to secure evidence and apprehend the perpetrators;
-   (iii) A free copy of the registered FIR be furnished to me forthwith as per Section 173(2) BNSS.
+4. WHAT HAPPENED:
+   On ${incidentDate}, at ${incidentLoc}, the following happened to me:
 
-VERIFICATION:
-I verify that the contents of paragraphs 1 to 4 above are true and correct to my knowledge and belief.
+   ${summaryFacts}
+
+5. LAW SECTIONS THAT MAY APPLY:
+   (These are suggested based on what I described — the police will verify)
+${sectionsBlock}
+
+6. WHAT I AM ASKING THE POLICE TO DO:
+   (1) Please register my FIR immediately. Under BNSS 2023, Section 173, the police are required to register my complaint — even as a Zero FIR if needed.
+   (2) Please investigate the incident and take action against the accused.
+   (3) Please give me a free copy of the FIR as required by Section 173(2) BNSS.
+
+I confirm that everything I have written above is true to the best of my knowledge.
 
 Date: ${todayDate}
 Place: ${incidentLoc}
 
-_____________________________
-Signature / Thumb Impression of Complainant
+Signature / Thumb impression: _____________________________
 Name: ${cName}
-Contact: ${cPhone || '________________'}`;
+Phone: ${cPhone || '________________'}`;
 
-    // 2. HINDI DRAFT (100% Pure Hindi, No English/Hinglish)
-    const hindiDraft = 
+
+
+    // 2. HINDI DRAFT (शुद्ध हिंदी)
+    const hindiDraft =
 `सेवा में,
 थाना प्रभारी महोदय,
 थाना: ${psName}
 
-विषय: भारतीय नागरिक सुरक्षा संहिता (BNSS), 2023 की धारा 173 के तहत प्रथम सूचना रिपोर्ट (FIR) दर्ज करने एवं निष्पक्ष जांच हेतु लिखित शिकायत।
+विषय: शिकायत दर्ज करने एवं जांच हेतु लिखित आवेदन — भारतीय नागरिक सुरक्षा संहिता (BNSS) 2023 की धारा 173 के अंतर्गत।
 
-1. शिकायतकर्ता का विवरण:
-   • पूरा नाम: ${cName}${cParent ? ` (आत्मज/पत्नी: ${cParent})` : ''}
-   • स्थायी पता: ${cAddress}
-   • मोबाइल नंबर: ${cPhone || 'थाने में उपलब्ध कराया जाएगा'}
+मेरा नाम ${cName} है${cParent ? `, पिता/पति का नाम ${cParent} है` : ''}। मैं यह शिकायत इसलिए लिख रहा/रही हूँ क्योंकि मेरे साथ एक घटना घटी है और मैं चाहता/चाहती हूँ कि पुलिस मेरी FIR दर्ज करे तथा उचित जांच करे।
 
-2. आरोपी व्यक्ति(यों) का विवरण:
+1. मेरा विवरण:
+   • नाम: ${cName}${cParent ? ` (आत्मज/पत्नी: ${cParent})` : ''}
+   • पता: ${cAddress}
+   • मोबाइल: ${cPhone || 'थाने में दिया जाएगा'}
+
+2. जिसके विरुद्ध शिकायत है:
    • नाम / विवरण: ${aggressor}
 
-3. घटना का दिनांक, समय एवं स्थान:
-   • दिनांक / समय: ${incidentDate}
-   • घटनास्थल: ${incidentLoc}
+3. घटना कब और कहाँ हुई:
+   • दिनांक: ${incidentDate}
+   • स्थान: ${incidentLoc}
 
-4. घटना का विवरण (तथ्य):
-   मैं, शिकायतकर्ता, शपथपूर्वक निम्नलिखित तथ्य प्रस्तुत करता/करती हूँ:
-   (क) दिनांक ${incidentDate} को स्थान / निकट ${incidentLoc} पर उपरोक्त आरोपी व्यक्ति(यों) ने मेरे साथ निम्न कथित अपराध किया:
-   (ख) ${summaryFacts}
-   (ग) उक्त आपराधिक कृत्यों से मुझे गंभीर शारीरिक एवं मानसिक आघात पहुंचा है जो कानूनन संज्ञेय अपराध है।
+4. क्या हुआ:
+   दिनांक ${incidentDate} को ${incidentLoc} पर निम्नलिखित घटना मेरे साथ हुई:
 
-5. लागू वैधानिक धाराएं (सत्यापन एवं पंजीकरण हेतु):
-   • ${sectionsList}
+   ${summaryFacts}
 
-6. कानूनी कार्रवाई हेतु औपचारिक मांग (Prayer):
-   अतः श्रीमान से विनम्र प्रार्थना है कि:
-   (1) भारतीय नागरिक सुरक्षा संहिता, 2023 की धारा 173 के तहत अविलंब प्राथमिकी (FIR) दर्ज की जाए;
-   (2) घटनास्थल का निरीक्षण कर साक्ष्य जुटाए जाएं एवं आरोपियों के विरुद्ध कठोर कानूनी कार्रवाई की जाए;
-   (3) धारा 173(2) BNSS के अंतर्गत मुझे दर्ज FIR की निशुल्क प्रति तत्काल प्रदान की जाए।
+5. लागू हो सकने वाली धाराएं:
+   (ये धाराएं मेरे विवरण के आधार पर सुझाई गई हैं — पुलिस जांच के बाद इन्हें लागू करेगी)
+${sectionsBlock}
 
-सत्यापन:
-मैं प्रमाणित करता/करती हूँ कि ऊपर वर्णित सभी तथ्य मेरी व्यक्तिगत जानकारी के अनुसार पूर्णतः सत्य एवं सही हैं।
+6. मेरी प्रार्थना:
+   (1) कृपया मेरी FIR तुरंत दर्ज करें। BNSS 2023 की धारा 173 के तहत पुलिस मेरी शिकायत दर्ज करने के लिए बाध्य है — जरूरत हो तो जीरो FIR भी दर्ज की जा सकती है।
+   (2) कृपया मामले की जांच करें और आरोपी के विरुद्ध कार्रवाई करें।
+   (3) कृपया धारा 173(2) BNSS के अनुसार मुझे FIR की एक निशुल्क प्रति दें।
+
+मैं प्रमाणित करता/करती हूँ कि ऊपर लिखी सभी बातें मेरी जानकारी के अनुसार सत्य हैं।
 
 दिनांक: ${todayDate}
 स्थान: ${incidentLoc}
 
-_____________________________
-शिकायतकर्ता के हस्ताक्षर / अंगूठे का निशान
+हस्ताक्षर / अंगूठे का निशान: _____________________________
 नाम: ${cName}
 मोबाइल: ${cPhone || '________________'}`;
+
+
 
     // 3. TELUGU DRAFT
     const teluguDraft = 
@@ -384,7 +421,7 @@ _____________________________
    (సి) ఈ సంఘటన వలన నాకు తీవ్రమైన నష్టం మరియు ఆందోళన కలిగింది.
 
 5. వర్తించే చట్ట విభాగాలు:
-   • ${sectionsList}
+${sectionsBlock}
 
 6. చట్టబద్ధమైన అభ్యర్థన:
    (1) BNSS సెక్షన్ 173 ప్రకారం వెంటనే FIR నమోదు చేయాలని;
@@ -424,7 +461,7 @@ _____________________________
    (ஆ) ${summaryFacts}
 
 5. பொருந்தக்கூடிய சட்டப் பிரிவுகள்:
-   • ${sectionsList}
+${sectionsBlock}
 
 6. சட்டப்பூர்வ கோரிக்கை:
    (1) BNSS பிரிவு 173-ன் கீழ் உடனடியாக எஃப்.ஐ.ஆர் பதிவு செய்யப்பட வேண்டும்;
@@ -461,7 +498,7 @@ _____________________________
    (খ) ${summaryFacts}
 
 ৫. প্রযোজ্য আইনগত ধারা:
-   • ${sectionsList}
+${sectionsBlock}
 
 ৬. আইনি পদক্ষেপের প্রার্থনা:
    (১) BNSS ১৭৩ ধারায় অবিলম্বে এফআইআর নথিভুক্ত করা হোক;
@@ -498,7 +535,7 @@ _____________________________
    (ब) ${summaryFacts}
 
 ५. लागू कायदेशीर कलमे:
-   • ${sectionsList}
+${sectionsBlock}
 
 ६. कायदेशीर मागणी:
    (१) BNSS कलम १७३ नुसार तात्काळ FIR नोंदवावी;
@@ -535,7 +572,7 @@ _____________________________
    (ಬಿ) ${summaryFacts}
 
 ೫. ಅನ್ವಯವಾಗುವ ಕಾನೂನು ವಿಧಿಗಳು:
-   • ${sectionsList}
+${sectionsBlock}
 
 ೬. ಕಾನೂನು ಕ್ರಮಕ್ಕಾಗಿ ಪ್ರಾರ್ಥನೆ:
    (೧) BNSS ಕಲಂ 173 ರ ಅಡಿಯಲ್ಲಿ ತಕ್ಷಣವೇ FIR ದಾಖಲಿಸಬೇಕು;
@@ -572,7 +609,7 @@ _____________________________
    (ബി) ${summaryFacts}
 
 5. ബാധകമായ നിയമ വകുപ്പുകൾ:
-   • ${sectionsList}
+${sectionsBlock}
 
 6. നിയമപരമായ ആവശ്യം:
    (1) BNSS സെക്ഷൻ 173 പ്രകാരം ഉടൻ FIR രജിസ്റ്റർ ചെയ്യുക;
