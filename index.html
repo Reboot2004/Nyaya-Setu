@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" id="rootHtml">
 
 <head>
@@ -340,11 +340,16 @@
             <div class="row" style="margin-top:0; margin-bottom:12px;">
                 <label for="initialLangSelect" id="initialLangLabel" style="font-size:.8rem; color:#475569; font-weight:600;">Language</label>
                 <select id="initialLangSelect" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.92rem; min-width:200px;">
-                    <option value="en">English (Full Support)</option>
-                    <option value="hi">हिन्दी / Hindi (Full Support)</option>
-                    <option value="te">తెలుగు / Telugu (Full Support)</option>
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी / Hindi</option>
+                    <option value="te">తెలుగు / Telugu</option>
+                    <option value="ta">தமிழ் / Tamil</option>
+                    <option value="bn">বাংলা / Bengali</option>
+                    <option value="mr">मराठी / Marathi</option>
+                    <option value="kn">ಕನ್ನಡ / Kannada</option>
+                    <option value="ml">മലയാളം / Malayalam</option>
                 </select>
-                <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">ℹ️ Only English, Hindi, and Telugu are fully supported. Other languages may have incomplete translations.</p>
+                <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">ℹ️ 8 Official Indic Languages Supported with Native Police FIR Draft Generation.</p>
                 <button id="startAppBtn" type="button">Start Legal Co-Pilot</button>
             </div>
             <p id="ipHint" style="margin-bottom:0; font-size:.78rem; color:#64748b;">Detecting regional jurisdiction from network...</p>
@@ -393,11 +398,16 @@
             <h2 id="ingestionTitle">1 · Describe Your Grievance</h2>
 
             <div class="row" style="margin-top:0; margin-bottom:12px;">
-                <label for="langSelect" id="langLabel" style="font-size:.78rem; color:#475569; font-weight:600;">Language (Full Support: English, Hindi, Telugu)</label>
+                <label for="langSelect" id="langLabel" style="font-size:.78rem; color:#475569; font-weight:600;">Language</label>
                 <select id="langSelect" style="padding:7px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.82rem; min-width:165px;">
                     <option value="en">English</option>
                     <option value="hi">हिन्दी (Hindi)</option>
                     <option value="te">తెలుగు (Telugu)</option>
+                    <option value="ta">தமிழ் (Tamil)</option>
+                    <option value="bn">বাংলা (Bengali)</option>
+                    <option value="mr">मराठी (Marathi)</option>
+                    <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                    <option value="ml">മലയാളം (Malayalam)</option>
                 </select>
                 <button id="geoBtn" class="secondary" type="button">📍 Capture Verified Location</button>
             </div>

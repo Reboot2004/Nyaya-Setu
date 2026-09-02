@@ -112,11 +112,11 @@ function renderLawsExplorer(filterText = '') {
 
 function isActionableComplaint(text, entities, retrieved) {
     const value = (text || '').trim();
-    if (!value || value.length < 20) return false;
+    if (!value || value.length < 15) return false;
 
     const low = value.toLowerCase();
     const words = value.split(/\s+/).filter(Boolean);
-    if (words.length < 5) return false;
+    if (words.length < 4) return false;
 
     const junkPatterns = [
         /\bi am doing good\b/,
@@ -143,7 +143,7 @@ function isActionableComplaint(text, entities, retrieved) {
 
 async function bootstrapLanguageGate() {
     const fallback = (navigator.language || 'en').slice(0, 2).toLowerCase();
-    let selected = ['en', 'hi', 'te'].includes(fallback) ? fallback : 'en';
+    let selected = ['en', 'hi', 'te', 'ta', 'bn', 'mr', 'kn', 'ml'].includes(fallback) ? fallback : 'en';
 
     try {
         const res = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
@@ -153,6 +153,11 @@ async function bootstrapLanguageGate() {
             const region = (geo.region || '').toLowerCase();
             if (geo.country_code === 'IN') {
                 if (region.includes('telangana') || region.includes('andhra')) selected = 'te';
+                else if (region.includes('tamil') || region.includes('chennai')) selected = 'ta';
+                else if (region.includes('bengal') || region.includes('kolkata')) selected = 'bn';
+                else if (region.includes('maharashtra') || region.includes('mumbai') || region.includes('pune')) selected = 'mr';
+                else if (region.includes('karnataka') || region.includes('bangalore') || region.includes('bengaluru')) selected = 'kn';
+                else if (region.includes('kerala')) selected = 'ml';
                 else selected = 'hi';
             }
             const place = [geo.city, geo.region, geo.country_name].filter(Boolean).join(', ');
@@ -362,12 +367,16 @@ function showExtractedFactsReview(entities, retrieved) {
         const goBackBtn = $('factReviewGoBackBtn');
 
         const factsHtml = `
+            <div class="fact-field ${entities.complainantName === 'unknown' ? 'unknown' : ''}">
+                <div class="fact-label">Complainant Name</div>
+                <div class="fact-value">${entities.complainantName !== 'unknown' ? entities.complainantName : '(identity from signature/intake)'}</div>
+            </div>
             <div class="fact-field ${entities.summary === 'unknown' || !entities.summary ? 'unknown' : ''}">
                 <div class="fact-label">Summary of Events</div>
                 <div class="fact-value">${entities.summary || '(not extracted)'}</div>
             </div>
             <div class="fact-field ${entities.aggressor === 'unknown' ? 'unknown' : ''}">
-                <div class="fact-label">Accused/Aggressor</div>
+                <div class="fact-label">Accused / Aggressor</div>
                 <div class="fact-value">${entities.aggressor || '(not identified)'}</div>
             </div>
             <div class="fact-field ${entities.date === 'unknown' || !entities.date ? 'unknown' : ''}">
@@ -379,8 +388,8 @@ function showExtractedFactsReview(entities, retrieved) {
                 <div class="fact-value">${entities.location || '(not specified)'}</div>
             </div>
             <div class="fact-field">
-                <div class="fact-label">Category</div>
-                <div class="fact-value">${entities.category || 'needs_human_review'}</div>
+                <div class="fact-label">Offence Category</div>
+                <div class="fact-value">${entities.category || 'general_offence'}</div>
             </div>
         `;
         contentEl.innerHTML = factsHtml;
@@ -391,7 +400,7 @@ function showExtractedFactsReview(entities, retrieved) {
                 `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title}<br><small>Confidence: ${confidence || 'medium'}</small></li>`
             ).join('')}
             </ul>`
-            : '<strong>No statutes matched.</strong> You may still proceed to review manually.';
+            : '<strong>No specific penal section matched.</strong> General cognizable grievance format will be applied.';
         previewEl.innerHTML = statuteHtml;
 
         checkboxEl.checked = false;
@@ -440,17 +449,6 @@ $('runBtn').onclick = async () => {
         return;
     }
 
-    const complainantInfo = {
-        name: $('cName')?.value || '',
-        parent: $('cParent')?.value || '',
-        phone: $('cPhone')?.value || '',
-        address: $('cAddr')?.value || '',
-        station: $('cStation')?.value || '',
-        accused: $('cAccused')?.value || '',
-        location: $('cLoc')?.value || '',
-        narrative: narrative
-    };
-
     $('runBtn').disabled = true;
 
     try {
@@ -459,6 +457,32 @@ $('runBtn').onclick = async () => {
 
         setStep(2);
         let entities = await extractEntities(narrative);
+
+        // Auto-fill intake form fields if user hadn't typed them
+        if ($('cName') && !$('cName').value && entities.complainantName && entities.complainantName !== 'unknown') {
+            $('cName').value = entities.complainantName;
+        }
+        if ($('cParent') && !$('cParent').value && entities.parentName && entities.parentName !== 'unknown') {
+            $('cParent').value = entities.parentName;
+        }
+        if ($('cAccused') && !$('cAccused').value && entities.aggressor && entities.aggressor !== 'unknown') {
+            $('cAccused').value = entities.aggressor;
+        }
+        if ($('cLoc') && !$('cLoc').value && entities.location && entities.location !== 'unknown') {
+            $('cLoc').value = entities.location;
+        }
+
+        const complainantInfo = {
+            name: $('cName')?.value || '',
+            parent: $('cParent')?.value || '',
+            phone: $('cPhone')?.value || '',
+            address: $('cAddr')?.value || '',
+            station: $('cStation')?.value || '',
+            accused: $('cAccused')?.value || '',
+            location: $('cLoc')?.value || '',
+            date: entities.date !== 'unknown' ? entities.date : '',
+            narrative: narrative
+        };
 
         const retrievedPreview = retrieveSections(narrative, 2);
         if (!isActionableComplaint(narrative, entities, retrievedPreview)) {
