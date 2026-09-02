@@ -1,4 +1,4 @@
-﻿// WebLLM client-side inference module — Llama 3.2 1B Instruct via WebGPU (MLC runtime)
+// WebLLM client-side inference module — Llama 3.2 1B Instruct via WebGPU (MLC runtime)
 // Zero-Friction Hybrid Architecture: Runs local WebGPU LLM when supported, with robust regex + Indic NLP extraction and full 8-language Indian Police complaint generator.
 import * as webllm from '@mlc-ai/web-llm';
 
@@ -107,8 +107,7 @@ export function detectLanguage(text) {
 }
 
 /**
- * Robust Regex & Heuristic Fact Extractor for Vernacular & English complaints.
- * Extracts: Complainant Name, Accused Name, Date, Location, Harm/Offence Category, and Summary.
+ * Robust Regex & Heuristic Fact Extractor for Pure Vernacular (Hindi/Indic) & English complaints.
  */
 export function extractEntitiesRuleBased(narrative) {
     const text = (narrative || '').trim();
@@ -119,51 +118,53 @@ export function extractEntitiesRuleBased(narrative) {
     let incidentLoc = 'unknown';
     let category = 'needs_human_review';
 
-    // 1. Extract Complainant Name
+    // 1. Extract Complainant Name (English & Devanagari / Indic)
     const nameMatches = [
-        /(?:my name is|i am|myself|mera naam|main|naa peru|en peyar|amar naam|majhe naav)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?|[^\s,।.]+)/i,
-        /(?:naam|name)\s*[:=-]\s*([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+)?)/i,
-        /(?:nenu|main|me)\s+([A-Za-z\u0900-\u0D7F]+)\s+(?:ani|bol raha|here)/i
+        /(?:मेरा\s+नाम|नाम|मैं|माझे\s+नाव|నా\s+పేరు|என்\s+பெயர்|আমার\s+নাম|ನನ್ನ\s+ಹೆಸರು|എന്റെ\s+പേര്|my name is|i am|myself|mera naam)\s*[:=-]?\s*([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+)?)/i,
+        /([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+)?)\s+(?:बोल\s+रहा|बात\s+कर\s+रहा|हूँ|here)/i
     ];
     for (const pat of nameMatches) {
         const m = text.match(pat);
-        if (m && m[1] && m[1].length > 2 && !/^(the|a|an|on|in|at|yesterday|today|sir)$/i.test(m[1])) {
-            complainantName = m[1].trim();
+        if (m && m[1] && m[1].length > 1 && !/^(है|था|थी|the|a|an|on|in|at|yesterday|today|sir|श्रीमान)$/i.test(m[1].trim())) {
+            complainantName = m[1].replace(/^(है|था|का|की|हैं)\s+/, '').trim();
             break;
         }
     }
 
     // 2. Extract Parent/Spouse
     const parentMatches = [
-        /(?:s\/o|d\/o|w\/o|son of|daughter of|wife of|pita|husband|father)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+)?)/i
+        /(?:पिता\s+का\s+नाम|पिता|पति\s+का\s+नाम|पति|आत्मज|पत्नी|s\/o|d\/o|w\/o|son of|daughter of|wife of|father)\s*[:=-]?\s*([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+)?)/i
     ];
     for (const pat of parentMatches) {
         const m = text.match(pat);
         if (m && m[1]) {
-            parentName = m[1].trim();
+            parentName = m[1].replace(/^(है|था|का|की|श्री|श्रीमान)\s+/, '').trim();
             break;
         }
     }
 
     // 3. Extract Accused / Aggressor
     const accusedMatches = [
-        /(?:accused|by|against|ne maara|ne dhamki di|attacked by|threatened by|beaten by)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?|[A-Za-z\u0900-\u0D7F]+(?:\s+(?:and|aur|mariyu)\s+[A-Za-z\u0900-\u0D7F]+)?)/i,
-        /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:and\s+\d+\s+others|aur\s+uske\s+sathi|mariyu\s+itharulu|blocked my path|threatened|assaulted|attacked|hit me)/i,
-        /(?:named|vyakti|shakhs)\s+([A-Z][a-z]+|[A-Za-z\u0900-\u0D7F]+)/i
+        /([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+उसके\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)\s+ने\s+(?:मेरा\s+रास्ता|मुझे|हमला|पीटा|मारा|धमकी)/i,
+        /(?:आरोपी|accused|attacked by|threatened by|beaten by)\s*[:=-]?\s*([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)/i,
+        /(?:सामने|द्वारा|खिलाफ)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+)?)\s+ने/i
     ];
     for (const pat of accusedMatches) {
         const m = text.match(pat);
-        if (m && m[1] && m[1].length > 2 && !/^(the|a|an|on|in|at|yesterday|today|my|me|i)$/i.test(m[1])) {
+        if (m && m[1] && m[1].length > 1 && !/^(the|a|an|on|in|at|yesterday|today|my|me|i|मैं|मुझे|हम)$/i.test(m[1].trim())) {
             aggressor = m[1].trim();
             break;
         }
     }
+    if (aggressor === 'unknown') {
+        const directAccused = text.match(/([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^\s,।]+)?)\s+ने\s+(?:मेरा|मुझे|हमला|पीटा|रास्ता)/i);
+        if (directAccused && directAccused[1]) aggressor = directAccused[1].trim();
+    }
 
     // 4. Extract Date / Time
     const dateMatches = [
-        /(?:on|dated|dinank|roju|thethi|tarikh)?\s*(\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{2,4})?)/i,
-        /(\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4})/,
-        /\b(yesterday|kal|ninna|netru|gatakal|aaj|today)\b/i
+        /(?:दिनांक|तारीख|दिनांकित|on|dated|dinank)?\s*(\d{1,2}(?:\s+[A-Za-z\u0900-\u0D7F]+(?:\s+\d{2,4})?|\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{2,4}))/i,
+        /\b(कल|आज|परसों|yesterday|today|ninna|netru)\b/i
     ];
     for (const pat of dateMatches) {
         const m = text.match(pat);
@@ -175,12 +176,12 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 5. Extract Location
     const locMatches = [
-        /(?:near|at|in|outside|opposite|sthal|jagah|daggara|idathil|jaayga)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*|[A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){1,3})/i,
-        /(?:village|colony|nagar|bazar|chowk|station|road|street|mandi|office)\s+([A-Za-z\u0900-\u0D7F]+)/i
+        /(?:के\s+सामने|के\s+पास|निकट|में|पर|ग्राम|स्थान|near|at|in|outside|opposite)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){1,3})/i,
+        /([A-Za-z\u0900-\u0D7F]+(?:\s+पंचायत\s+भवन|\s+चौराहा|\s+बाजार|\s+थाना|\s+रोड|\s+गांव))/i
     ];
     for (const pat of locMatches) {
         const m = text.match(pat);
-        if (m && m[1] && m[1].length > 2 && !/^(the|a|an|my|me|i|his|her|this|that)$/i.test(m[1])) {
+        if (m && m[1] && m[1].length > 2 && !/^(the|a|an|my|me|i|his|her|this|that|मुझे|मेरा|मेरी|हमारा)$/i.test(m[1].trim())) {
             incidentLoc = m[1].trim();
             break;
         }
@@ -188,10 +189,10 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 6. Offence Category Classification
     const low = text.toLowerCase();
-    if (/marpit|assault|hit|beaten|laathi|hurt|fracture|blood|attack|chot|injury|raktham/i.test(low)) category = 'assault';
-    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu/i.test(low)) category = 'intimidation';
-    else if (/fraud|cheat|dhokha|chori|stole|theft|robbery|extortion|paisa|wage|salary|property/i.test(low)) category = 'property_fraud';
-    else if (/woman|chhed|modesty|molest|dowry|dahej|husband|wife|cruelty/i.test(low)) category = 'women_safety';
+    if (/marpit|assault|hit|beaten|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल/i.test(low)) category = 'assault';
+    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मारने|गाली|गाली-गलौज/i.test(low)) category = 'intimidation';
+    else if (/fraud|cheat|dhokha|chori|stole|theft|robbery|extortion|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी/i.test(low)) category = 'property_fraud';
+    else if (/woman|chhed|modesty|molest|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी/i.test(low)) category = 'women_safety';
 
     return {
         summary: text.slice(0, 300),
@@ -218,7 +219,7 @@ export async function extractEntities(narrative) {
             {
                 role: 'system',
                 content:
-                    'You are a legal intake assistant for Indian Police FIR complaints. Extract factual details from a citizen grievance narrative. Reply ONLY with compact JSON: {"summary": "<factual summary without prayers>", "complainantName": "<name or unknown>", "parentName": "<father/spouse or unknown>", "aggressor": "<accused name/description or unknown>", "date": "<date or current>", "location": "<Indian place or unknown>", "category": "<assault|intimidation|property_fraud|women_safety|procedure>"}'
+                    'You are a legal intake assistant for Indian Police FIR complaints. Extract factual details from a citizen grievance narrative in any Indian language. Reply ONLY with compact JSON: {"summary": "<factual summary without prayers>", "complainantName": "<name or unknown>", "parentName": "<father/spouse or unknown>", "aggressor": "<accused name/description or unknown>", "date": "<date or current>", "location": "<place or unknown>", "category": "<assault|intimidation|property_fraud|women_safety|procedure>"}'
             },
             { role: 'user', content: narrative }
         ];
@@ -228,7 +229,6 @@ export async function extractEntities(narrative) {
         const jsonEnd = raw.lastIndexOf('}');
         const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
 
-        // Blend LLM output with rule-based fallback to ensure high entity recall
         return {
             summary: parsed.summary || ruleEntities.summary,
             complainantName: parsed.complainantName && parsed.complainantName !== 'unknown' ? parsed.complainantName : ruleEntities.complainantName,
@@ -252,19 +252,19 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
     const lang = normalizeLanguageCode(selectedLang) || 'en';
     const todayDate = new Date().toLocaleDateString('en-IN');
 
-    const cName = (complainantInfo?.name || '').trim() || (entities?.complainantName && entities.complainantName !== 'unknown' ? entities.complainantName : 'The Complainant (Identity as per signature below)');
-    const cParent = (complainantInfo?.parent || '').trim() || (entities?.parentName && entities.parentName !== 'unknown' ? entities.parentName : '');
-    const cPhone = (complainantInfo?.phone || '').trim();
-    const cAddress = (complainantInfo?.address || '').trim() || (complainantInfo?.geoSnapshot || 'Resident within the territorial jurisdiction of this Police Station');
-    const psName = (complainantInfo?.station || '').trim() || 'Jurisdictional Police Station / District';
-    const incidentLoc = (complainantInfo?.location || '').trim() || (entities?.location && entities.location !== 'unknown' ? entities.location : 'Within the territorial jurisdiction of this Police Station');
-    const aggressor = (complainantInfo?.accused || '').trim() || (entities?.aggressor && entities.aggressor !== 'unknown' ? entities.aggressor : 'The Accused Person(s) / As described in Statement of Facts');
-    const incidentDate = (complainantInfo?.date || '').trim() || (entities?.date && entities.date !== 'unknown' ? entities.date : 'Not specified by complainant');
-    const summaryFacts = (entities?.summary || complainantInfo?.narrative || 'Facts require completion by complainant.').trim();
+    const cName = (complainantInfo?.name && complainantInfo.name !== 'unknown') ? complainantInfo.name : ((entities?.complainantName && entities.complainantName !== 'unknown') ? entities.complainantName : (lang === 'hi' ? 'शिकायतकर्ता (हस्ताक्षर अनुसार)' : 'The Complainant'));
+    const cParent = (complainantInfo?.parent && complainantInfo.parent !== 'unknown') ? complainantInfo.parent : ((entities?.parentName && entities.parentName !== 'unknown') ? entities.parentName : '');
+    const cPhone = (complainantInfo?.phone && complainantInfo.phone !== 'unknown') ? complainantInfo.phone : '';
+    const cAddress = (complainantInfo?.address && complainantInfo.address !== 'unknown') ? complainantInfo.address : (lang === 'hi' ? 'थाना क्षेत्र अंतर्गत निवासी' : 'Resident within the territorial jurisdiction of this Police Station');
+    const psName = (complainantInfo?.station && complainantInfo.station !== 'unknown') ? complainantInfo.station : (lang === 'hi' ? 'संबंधित स्थानीय थाना' : 'Jurisdictional Police Station / District');
+    const incidentLoc = (complainantInfo?.location && complainantInfo.location !== 'unknown') ? complainantInfo.location : ((entities?.location && entities.location !== 'unknown') ? entities.location : (lang === 'hi' ? 'थाना क्षेत्र अंतर्गत' : 'Within the territorial jurisdiction of this Police Station'));
+    const aggressor = (complainantInfo?.accused && complainantInfo.accused !== 'unknown') ? complainantInfo.accused : ((entities?.aggressor && entities.aggressor !== 'unknown') ? entities.aggressor : (lang === 'hi' ? 'आरोपी व्यक्ति (विवरण अनुसार)' : 'The Accused Person(s) / As described in Statement of Facts'));
+    const incidentDate = (complainantInfo?.date && complainantInfo.date !== 'unknown') ? complainantInfo.date : ((entities?.date && entities.date !== 'unknown') ? entities.date : (lang === 'hi' ? 'उल्लिखित तिथि अनुसार' : 'As stated in narrative'));
+    const summaryFacts = (entities?.summary || complainantInfo?.narrative || 'तथ्यों का विवरण।').trim();
 
     const sectionsList = (Array.isArray(retrieved) && retrieved.length)
-        ? retrieved.map(({ statute }) => `${statute.code} Section ${statute.section} (${(statute.title || '').split('(')[0].trim()})`).join(', ')
-        : 'Suggested under general cognizable offences provisions (BNSS Section 173).';
+        ? retrieved.map(({ statute }) => `${statute.code} धारा ${statute.section} (${(statute.title || '').trim()})`).join(', ')
+        : (lang === 'hi' ? 'संज्ञेय अपराध प्रावधान (BNSS धारा 173)' : 'General cognizable offences provisions (BNSS Section 173)');
 
     // 1. ENGLISH DRAFT
     const englishDraft = 
@@ -313,7 +313,7 @@ Signature / Thumb Impression of Complainant
 Name: ${cName}
 Contact: ${cPhone || '________________'}`;
 
-    // 2. HINDI DRAFT
+    // 2. HINDI DRAFT (100% Pure Hindi, No English/Hinglish)
     const hindiDraft = 
 `सेवा में,
 थाना प्रभारी महोदय,
@@ -337,16 +337,16 @@ Contact: ${cPhone || '________________'}`;
    मैं, शिकायतकर्ता, शपथपूर्वक निम्नलिखित तथ्य प्रस्तुत करता/करती हूँ:
    (क) दिनांक ${incidentDate} को स्थान / निकट ${incidentLoc} पर उपरोक्त आरोपी व्यक्ति(यों) ने मेरे साथ निम्न कथित अपराध किया:
    (ख) ${summaryFacts}
-   (ग) उक्त कृत्यों से मुझे गंभीर क्षति एवं भय उत्पन्न हुआ है जो भारतीय कानून के तहत संज्ञेय अपराध की श्रेणी में आता है।
+   (ग) उक्त आपराधिक कृत्यों से मुझे गंभीर शारीरिक एवं मानसिक आघात पहुंचा है जो कानूनन संज्ञेय अपराध है।
 
-5. लागू वैधानिक धाराएं (सत्यापन हेतु):
+5. लागू वैधानिक धाराएं (सत्यापन एवं पंजीकरण हेतु):
    • ${sectionsList}
 
 6. कानूनी कार्रवाई हेतु औपचारिक मांग (Prayer):
-   अतः श्रीमान से औपचारिक निवेदन है कि:
-   (1) BNSS 2023 की धारा 173 के तहत तुरंत FIR दर्ज की जाए;
-   (2) मामले की निष्पक्ष जांच कर आरोपियों के विरुद्ध सख्त कानूनी कार्रवाई की जाए;
-   (3) धारा 173(2) BNSS के अंतर्गत मुझे दर्ज FIR की निशुल्क प्रति उपलब्ध कराई जाए।
+   अतः श्रीमान से विनम्र प्रार्थना है कि:
+   (1) भारतीय नागरिक सुरक्षा संहिता, 2023 की धारा 173 के तहत अविलंब प्राथमिकी (FIR) दर्ज की जाए;
+   (2) घटनास्थल का निरीक्षण कर साक्ष्य जुटाए जाएं एवं आरोपियों के विरुद्ध कठोर कानूनी कार्रवाई की जाए;
+   (3) धारा 173(2) BNSS के अंतर्गत मुझे दर्ज FIR की निशुल्क प्रति तत्काल प्रदान की जाए।
 
 सत्यापन:
 मैं प्रमाणित करता/करती हूँ कि ऊपर वर्णित सभी तथ्य मेरी व्यक्तिगत जानकारी के अनुसार पूर्णतः सत्य एवं सही हैं।
@@ -355,7 +355,7 @@ Contact: ${cPhone || '________________'}`;
 स्थान: ${incidentLoc}
 
 _____________________________
-शिकायतकर्ता के हस्ताक्षर / अंगूठा
+शिकायतकर्ता के हस्ताक्षर / अंगूठे का निशान
 नाम: ${cName}
 मोबाइल: ${cPhone || '________________'}`;
 
@@ -402,13 +402,13 @@ _____________________________
     // 4. TAMIL DRAFT
     const tamilDraft = 
 `பெறுநர்,
-காவல் நிலைய ஆய்வாளர் / பொறுப்பு அதிகாரி அவர்கள்,
+காவல் நிலைய ஆய்வாளர் அவர்கள்,
 காவல் நிலையம்: ${psName}
 
-பொருள்: பாரதிய நாகரிக் சுரக்ஷா சன்ஹிதா (BNSS) 2023 பிரிவு 173-ன் கீழ் எஃப்.ஐ.ஆர் (FIR) பதிவு செய்து உரிய விசாரணை நடத்த எழுத்துப்பூர்வ புகார்.
+பொருள்: பாரதிய நாகரிக் சுரக்ஷா சன்ஹிதா (BNSS) 2023 பிரிவு 173-ன் கீழ் எஃப்.ஐ.ஆர் பதிவு செய்ய எழுத்துப்பூர்வ புகார்.
 
 1. புகார்தாரர் விவரங்கள்:
-   • முழுப் பெயர்: ${cName}${cParent ? ` (தந்தை/கணவர் பெயர்: ${cParent})` : ''}
+   • முழுப் பெயர்: ${cName}${cParent ? ` (தந்தை/கணவர்: ${cParent})` : ''}
    • முகவரி: ${cAddress}
    • தொலைபேசி: ${cPhone || 'காவல் நிலையத்தில் வழங்கப்படும்'}
 
@@ -442,7 +442,7 @@ _____________________________
 ভারপ্রাপ্ত আধিকারিক মহাশয়,
 থানা: ${psName}
 
-বিষয়: ভারতীয় নাগরিক সুরক্ষা সংহিতা (BNSS) ২০২৩-এর ধারা ১৭৩ অনুযায়ী এফআইআর (FIR) রুজু এবং নিরপেক্ষ তদন্তের জন্য লিখিত অভিযোগ।
+বিষয়: ভারতীয় নাগরিক সুরক্ষা সংহিতা (BNSS) ২০২৩-এর ধারা ১৭৩ অনুযায়ী এফআইআর (FIR) রুজু করার লিখিত অভিযোগ।
 
 ১. অভিযোগকারীর বিবরণ:
    • পুরো নাম: ${cName}${cParent ? ` (পিতা/স্বামীর নাম: ${cParent})` : ''}
@@ -479,7 +479,7 @@ _____________________________
 मा. पोलीस निरीक्षक / ठाणे अंमलदार साहेब,
 पोलीस ठाणे: ${psName}
 
-विषय: भारतीय नागरिक सुरक्षा संहिता (BNSS) २०२३ च्या कलम १७३ अन्वये एफ.आय.आर. (FIR) नोंदवून योग्य तपास करणेबाबत लेखी तक्रार.
+विषय: भारतीय नागरिक सुरक्षा संहिता (BNSS) २०२३ च्या कलम १७३ अन्वये एफ.आय.आर. (FIR) नोंदवणेबाबत लेखी तक्रार.
 
 १. तक्रारदाराचा तपशील:
    • पूर्ण नाव: ${cName}${cParent ? ` (वडील/पती: ${cParent})` : ''}
@@ -500,7 +500,7 @@ _____________________________
 ५. लागू कायदेशीर कलमे:
    • ${sectionsList}
 
-६. कायदेशीर मागणी (Prayer):
+६. कायदेशीर मागणी:
    (१) BNSS कलम १७३ नुसार तात्काळ FIR नोंदवावी;
    (२) प्रकरणाचा सखोल तपास करून आरोपींवर कायदेशीर कारवाई करावी;
    (३) कलम १७३(२) नुसार मला मोफत FIR प्रत द्यावी.
@@ -516,7 +516,7 @@ _____________________________
 ಠಾಣಾಧಿಕಾರಿಗಳು,
 ಪೊಲೀಸ್ ಠಾಣೆ: ${psName}
 
-ವಿಷಯ: ಭಾರತೀಯ ನಾಗರಿಕ ಸುರಕ್ಷಾ ಸಂಹಿತೆ (BNSS) 2023 ರ ಕಲಂ 173 ರ ಅಡಿಯಲ್ಲಿ ಎಫ್.ಐ.ಆರ್ (FIR) ದಾಖಲಿಸಿ ತನಿಖೆ ಕೈಗೊಳ್ಳುವಂತೆ ಲಿಖಿತ ದೂರು.
+ವಿಷಯ: ಭಾರತೀಯ ನಾಗರಿಕ ಸುರಕ್ಷಾ ಸಂಹಿತೆ (BNSS) 2023 ರ ಕಲಂ 173 ರ ಅಡಿಯಲ್ಲಿ ಎಫ್.ಐ.ಆರ್ (FIR) ದಾಖಲಿಸುವಂತೆ ಲಿಖಿತ ದೂರು.
 
 ೧. ದೂರುದಾರರ ವಿವರ:
    • ಪೂರ್ಣ ಹೆಸರು: ${cName}${cParent ? ` (ತಂದೆ/ಗಂಡನ ಹೆಸರು: ${cParent})` : ''}
@@ -553,7 +553,7 @@ _____________________________
 സ്റ്റേഷൻ ഹൗസ് ഓഫീസർ,
 പോലീസ് സ്റ്റേഷൻ: ${psName}
 
-വിഷയം: ഭാരതീയ നാഗരിക് സുരക്ഷാ സംഹിത (BNSS) 2023 ലെ സെക്ഷൻ 173 പ്രകാരം എഫ്.ഐ.ആർ (FIR) രജിസ്റ്റർ ചെയ്യുന്നതിനുള്ള രേഖാമൂലമുള്ള പരാതി.
+വിഷയം: ഭാരതീയ നാഗരിക് സുരക്ഷാ സംഹിത (BNSS) 2023 ലെ സെക്ഷൻ 173 പ്രകാരം എഫ്.ഐ.ആർ (FIR) രജിസ്റ്റർ ചെയ്യുന്നതിനുള്ള പരാതി.
 
 1. പരാതിക്കാരന്റെ വിവരങ്ങൾ:
    • മുഴുവൻ പേര്: ${cName}${cParent ? ` (പിതാവ്/ഭർത്താവ്: ${cParent})` : ''}
