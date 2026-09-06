@@ -12,7 +12,7 @@ import { normalizeWithBhashini } from '../data/bhashini_lexicon.js';
 const LANG_NAMES = { en: 'English', hi: 'Hindi', te: 'Telugu', ta: 'Tamil', bn: 'Bengali', mr: 'Marathi', kn: 'Kannada', ml: 'Malayalam' };
 
 // Offline gloss bundle: canonical concept -> one-line gist (en/hi/te + en fallback).
-// Covers all 12 Bhashini lexicon canonicals; runs on every device, no download.
+// Covers all 13 dialect lexicon canonicals; runs on every device, no download.
 export const CONCEPT_GLOSS = {
     assault_hurt: {
         en: 'Physical assault reported (beating/hurt).',
@@ -73,6 +73,11 @@ export const CONCEPT_GLOSS = {
         en: 'Police reportedly refused to register the complaint.',
         hi: 'पुलिस द्वारा शिकायत दर्ज न करने की बात है।',
         te: 'పోలీసులు ఫిర్యాదు తీసుకోలేదని పేర్కొన్నారు.'
+    },
+    kidnapping: {
+        en: 'Kidnapping/abduction reported.',
+        hi: 'अपहरण की शिकायत है।',
+        te: 'అపహరణ ఫిర్యాదు ఉంది.'
     }
 };
 

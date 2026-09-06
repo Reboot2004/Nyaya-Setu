@@ -817,7 +817,7 @@ if ($('aiOptin')) {
     const refreshAiNote = () => {
         const on = $('aiOptin').checked;
         const gpu = isWebGPUSupported();
-        if (aiNote) aiNote.textContent = !gpu ? 'WebGPU not detected — rule engine will be used.' : on ? 'AI + Guard auto-download ON: Llama-3.2-1B + Guard-3-1B q4, cached offline.' : 'AI OFF: instant rule engine.';
+        if (aiNote) aiNote.textContent = !gpu ? 'WebGPU not detected — rule engine will be used.' : on ? 'AI auto-download ON: small open model (Llama-3.2-1B, 0.5B fallback) + Guard-3-1B, cached offline.' : 'AI OFF: instant rule engine.';
     };
     $('aiOptin').checked = isAIAssistEnabled() && isWebGPUSupported();
     refreshAiNote();

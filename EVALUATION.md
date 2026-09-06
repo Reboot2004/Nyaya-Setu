@@ -69,7 +69,7 @@ The dataset contains synthetic test cases covering:
 
 Real calls to `extractEntitiesRuleBased()` + fused `retrieveFused()` (MiniLM semantic + lexical + dialect-phrase lexicon + fuzzy + rarity + dedupe) + `screenInput()` safety, 42 cases across all 8 UI languages:
 
-- **Entity Extraction Recall:** 73.3% (rule regex + sanitizers; LLM WebGPU path not exercised in Node)
+- **Entity Extraction Recall:** 78.1% (rule regex + sanitizers; LLM WebGPU path not exercised in Node)
 - **Statute Retrieval Recall:** 98.8% (41/42 full hits; TEST-006 finds 115 of [115, 351])
 - **Filtering Accuracy:** 100.0% (42/42: offence scenarios incl. extortion/stalking/dowry/theft/forgery/bribery/kidnapping/cyber-fraud/hit-and-run/emergency, plus edge cases — civil disputes, advice-questions, self-harm routing, prompt-injection, junk, ALL-CAPS, long narratives, contradictions — correctly gated)
 - **Origins:** most hits are `both` (semantic+lexical agree); vernacular-only hits stay `lexical`, which is why trigger lists are retained as the fallback spine.

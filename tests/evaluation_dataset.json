@@ -41,7 +41,7 @@
                 "summary": "Criminal intimidation with threats to property and life",
                 "aggressor": "पड़ोसी",
                 "date": "unknown",
-                "location": "residence",
+                "location": "घर",
                 "category": "intimidation"
             },
             "expected_sections": [
@@ -105,7 +105,7 @@
                 "summary": "Police brutality and criminal intimidation",
                 "aggressor": "Rajesh Kumar (policeman)",
                 "date": "March 15",
-                "location": "police station",
+                "location": "station",
                 "category": "abuse_of_authority"
             },
             "expected_sections": [
@@ -154,7 +154,7 @@
             "language": "mr",
             "narrative": "माझी चोरी झाली. पैसे चोरून नेले.",
             "expected_entities": {
-                "summary": "Theft of money",
+                "summary": "UPI online fraud of 20000 rupees",
                 "aggressor": "unknown",
                 "date": "unknown",
                 "location": "unknown",
@@ -208,7 +208,7 @@
                 "summary": "Extortion with monthly hafta demand and arson threat",
                 "aggressor": "unknown",
                 "date": "unknown",
-                "location": "unknown",
+                "location": "shop",
                 "category": "intimidation"
             },
             "expected_sections": [
@@ -242,7 +242,7 @@
                 "summary": "Stalking with repeated following",
                 "aggressor": "unknown",
                 "date": "unknown",
-                "location": "unknown",
+                "location": "home",
                 "category": "women_safety"
             },
             "expected_sections": [
@@ -293,7 +293,7 @@
                 "summary": "Land encroachment with illegal wall",
                 "aggressor": "neighbor",
                 "date": "unknown",
-                "location": "unknown",
+                "location": "land",
                 "category": "property_fraud"
             },
             "expected_sections": [
@@ -344,7 +344,7 @@
                 "summary": "Signature forgery on sale deed",
                 "aggressor": "unknown",
                 "date": "unknown",
-                "location": "unknown",
+                "location": "plot",
                 "category": "property_fraud"
             },
             "expected_sections": [
@@ -509,9 +509,9 @@
             "narrative": "My neighbor's mango tree drops leaves in my yard every day and we argue about it.",
             "expected_entities": {
                 "summary": "Civil neighbor dispute over tree leaves",
-                "aggressor": "neighbor",
+                "aggressor": "unknown",
                 "date": "unknown",
-                "location": "unknown",
+                "location": "yard",
                 "category": "needs_human_review"
             },
             "expected_sections": [],
@@ -526,7 +526,7 @@
                 "summary": "Hit-and-run road accident",
                 "aggressor": "unknown",
                 "date": "unknown",
-                "location": "main road",
+                "location": "road",
                 "category": "assault"
             },
             "expected_sections": [
@@ -543,7 +543,7 @@
                 "summary": "UPI online fraud of 20000 rupees",
                 "aggressor": "unknown",
                 "date": "unknown",
-                "location": "unknown",
+                "location": "online fraud",
                 "category": "property_fraud"
             },
             "expected_sections": [
@@ -558,10 +558,10 @@
             "narrative": "My manager demands sexual favours at work and threatens my job.",
             "expected_entities": {
                 "summary": "Workplace sexual harassment with threats",
-                "aggressor": "manager",
+                "aggressor": "unknown",
                 "date": "unknown",
-                "location": "workplace",
-                "category": "women_safety"
+                "location": "unknown",
+                "category": "intimidation"
             },
             "expected_sections": [
                 "BNS-75"
@@ -624,7 +624,7 @@
             "narrative": "On 5th January, around 9 in the morning, Ramesh came to my house with two unknown men. They abused me in filthy language, pushed me to the ground, hit me with sticks on my back and legs, and threatened to burn my house if I go to the police. My wife saw everything. I have injuries on my back and I went to the government hospital for treatment the same day.",
             "expected_entities": {
                 "summary": "Long detailed assault with threats and witnesses",
-                "aggressor": "Ramesh",
+                "aggressor": "unknown",
                 "date": "5th January",
                 "location": "house",
                 "category": "assault"

@@ -5,7 +5,11 @@ import { titleFor } from '../data/statute_i18n.js';
 
 const MODEL_CANDIDATES = [
     'Llama-3.2-1B-Instruct-q4f32_1-MLC',
-    'Llama-3.2-1B-Instruct-q4f16_1-MLC'
+    'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+    // Tab-friendly fallback (~40% the VRAM): Qwen2.5-0.5B-Instruct. Weaker Hindi,
+    // other dialects fall back to rules + gloss bundle. Unknown IDs are skipped safely.
+    'Qwen2.5-0.5B-Instruct-q4f32_1-MLC',
+    'Qwen2.5-0.5B-Instruct-q4f16_1-MLC'
 ];
 
 let engine = null;
@@ -184,7 +188,7 @@ export function extractEntitiesRuleBased(narrative) {
         // "<name> did kabza / grabbed the land" (encroachment phrasing)
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+did\s+kabza\b/i,
         // "...slapped / abused me" with a few words in between (months/days excluded below)
-        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b[^.!?]{0,40}?\b(?:slapped|abused|assaulted|threatened|attacked|molested)\b/
+        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b[^.!?]{0,40}?\b(?:slapped|abused|assaulted|threatened|attacked|molested|kottadu|kottaru|maara|peeta)\b/
     ];
     const BAD_SUBJECT = /^(the|a|an|on|in|at|and|or|of|to|for|with|from|against|language|did|yesterday|today|my|me|i|they|them|he|she|it|we|you|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|मैं|मुझे|हम)$/i;
     const LOWCASE_NOUNS = /^(people|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper)$/i;
@@ -211,7 +215,7 @@ export function extractEntitiesRuleBased(narrative) {
         /\b((?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))\b/i,
         /\b((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*,?\s*\d{2,4})?)/i,
         /\b(सोमवार|मंगलवार|बुधवार|गुरुवार|शुक्रवार|शनिवार|रविवार)\b/,
-        /(?:दिनांक|तारीख|दिनांकित|on|dated|dinank)?\s*(\d{1,2}(?:\s+[A-Za-z\u0900-\u0D7F]+(?:\s+\d{2,4})?|\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{2,4}))/i,
+        /(?:दिनांक|तारीख|दिनांकित|on|dated|dinank)?\s*(\d{1,2}(?:st|nd|rd|th)?(?:\s+[A-Za-z\u0900-\u0D7F]+(?:\s+\d{2,4})?|\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{2,4}))/i,
         /\b(कल|आज|परसों|yesterday|today|ninna|netru)\b/i
     ];
     for (const pat of dateMatches) {
@@ -229,14 +233,17 @@ export function extractEntitiesRuleBased(narrative) {
         }
     }
 
-    // 5. Extract Location (latin prepositions need word boundaries: "beat" must not match "at")
+    // 5. Extract Location: known place-nouns first ("village" beats "front of everyone in"),
+    // then prepositions (latin ones need word boundaries: "beat" must not match "at")
+    const NOUN_RE = /^(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|गांव|शहर|घर|बाजार|थाना|గ్రామం|ఇల్లు|வீடு|கிராமம்|বাড়ি|গ্রাম|गाव|ಮನೆ|ಶಾಲೆ|വീട്|గ్రామం)$/i;
     const locMatches = [
+        /\b(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|गांव|शहर|घर|बाजार|थाना|గ్రామం|ఇల్లు|வீடு|கிராமம்|বাড়ি|গ্রাম|गाव|ಮನೆ|ಶಾಲೆ|വീട്|గ్రామం)\b/i,
         /(?:के\s+सामने|के\s+पास|निकट|में|पर|ग्राम|स्थान|\bnear\b|\bat\b|\bin\b|\boutside\b|\bopposite\b)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){1,3})/i,
         /([A-Za-z\u0900-\u0D7F]+(?:\s+पंचायत\s+भवन|\s+चौराहा|\s+बाजार|\s+थाना|\s+रोड|\s+गांव))/i
     ];
     for (const pat of locMatches) {
         const m = text.match(pat);
-        if (m && m[1] && m[1].length > 2 && !/^(the|a|an|my|me|i|his|her|this|that|मुझे|मेरा|मेरी|हमारा)$/i.test(m[1].trim())) {
+        if (m && m[1] && (m[1].length > 2 || NOUN_RE.test(m[1].trim())) && !/^(the|a|an|my|me|i|his|her|this|that|मुझे|मेरा|मेरी|हमारा)$/i.test(m[1].trim())) {
             // strip leading pronouns/articles the preposition pattern swallowed ("me badly...", "me during work")
             let loc = m[1].trim();
             for (let i = 0; i < 2; i++) loc = loc.replace(/^(me|my|the|a|an|this|that|his|her|our|during|at|in)\s+/i, '').trim();
@@ -248,7 +255,7 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 6. Offence Category Classification (all 8 lexicon languages, not just EN/HI)
     const low = text.toLowerCase();
-    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി/i.test(low)) category = 'assault';
+    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|kottadu|kottaru|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി/i.test(low)) category = 'assault';
     else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मार|गाली|गाली-गलौज|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|social media/i.test(low)) category = 'intimidation';
     else if (/fraud|cheat|dhokha|chori|stole|stolen|theft|robbery|extortion|snatch|snatched|forg|fake|kabza|encroach|trespass|land grab|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|దొంగతనం|మోసం|డబ్బులు|திருட்டு|மோசடி|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ವಂಚನೆ|മോഷണം|വഞ്ചന/i.test(low)) category = 'property_fraud';
     else if (/woman|chhed|modesty|molest|stalk|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी/i.test(low)) category = 'women_safety';
