@@ -12,6 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { retrieveSections } from '../src/retrieval.js';
 import { extractEntitiesRuleBased } from '../src/llm.js';
+import { screenInput } from '../src/safety.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATASET_PATH = path.join(__dirname, 'evaluation_dataset.json');
@@ -26,7 +27,7 @@ function isActionableComplaint(text, entities, retrieved) {
     if (words.length < 4) return false;
     const junkPatterns = [/\bi am doing good\b/, /\bhow are you\b/, /\bgood morning\b/, /\bjust testing\b/, /\brandom\b/, /\bhello\b.*\bthank you\b/];
     if (junkPatterns.some((p) => p.test(low))) return false;
-    const issueKeywords = ['threat', 'threatened', 'assault', 'hit', 'abuse', 'harass', 'fraud', 'cheat', 'stole', 'extortion', 'wage', 'salary', 'payment', 'dhamki', 'maar', 'marpit', 'gaali', 'paisa', 'rok liya', 'dhokha', 'धमकी', 'मारपीट', 'गाली', 'वेतन', 'पैसे', 'हमला', 'దాడి', 'బెదిరింపు', 'డబ్బు', 'హింస', 'சம்பளம்', 'হুমকি', 'মারধর', 'धमकी', 'मारहाण', 'ಬೆದರಿಕೆ', 'ಹಲ್ಲೆ', 'ഭീഷണി', 'മർദ്ദനം', 'chori', 'forgery', 'beating', 'money', 'property', 'land', 'kabza', 'struck', 'drugged', 'poison', 'kidnap', 'stalking', 'dowry', 'rape', 'murder', 'robbery', 'theft', 'snatch', 'marhan', 'chori', 'chhed', 'அடி', 'ரத்தம்', 'மிரட்டல்', 'திருட்டு', 'மோசடி', 'ಹೊಡೆ', 'ರಕ್ತ', 'ಬೆದರಿಕೆ', 'ಕಳ್ಳತನ', 'ವಂಚನೆ', 'కొట్ట', 'దాడి', 'బెదిరి', 'దొంగ', 'మోసం', 'మర్ద', 'തല്ല', 'ഭീഷണ', 'മോഷ', 'വഞ്ച', 'চুরি', 'ছেড়', 'मारहाण', 'छेड'];
+    const issueKeywords = ['threat', 'threatened', 'assault', 'hit', 'abuse', 'harass', 'fraud', 'cheat', 'stole', 'extortion', 'wage', 'salary', 'payment', 'dhamki', 'maar', 'marpit', 'gaali', 'paisa', 'rok liya', 'dhokha', 'धमकी', 'मारपीट', 'गाली', 'वेतन', 'पैसे', 'हमला', 'मजदूरी', 'तनख्वाह', 'जान से मार', 'దాడి', 'బెదిరింపు', 'డబ్బు', 'హింస', 'சம்பளம்', 'হুমকি', 'মারধর', 'धमकी', 'मारहाण', 'ಬೆದರಿಕೆ', 'ಹಲ್ಲೆ', 'ഭീഷണി', 'മർദ്ദനം', 'chori', 'forgery', 'forg', 'beating', 'money', 'property', 'land', 'kabza', 'struck', 'drugged', 'poison', 'kidnap', 'stalking', 'dowry', 'rape', 'murder', 'robbery', 'theft', 'snatch', 'marhan', 'chori', 'chhed', 'அடி', 'ரத்தம்', 'மிரட்டல்', 'திருட்டு', 'மோசடி', 'ಹೊಡೆ', 'ರಕ್ತ', 'ಬೆದರಿಕೆ', 'ಕಳ್ಳತನ', 'ವಂಚನೆ', 'కొట్ట', 'దాడి', 'బెదిరి', 'దొంగ', 'మోసం', 'మర్ద', 'തല്ല', 'ഭീഷണ', 'മോഷ', 'വഞ്ച', 'চুরি', 'ছেড়', 'मारहाण', 'छेड'];
     const hasIssueSignal = issueKeywords.some((k) => low.includes(k.toLowerCase()));
     const hasStrongStatute = Array.isArray(retrieved) && retrieved.some((r) => r.confidence === 'high' || r.confidence === 'medium');
     const isQuestion = /\?\s*$/.test(value) || /^(क्या|kya |should i\b|do i need\b|can i\b)/i.test(low);
@@ -91,10 +92,12 @@ class EvaluationFramework {
             this.metrics.total++;
             console.log(`\n[${tc.id}] ${tc.language.toUpperCase()} - expect:${tc.expected_entities.aggressor} / ${tc.expected_sections.join(', ') || 'NO STATUTE'}`);
             console.log(`  Narrative: "${tc.narrative.substring(0, 70)}..."`);
-            // REAL calls
+            // REAL calls (mirrors src/main.js pipeline order: safety -> entities -> retrieval -> gate)
+            const safety = screenInput(tc.narrative);
             const actualEntities = extractEntitiesRuleBased(tc.narrative);
             const retrieved = retrieveSections(tc.narrative, 4);
-            const filterResult = isActionableComplaint(tc.narrative, actualEntities, retrieved);
+            const filterResult = safety.ok && isActionableComplaint(tc.narrative, actualEntities, retrieved);
+            if (!safety.ok) console.log(`  Safety blocked: ${safety.reasons.join(', ')}`);
             console.log(`  Actual entities: aggressor=${actualEntities.aggressor} date=${actualEntities.date} loc=${actualEntities.location} cat=${actualEntities.category}`);
             console.log(`  Retrieved: ${retrieved.map((r) => `${r.statute.code}-${r.statute.section}(${r.confidence})`).join(', ') || 'none'}`);
             const entityEval = this.evaluateEntityExtraction(tc.expected_entities, actualEntities);

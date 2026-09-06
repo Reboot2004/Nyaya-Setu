@@ -10999,6 +10999,8 @@ export const BASE_STATUTES = [
     "punishment": "As prescribed under Bharatiya Nyaya Sanhita, 2023 Gazette.",
     "triggers": [
       "killed",
+      "kill",
+      "kills",
       "murder",
       "maut",
       "jaan le li",
@@ -11250,6 +11252,8 @@ export const BASE_STATUTES = [
     "punishment": "As prescribed under Bharatiya Nyaya Sanhita, 2023 Gazette.",
     "triggers": [
       "beaten",
+      "beat",
+      "beats",
       "hit",
       "slapped",
       "punched",
@@ -16042,13 +16046,19 @@ export const BASE_STATUTES = [
     "triggers": [
       "dhamki",
       "threat",
+      "threaten",
+      "threats",
       "threatened",
+      "kill me",
       "scared",
       "jaan se maarne ki dhamki",
       "धमकी",
       "जान से मारने की धमकी",
+      "जान से मार",
       "బెదిరించారు",
-      "হুমকি"
+      "হুমকি",
+      "மிரட்டினார்",
+      "மிரட்டல்"
     ],
     "negTriggers": [],
     "minScore": 4,

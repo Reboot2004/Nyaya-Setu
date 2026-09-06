@@ -202,15 +202,21 @@ export function extractEntitiesRuleBased(narrative) {
     }
 
     // 4. Extract Date / Time (incl. ISO 2023-02-20)
+    // Note: no lookbehind (older Safari compat) — digit-glued matches like
+    // "00 rupees" inside "15000" are rejected by the boundary check below.
     const dateMatches = [
         /(\d{4}\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{1,2})/,
         /(?:दिनांक|तारीख|दिनांकित|on|dated|dinank)?\s*(\d{1,2}(?:\s+[A-Za-z\u0900-\u0D7F]+(?:\s+\d{2,4})?|\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{2,4}))/i,
         /\b(कल|आज|परसों|yesterday|today|ninna|netru)\b/i
     ];
     for (const pat of dateMatches) {
+        pat.lastIndex = 0;
         const m = text.match(pat);
         if (m && m[1]) {
             const cand = m[1].trim();
+            // boundary: candidate must not be glued to a preceding digit ("00 rupees" in "15000")
+            const idx = text.indexOf(m[1]);
+            if (idx > 0 && /\d/.test(text[idx - 1])) continue;
             // guard: "6 people" / "2 men" are counts, not dates
             if (/people|person|men|women|boys|girls|persons/i.test(cand)) continue;
             incidentDate = cand;
@@ -236,9 +242,9 @@ export function extractEntitiesRuleBased(narrative) {
     // 6. Offence Category Classification (all 8 lexicon languages, not just EN/HI)
     const low = text.toLowerCase();
     if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി/i.test(low)) category = 'assault';
-    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मारने|गाली|गाली-गलौज|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|social media/i.test(low)) category = 'intimidation';
-    else if (/fraud|cheat|dhokha|chori|stole|theft|robbery|extortion|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|దొంగతనం|మోసం|డబ్బులు|திருட்டு|மோசடி|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ವಂಚನೆ|മോഷണം|വഞ്ചന/i.test(low)) category = 'property_fraud';
-    else if (/woman|chhed|modesty|molest|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी/i.test(low)) category = 'women_safety';
+    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मार|गाली|गाली-गलौज|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|social media/i.test(low)) category = 'intimidation';
+    else if (/fraud|cheat|dhokha|chori|stole|stolen|theft|robbery|extortion|snatch|snatched|forg|fake|kabza|encroach|trespass|land grab|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|దొంగతనం|మోసం|డబ్బులు|திருட்டு|மோசடி|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ವಂಚನೆ|മോഷണം|വഞ്ചന/i.test(low)) category = 'property_fraud';
+    else if (/woman|chhed|modesty|molest|stalk|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी/i.test(low)) category = 'women_safety';
 
     return {
         summary: text.slice(0, 300),

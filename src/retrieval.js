@@ -88,6 +88,8 @@ function scoreStatute(statute, tokens, lowerText) {
     const haystack = `${statute.title} ${statute.text} ${(statute.triggers || []).join(' ')}`.toLowerCase();
     const matchedTerms = [];
     const tokenSet = new Set(tokens);
+    // raw words incl. stopwords: sibling check must see "me" in "kill me"
+    const rawSet = new Set(lowerText.split(/[\s,।,.!?;:()\[\]{}"'—–\-\/\\|]+/).map((w) => w.trim()).filter(Boolean));
 
     for (const tok of tokens) {
         let hit = false;
@@ -103,7 +105,7 @@ function scoreStatute(statute, tokens, lowerText) {
                 // guard: lone common verb from a multi-word trigger ("गया" in "उठा ले गया")
                 // counts only if a sibling word of the same trigger is also present
                 if (wholeWord && words.length > 1 && tok.length < 5) {
-                    const sibling = words.some((w) => w !== tok && w.length >= 3 && tokenSet.has(w));
+                    const sibling = words.some((w) => w !== tok && w.length >= 2 && (tokenSet.has(w) || rawSet.has(w)));
                     if (sibling) { hit = true; }
                 } else {
                     const longSub = Math.min(tok.length, tl.length) >= 8;
