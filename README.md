@@ -5,7 +5,7 @@ statute-suggested police-complaint draft (BNS/BNSS 2023). Prototype corpus, not 
 
 ## Pipeline (what actually runs — local-only, no cloud)
 
-1. **Vernacular Ingestion** — typed narrative (fully offline) or voice via Web Speech API (needs network in Chrome/Edge) + offline audio memo fallback
+1. **Vernacular Ingestion** — typed narrative (fully offline); fast voice via Web Speech API (needs network in Chrome/Edge); **offline voice** via Whisper-tiny ONNX on-device (`src/stt.js`, ~150MB once, then cached) + offline audio memo fallback
 2. **Entity Extraction** — rule-based Indic extractor always; Llama 3.2 1B q4 (WebGPU via WebLLM, auto-download once ~700MB, IndexedDB-cached, ctx 1024) refines facts and translates the English gist where available
 3. **BNS Retrieval** — fused rank: multilingual MiniLM embeddings (ONNX, CPU-first, `src/semantic.js`) + lexical triggers + in-house dialect-phrase lexicon (`data/bhashini_lexicon.js`; Bhashini-inspired, no Bhashini API/model) + typo-tolerant fuzzy + rarity, over `data/statutes.js` (892 slots — 358 BNS + 531 BNSS + 3 key BSA, ~55 curated) with precomputed `data/statute_vectors.json` index (~2.4MB). Lexical path is instant and always the fallback; semantic preloads in background (`scripts/build_vectors.mjs` regenerates vectors).
 4. **Deterministic Drafting** — template composes draft from retrieved sections only; LLM never invents section numbers
@@ -18,8 +18,9 @@ statute-suggested police-complaint draft (BNS/BNSS 2023). Prototype corpus, not 
 cd nyaya-setu
 npm install
 npm run dev        # open http://localhost:5173
-node tests/evaluate.js  # 27-scenario suite: fused MiniLM+lexical+dialect-lexicon, safety screen, 8 langs
+node tests/evaluate.js  # 42-scenario suite: fused MiniLM+lexical+dialect-lexicon, safety screen, 8 langs
 node scripts/verify_no_bleed.mjs  # regression: LLM-shaped JSON garbage never reaches form or draft
+node tests/stt_smoke.mjs  # offline STT wiring check (Whisper tiny, silent WAV)
 node scripts/build_vectors.mjs  # regenerate statute embeddings (needs network once)
 ```
 
@@ -27,10 +28,12 @@ First AI load downloads the ~700 MB quantized model to browser cache (one-time).
 
 ## Architecture Notes (honest — local-only)
 
-- **Data sovereignty:** 100% on-device. No cloud path exists. Only exceptions: Web Speech transcription (browser cloud where used) + one-time HuggingFace weight CDN fetch, then IndexedDB-cached offline.
-- **Deterministic grounding:** sections come only from `retrieveSections()`; `draftComplaint()` is a template.
+- **Data sovereignty:** 100% on-device. No cloud path exists. Only exceptions: Web Speech transcription (browser cloud where used; offline Whisper-tiny path in `src/stt.js` avoids it) + one-time HuggingFace weight CDN fetch, then cached offline.
+- **Deterministic grounding:** sections come only from fused retrieval; `draftComplaint()` is a template.
 - **Safety:** instant `screenInput()` (`src/safety.js`) + quantized Llama Guard 3 1B q4 local (`src/guard.js`, ctx 512, time-shared engine, 12s timeout, rule fallback) + emergency interstitial + fact-review modal + NALSA 15100.
-- **Corpus:** `v0.5-prototype-partial`, lexical (no vectors). Verify at https://www.indiacode.nic.in/ before filing.
+- **Corpus:** `v0.5-prototype-partial`, fused MiniLM + lexical, 892 slots (~55 curated). Verify at https://www.indiacode.nic.in/ before filing.
+- **Dev instruments (not citizen flow):** collapsed metrics card — tok/s benchmark history + JSON export, per-draft timing with CSV export for the time/cost study (`src/devmetrics.js`).
+- **Bhashini:** no Bhashini/ULCA API is called (it needs network + registered keys, which would break the offline promise). Track evidence instead: vendored Samanantar sample + mining scripts + in-house dialect lexicon it grounds (see `data/provenance.json`).
 
 ## Roadmap
 

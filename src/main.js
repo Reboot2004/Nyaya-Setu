@@ -314,19 +314,60 @@ if ($('benchBtn')) {
             }
             const memMB = (typeof performance !== 'undefined' && performance?.memory?.usedJSHeapSize) ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB heap' : 'heap n/a';
             const eng = (typeof getEngineStatus === 'function' ? getEngineStatus() : { mode: 'rule-only' });
+            const benchRec = { retrievalMsLex: +retMs, mem: memMB, engine: eng.mode || 'n/a', llm: null };
             let llmPart = 'LLM: rule engine (WebGPU off or AI disabled)';
             if (isWebGPUSupported() && isAIAssistEnabled()) {
                 try {
                     const m = await measureInferenceSpeed();
+                    benchRec.llm = m;
                     llmPart = m.supported ? `LLM: ${m.tokensPerSec} tok/s (${m.tokens} tok / ${m.seconds}s, ${m.model || 'webgpu'})` : `LLM: unavailable (${m.error || m.note || 'fallback to rules'})`;
                 } catch (e) { llmPart = `LLM: unavailable (${e?.message || e})`; }
             }
+            try { window.__lastBench = benchRec; } catch { /* ignore */ }
             if (out) out.textContent = `Retrieval: ${retMs}ms · ${memMB} · ${llmPart} · engine:${eng.mode || 'n/a'}`;
         } catch (e) {
             if (out) out.textContent = `Benchmark failed: ${e?.message || e}`;
         }
     };
 }
+
+// Dev/metrics panel wiring (debug only — hidden in a collapsed <details>)
+try {
+    const renderDev = async () => {
+        const el = $('devOut');
+        if (!el) return;
+        const m = await import('./devmetrics.js');
+        const agg = m.studyAggregates();
+        const bench = m.getBenchLog();
+        el.textContent = `Benchmarks saved: ${bench.length}\n` +
+            bench.slice(-5).map((b) => `  ${b.ts} retr=${b.retrievalMsLex}ms mem=${b.mem} llm=${b.llm?.tokensPerSec ?? 'n/a'}tok/s engine=${b.engine}`).join('\n') +
+            `\nTime/cost drafts: ${agg.n || 0}` +
+            (agg.n ? `\n  median ${agg.medianSec}s / draft (manual baseline 2.5 days + ₹1000)\n  est. saved: ${agg.estDaysSaved} days, ₹${agg.estRupeesSaved}\n  langs: ${JSON.stringify(agg.byLang)}` : '');
+    };
+    if ($('benchSaveBtn')) $('benchSaveBtn').onclick = async () => {
+        const m = await import('./devmetrics.js');
+        let rec = null;
+        try { rec = window.__lastBench || null; } catch { /* ignore */ }
+        m.logBenchmark(rec || { note: 'no measurement yet — press Measure first' });
+        renderDev();
+    };
+    if ($('benchExportBtn')) $('benchExportBtn').onclick = async () => {
+        const m = await import('./devmetrics.js');
+        m.downloadJson(`nyaya-setu-metrics-${new Date().toISOString().slice(0, 10)}.json`, { benchmarks: m.getBenchLog(), study: m.getStudyLog(), device: m.deviceHints() });
+    };
+    if ($('studyExportBtn')) $('studyExportBtn').onclick = async () => {
+        const m = await import('./devmetrics.js');
+        const log = m.getStudyLog();
+        if (!log.length) { alert('No study drafts logged yet — complete a draft first.'); return; }
+        m.downloadCsv(`nyaya-setu-study-${new Date().toISOString().slice(0, 10)}.csv`, log);
+    };
+    if ($('studyClearBtn')) $('studyClearBtn').onclick = async () => {
+        const m = await import('./devmetrics.js');
+        m.clearStudy();
+        renderDev();
+    };
+    if ($('devCard')) $('devCard').addEventListener('toggle', () => { if ($('devCard').open) renderDev(); });
+} catch { /* dev panel optional */ }
 
 // Background semantic preload (MiniLM ~30MB once, then cached): lexical stays
 // instant and is always the fallback, so tabs never block on this.
@@ -466,7 +507,7 @@ if (SR) {
                     a.download = `nyaya-setu-memo-${Date.now()}.webm`;
                     a.click();
                     setTimeout(() => URL.revokeObjectURL(url), 5000);
-                    if ($('langHint')) $('langHint').textContent = 'Memo saved locally (audio). Please type a short summary — memos are not transcribed offline.';
+                    if ($('langHint')) $('langHint').textContent = 'Memo saved locally (audio). Tap “Offline Voice → transcribe” below for on-device transcription, or type a summary.';
                 }
                 return;
             }
@@ -476,6 +517,47 @@ if (SR) {
             if ($('langHint')) $('langHint').textContent = 'Recording offline memo (audio only, stays on device)…';
         } catch {
             alert('Voice input is supported in Chrome, Edge, and Android browsers. Typing works fully offline.');
+        }
+    };
+}
+
+// Offline voice: record a memo, then transcribe fully on-device (Whisper tiny).
+// First tap records, second tap stops + transcribes. Slow on tabs — progress shown.
+if ($('offlineVoiceBtn')) {
+    let memoOn = false;
+    $('offlineVoiceBtn').onclick = async () => {
+        try {
+            const voice = await import('./voice.js');
+            if (!memoOn) {
+                await voice.startOfflineMemo();
+                memoOn = true;
+                $('offlineVoiceBtn').textContent = '⏹ Stop + Transcribe (offline)';
+                if ($('langHint')) $('langHint').textContent = 'Recording offline… tap again to stop and transcribe on-device.';
+                return;
+            }
+            memoOn = false;
+            $('offlineVoiceBtn').textContent = '🎙️ Offline Voice';
+            const blob = await voice.stopOfflineMemo();
+            if (!blob || blob.size < 1000) {
+                if ($('langHint')) $('langHint').textContent = 'Empty recording — please try again or type.';
+                return;
+            }
+            if ($('langHint')) $('langHint').textContent = 'Transcribing on-device (Whisper tiny — first run downloads ~150MB once)…';
+            const { transcribeBlob } = await import('./stt.js');
+            const { text } = await transcribeBlob(blob, getSelectedLanguage(), (p) => {
+                if ($('langHint') && p?.text) $('langHint').textContent = p.text;
+            });
+            if (text) {
+                const cur = $('narrative').value ? $('narrative').value + ' ' : '';
+                $('narrative').value = (cur + text).trim();
+                if ($('langHint')) $('langHint').textContent = 'Offline transcription added — review it before drafting.';
+            } else if ($('langHint')) {
+                $('langHint').textContent = 'No speech detected — please try again or type.';
+            }
+        } catch (err) {
+            memoOn = false;
+            if ($('offlineVoiceBtn')) $('offlineVoiceBtn').textContent = '🎙️ Offline Voice';
+            alert(`Offline voice failed: ${err?.message || err}. Typing works fully offline.`);
         }
     };
 }
@@ -663,6 +745,8 @@ $('runBtn').onclick = async () => {
     }
 
     $('runBtn').disabled = true;
+    const pipeT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    let pipeRetMs = null;
 
     try {
         setStep(1);
@@ -718,7 +802,9 @@ $('runBtn').onclick = async () => {
         // punishment ("As prescribed...") is hidden to reduce noise.
         setStep(4);
         if ($('langHint')) $('langHint').textContent = semanticReady ? 'Ranking provisions (semantic + lexical)…' : 'Ranking provisions (lexical; semantic loads in background)…';
+        const retT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
         const retrievedAll = await retrieveFinal(narrative, 5);
+        pipeRetMs = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - retT0;
         const isPlaceholderPun = (p) => !p || /^as prescribed under/i.test(String(p));
         const retrieved = retrievedAll.filter((r) => r.confidence !== 'low').slice(0, 3);
         lastRetrieved = retrieved;
@@ -753,6 +839,12 @@ $('runBtn').onclick = async () => {
         $('outCard').classList.remove('hidden');
 
         document.querySelectorAll('.step').forEach((el) => { el.classList.remove('active'); el.classList.add('done'); });
+        // Time/cost study log (dev instrument): pipeline seconds vs manual baseline.
+        try {
+            const totalSec = (((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - pipeT0) / 1000;
+            const m = await import('./devmetrics.js');
+            m.logStudyDraft({ lang: selectedLanguage, narrativeChars: narrative.length, totalSec, retrievalMs: pipeRetMs, sections: lastRetrieved.length });
+        } catch { /* study logging never breaks drafting */ }
     } catch (err) {
         console.error(err);
         alert(`${t('msgPipelineError')} ` + (err?.message || err));

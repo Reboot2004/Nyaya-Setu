@@ -478,6 +478,7 @@
 
             <div class="row">
                 <button id="recBtn">🎙️ Record Voice</button>
+                <button id="offlineVoiceBtn" class="secondary" type="button" title="Records offline, then transcribes fully on-device (slow on tabs, no network needed after first download)">🎙️ Offline Voice</button>
                 <button id="runBtn">Review Facts & Suggested Provisions</button>
                 <span id="langHint" style="font-size:.75rem;color:#64748b">Voice input ready. Tap record to speak.</span>
             </div>
@@ -495,6 +496,19 @@
                 <span id="benchOut" style="font-size:0.75rem;color:#475569;"></span>
             </div>
         </section>
+
+        <!-- Developer / Metrics (debug only — not part of the citizen flow) -->
+        <details class="card" id="devCard" style="padding:18px;">
+            <summary style="font-size:0.85rem;font-weight:700;color:#1e293b;cursor:pointer;">🛠️ Developer metrics (debug — tok/s history, time/cost study)</summary>
+            <p style="font-size:0.75rem;color:#64748b;margin:6px 0;">Collected on this device only. Nothing leaves the phone. Use <em>Export</em> to attach data to reports.</p>
+            <div class="row" style="margin-top:8px;">
+                <button id="benchSaveBtn" class="secondary" type="button" style="font-size:0.75rem;padding:6px 12px;">Save benchmark</button>
+                <button id="benchExportBtn" class="secondary" type="button" style="font-size:0.75rem;padding:6px 12px;">Export metrics JSON</button>
+                <button id="studyExportBtn" class="secondary" type="button" style="font-size:0.75rem;padding:6px 12px;">Export time/cost CSV</button>
+                <button id="studyClearBtn" class="secondary" type="button" style="font-size:0.75rem;padding:6px 12px;">Clear study data</button>
+            </div>
+            <pre id="devOut" style="font-size:0.72rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;max-height:220px;overflow-y:auto;white-space:pre-wrap;margin-top:8px;">No metrics yet. Run a draft or press “Measure on-device speed”, then “Save benchmark”.</pre>
+        </details>
 
         <!-- Pipeline Status -->
         <section class="card hidden" id="pipeCard">

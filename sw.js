@@ -16,6 +16,8 @@ const ASSETS = [
     './src/safety.js',
     './src/guard.js',
     './src/translate.js',
+    './src/stt.js',
+    './src/devmetrics.js',
     './src/cpgrams.js',
     './src/offline_store.js',
     './src/voice.js',
