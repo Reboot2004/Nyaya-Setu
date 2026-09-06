@@ -33,14 +33,14 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
             ml: ['ഭീഷണി', 'കൊല്ലുമെന്ന് ഭീഷണിപ്പെടുത്തി', 'പേടിപ്പിച്ചു']
         }
     },
-    // Verbal Abuse / Insult provoking breach of peace (BNS 352)
+    // Verbal Abuse / Insult provoking breach of peace (BNS 352) + Defamation (BNS 356)
     {
         canonical: 'intentional_insult',
-        targetSections: ['352'],
+        targetSections: ['352', '356'],
         terms: {
-            hi: ['गाली-गलौज', 'गाली', 'अपशब्द', 'गाली दी', 'अपमानित किया', 'बेइज्जत किया', 'गंदी भाषा', 'अभद्र व्यवहार'],
-            en: ['gali-galoch', 'gali', 'verbal abuse', 'abusive language', 'insulted', 'humiliated', 'bad words', 'provocation'],
-            te: ['బూతులు తిట్టారు', 'అవమానించారు', 'దూషించారు', 'చెడు మాటలు'],
+            hi: ['गाली-गलौज', 'गाली', 'अपशब्द', 'गाली दी', 'अपमानित किया', 'बेइज्जत किया', 'गंदी भाषा', 'अभद्र व्यवहार', 'बदनामी', 'मानहानि'],
+            en: ['gali-galoch', 'gali', 'verbal abuse', 'abusive language', 'abusive words', 'insulted', 'humiliated', 'bad words', 'provocation', 'defamation', 'social media', 'hate words'],
+            te: ['బూతులు తిట్టారు', 'అవమానించారు', 'దూషించారు', 'చెడు మాటలు', 'అసహ్యం', 'చెడ్డ పదాలు'],
             ta: ['திட்டினார்கள்', 'அசிங்கமாக பேசினார்', 'அவமானம்', 'வசைபாடினார்'],
             mr: ['शिवीगाळ', 'अपमान केला', 'घाणेरडी भाषा', 'शिव्या दिल्या'],
             bn: ['গালাগালি', 'অপমান করেছে', 'খারাপ ভাষা', 'অশালীন আচরণ'],
@@ -113,8 +113,8 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
         canonical: 'forgery',
         targetSections: ['336'],
         terms: {
-            hi: ['फर्जी दस्तावेज', 'नकली हस्ताक्षर', 'फर्जी साइन', 'जाली कागजात', 'झूठी रसीद', 'स्टांप पेपर फर्जी'],
-            en: ['forged document', 'fake signature', 'forgery', 'fake papers', 'counterfeit document', 'bogus record'],
+            hi: ['फर्जी दस्तावेज', 'नकली हस्ताक्षर', 'फर्जी साइन', 'जाली कागजात', 'झूठी रसीद', 'स्टांप पेपर फर्जी', 'जमीन के कागज'],
+            en: ['forged document', 'fake signature', 'forgery', 'fake papers', 'counterfeit document', 'bogus record', 'fake docs', 'land docs', 'illegal docs', 'grab land', 'land grabbing', 'social media'],
             te: ['నకిలీ పత్రాలు', 'ఫోర్జరీ', 'దొంగ సంతకం', 'నకిలీ రశీదు'],
             ta: ['போலி ஆவணங்கள்', 'போலி கையெழுத்து', 'போலி பத்திரம்'],
             mr: ['बनावट कागदपत्रे', 'बनावट सही', 'खोटे दस्तऐवज'],

@@ -15704,7 +15704,16 @@ export const BASE_STATUTES = [
       "wages",
       "मजदूरी",
       "वेतन",
-      "तनख्वाह"
+      "तनख्वाह",
+      "fake docs",
+      "land docs",
+      "illegal docs",
+      "grab land",
+      "land grabbing",
+      "fake land",
+      "fabricated record",
+      "నకిలీ పత్రాలు",
+      "దొంగ పత్రాలు"
     ],
     "negTriggers": [],
     "minScore": 4,
@@ -16110,7 +16119,14 @@ export const BASE_STATUTES = [
       "reputation damage",
       "social media abuse",
       "मानहानि",
-      "बदनामी"
+      "बदनामी",
+      "social media",
+      "cheddha padalu",
+      "అసహ్యం",
+      "చెడ్డ పదాలు",
+      "அவமானம்",
+      "abusive words",
+      "hate words"
     ],
     "negTriggers": [],
     "minScore": 4,

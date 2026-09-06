@@ -69,8 +69,8 @@ The dataset contains synthetic test cases covering:
 
 Real calls to `extractEntitiesRuleBased()` + `retrieveSections()` (lexical+Bhashini), 6 cases:
 
-- **Entity Extraction Recall:** 33.3% (rule regex misses English names, Telugu aggressor/date/loc)
-- **Statute Retrieval Recall:** 75.0% (Bhashini boost fixed TEST-001/002/006; TEST-003 Telugu defamation still 0%)
+- **Entity Extraction Recall:** 36.7% (rule regex misses names/dates; LLM WebGPU path not exercised in Node)
+- **Statute Retrieval Recall:** 91.7% (lexical + Bhashini + typo-tolerance + rarity + dedupe; TEST-003 Telugu fixed via 356/352)
 - **Filtering Accuracy:** 66.7% (TEST-004/005 short non-actionable still accepted — gate too permissive)
 - **Previous mocked baseline was 75-80% and is now deprecated.**
 

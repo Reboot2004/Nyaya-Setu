@@ -5,7 +5,56 @@ import { getLoadedStatutes, STATUTE_METADATA, saveDynamicStatutes, resetToDefaul
 import { normalizeWithBhashini } from '../data/bhashini_lexicon.js';
 
 const HINDI_STOP = new Set(['है', 'था', 'थी', 'हैं', 'के', 'की', 'का', 'को', 'ने', 'से', 'में', 'पर', 'और', 'या', 'लेकिन', 'मैं', 'मेरा', 'मेरी', 'मुझे', 'उसने', 'वह', 'वे', 'यह', 'इस', 'उस', 'जो', 'तो', 'भी', 'ही', 'अब', 'कि', 'एक']);
-const EN_STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'my', 'me', 'i', 'was', 'is', 'he', 'she', 'they', 'his', 'her', 'at', 'by', 'for', 'with', 'from', 'it', 'this', 'that', 'mera', 'meri', 'mere', 'ko', 'ne', 'ka', 'ki', 'ke', 'aur', 'par', 'se']);
+const EN_STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'my', 'me', 'i', 'was', 'is', 'he', 'she', 'they', 'his', 'her', 'at', 'by', 'for', 'with', 'from', 'it', 'this', 'that', 'mera', 'meri', 'mere', 'ko', 'ne', 'ka', 'ki', 'ke', 'aur', 'par', 'se',
+    // filler verbs/nouns that pollute scoring on tabs
+    'very', 'bad', 'badly', 'please', 'give', 'justice', 'support', 'people', 'person', 'things', 'something', 'anything', 'money']);
+// Minimal stop sets so Telugu/Tamil/Bengali/Marathi/Kannada/Malayalam narratives aren't polluted
+const TE_STOP = new Set(['నా', 'మరియు', 'లో', 'కోసం', 'అని', 'ఈ', 'ఆ', 'వారు', 'చేశారు', 'ఉంది', 'ఉన్నారు']);
+const TA_STOP = new Set(['என்', 'மற்றும்', 'இல்', 'என்று', 'இந்த', 'அந்த', 'அவர்']);
+const BN_STOP = new Set(['আমার', 'এবং', 'এর', 'থেকে', 'এই', 'সেই']);
+const MR_STOP = new Set(['माझे', 'आणि', 'मध्ये', 'हे', 'ते']);
+const KN_STOP = new Set(['ನನ್ನ', 'ಮತ್ತು', 'ದಲ್ಲಿ', 'ಈ', 'ಆ']);
+const ML_STOP = new Set(['എന്റെ', 'ഒപ്പം', 'ൽ', 'ഈ', 'ആ']);
+const ALL_STOP = new Set([...EN_STOP, ...HINDI_STOP, ...TE_STOP, ...TA_STOP, ...BN_STOP, ...MR_STOP, ...KN_STOP, ...ML_STOP]);
+
+// edit-distance-1 fuzzy match for latin tokens >=5 chars (typo tolerance: threatene→threatened). Cheap enough for tabs.
+function fuzzyHit(a, b) {
+    if (a === b) return true;
+    if (!/^[a-z]+$/.test(a) || !/^[a-z]+$/.test(b)) return false;
+    if (Math.abs(a.length - b.length) > 1 || a.length < 5) return false;
+    let i = 0, j = 0, edits = 0;
+    while (i < a.length && j < b.length) {
+        if (a[i] === b[j]) { i++; j++; continue; }
+        if (++edits > 1) return false;
+        if (a.length === b.length) { i++; j++; }
+        else if (a.length > b.length) i++;
+        else j++;
+    }
+    edits += (a.length - i) + (b.length - j);
+    return edits <= 1;
+}
+
+// rarity weight: precomputed per-trigger document frequency over corpus (computed lazily once)
+let dfCache = null;
+function docFreq(triggerLower) {
+    if (!dfCache) {
+        dfCache = new Map();
+        try {
+            for (const s of getLoadedStatutes()) {
+                const seen = new Set();
+                for (const t of (s.triggers || [])) {
+                    const k = String(t).toLowerCase();
+                    if (!seen.has(k)) { seen.add(k); dfCache.set(k, (dfCache.get(k) || 0) + 1); }
+                }
+            }
+        } catch { /* ignore */ }
+    }
+    return dfCache.get(triggerLower) || 1;
+}
+function isCuratedStatute(s) {
+    const t = String(s?.title || '');
+    return !(t.startsWith('BNS Section') || t.startsWith('BNSS Section'));
+}
 
 function tokenize(text) {
     // Split on whitespace and punctuation, but preserve complete Indic syllables intact
@@ -13,7 +62,7 @@ function tokenize(text) {
         .toLowerCase()
         .split(/[\s,।,.!?;:()\[\]{}"'—–\-\/\\|]+/)
         .map((t) => t.trim())
-        .filter((t) => t.length > 1 && !EN_STOP.has(t) && !HINDI_STOP.has(t));
+        .filter((t) => t.length > 1 && !ALL_STOP.has(t));
 }
 
 /**
@@ -37,20 +86,56 @@ function scoreStatute(statute, tokens, lowerText) {
     }
 
     const haystack = `${statute.title} ${statute.text} ${(statute.triggers || []).join(' ')}`.toLowerCase();
+    const matchedTerms = [];
+    const tokenSet = new Set(tokens);
 
     for (const tok of tokens) {
-        const triggerMatch = (statute.triggers || []).some(
-            (t) => t.toLowerCase().includes(tok) || tok.includes(t.toLowerCase())
-        );
-        if (triggerMatch) {
-            score += 3;
+        let hit = false;
+        let rareBonus = 0;
+        for (const t of (statute.triggers || [])) {
+            const tl = t.toLowerCase();
+            // whole-phrase hit (strong, e.g. "land grab", "dhamki")
+            if (tl.includes(tok) || tok.includes(tl)) {
+                // guard: mere substring of a long phrase by a short generic token
+                // ("work"→"workplace", "kho"→"khoon") must NOT count
+                const words = tl.split(/[\s\-/]+/);
+                const wholeWord = words.includes(tok);
+                // guard: lone common verb from a multi-word trigger ("गया" in "उठा ले गया")
+                // counts only if a sibling word of the same trigger is also present
+                if (wholeWord && words.length > 1 && tok.length < 5) {
+                    const sibling = words.some((w) => w !== tok && w.length >= 3 && tokenSet.has(w));
+                    if (sibling) { hit = true; }
+                } else {
+                    const longSub = Math.min(tok.length, tl.length) >= 8;
+                    const wordSub = words.some((w) => w.length >= 5 && (w.includes(tok) && tok.length >= 5 || tok.includes(w) && w.length >= 5));
+                    if (wholeWord || longSub || wordSub) { hit = true; }
+                }
+            }
+            if (!hit && (fuzzyHit(tok, tl) || fuzzyHit(tl, tok))) { hit = true; }
+            if (!hit) {
+                // word-level fuzzy for multi-word triggers
+                const words = tl.split(/[\s\-/]+/);
+                for (const w of words) {
+                    if (w.length >= 5 && tok.length >= 5 && fuzzyHit(tok, w)) { hit = true; break; }
+                }
+            }
+            if (hit) {
+                // rarity bonus: distinctive triggers (drugged, kabza) outrank generic ones
+                const df = docFreq(tl);
+                rareBonus = Math.max(rareBonus, df <= 2 ? 2 : df <= 6 ? 1 : 0);
+                break;
+            }
+        }
+        if (hit) {
+            score += 3 + rareBonus;
             triggerHits++;
+            if (matchedTerms.length < 6) matchedTerms.push(tok);
         } else if (haystack.includes(tok)) {
             score += 1;
         }
     }
 
-    return { score, triggerHits, negHits };
+    return { score, triggerHits, negHits, matchedTerms };
 }
 
 /**
@@ -67,7 +152,7 @@ export function retrieveSections(narrative, topK = 4) {
 
     const scored = statutesList
         .map((s) => {
-            const { score, triggerHits, negHits } = scoreStatute(s, tokens, lowerText);
+            const { score, triggerHits, negHits, matchedTerms } = scoreStatute(s, tokens, lowerText);
             let finalScore = score;
             let finalTriggerHits = triggerHits;
             const bhashiniBoost = suggestedSet.has(String(s.section));
@@ -81,18 +166,29 @@ export function retrieveSections(narrative, topK = 4) {
                 score: finalScore,
                 triggerHits: finalTriggerHits,
                 negHits,
+                matchedTerms,
                 bhashiniBoost,
                 bhashiniConcepts: bhashini.normalizedConcepts || [],
+                curated: isCuratedStatute(s),
                 source: s.source || STATUTE_METADATA.officialSources[0],
                 confidence: finalScore > 8 ? 'high' : finalScore > 5 ? 'medium' : 'low',
                 meetsThreshold: finalScore >= effectiveMinScore && finalTriggerHits >= 1
             };
         })
         .filter((r) => r.meetsThreshold)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, topK);
+        // curated sections first, then score; dedupe same section number across BNS/BNSS
+        .sort((a, b) => ((b.curated ? 1 : 0) - (a.curated ? 1 : 0)) || (b.score - a.score));
+    const seen = new Set();
+    const deduped = [];
+    for (const r of scored) {
+        const key = String(r.statute.section);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(r);
+        if (deduped.length >= topK) break;
+    }
 
-    return scored;
+    return deduped;
 }
 
 export function getBhashiniNormalization(narrative) {

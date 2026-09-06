@@ -1,6 +1,6 @@
 import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage, getEngineStatus, isAIAssistEnabled, setAIAssistEnabled } from './llm.js';
 import { retrieveSections, getLoadedStatutes, syncStatutesFromSource, resetToDefaultStatutes, STATUTE_METADATA, getBhashiniNormalization } from './retrieval.js';
-import { complaintToHtml, downloadComplaint, speakRightsBriefing, stopAudio } from './output.js';
+import { complaintToHtml, downloadComplaint, speakRightsBriefing, speakDraft, stopAudio } from './output.js';
 import { UI_TEXT } from './ui_translations.js';
 import { screenInput } from './safety.js';
 import { guardWithLocalModel as guardCheck, unloadGuard } from './guard.js';
@@ -316,6 +316,10 @@ if (SR) {
             recognition.stop();
             return;
         }
+        // Offline-first: voice transcription needs network in Chrome/Edge; warn clearly.
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            if ($('langHint')) $('langHint').textContent = 'Offline: voice transcription unavailable — please type. Typing works fully offline.';
+        }
         const currentLang = getSelectedLanguage() || 'en';
         recognition.lang = LANG_BCP47[currentLang] || 'en-IN';
         finalText = $('narrative').value ? $('narrative').value + ' ' : '';
@@ -324,14 +328,46 @@ if (SR) {
             recognizing = true;
             $('recBtn').textContent = t('recBtnStop');
             $('recBtn').classList.add('recording');
-            $('langHint').textContent = `Listening in ${recognition.lang}...`;
+            $('langHint').textContent = `Listening in ${recognition.lang}... (needs network; typing stays offline)`;
         } catch (err) {
             console.error('Failed to start recognition:', err);
         }
     };
+    // surface network failures instead of silent stop
+    const origOnError = recognition.onerror;
+    recognition.onerror = (e) => {
+        origOnError?.(e);
+        if (e?.error === 'network' && $('langHint')) {
+            $('langHint').textContent = 'Voice needs network in this browser — your typed text is saved. Type to continue offline.';
+        }
+    };
 } else {
-    $('recBtn').onclick = () => {
-        alert('Voice input is supported in Chrome, Edge, and Android browsers.');
+    // No SpeechRecognition: offline audio memo fallback (records locally, no transcription)
+    $('recBtn').onclick = async () => {
+        try {
+            const { startOfflineMemo, stopOfflineMemo, isMemoRecording } = await import('./voice.js');
+            if (isMemoRecording()) {
+                const blob = await stopOfflineMemo();
+                $('recBtn').textContent = t('recBtnIdle');
+                $('recBtn').classList.remove('recording');
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `nyaya-setu-memo-${Date.now()}.webm`;
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    if ($('langHint')) $('langHint').textContent = 'Memo saved locally (audio). Please type a short summary — memos are not transcribed offline.';
+                }
+                return;
+            }
+            await startOfflineMemo();
+            $('recBtn').textContent = '⏹ Stop memo';
+            $('recBtn').classList.add('recording');
+            if ($('langHint')) $('langHint').textContent = 'Recording offline memo (audio only, stays on device)…';
+        } catch {
+            alert('Voice input is supported in Chrome, Edge, and Android browsers. Typing works fully offline.');
+        }
     };
 }
 
@@ -618,7 +654,10 @@ $('englishBtn').onclick = () => {
 };
 
 $('audioBtn').onclick = () => speakRightsBriefing(getSelectedLanguage());
+if ($('readDraftBtn')) $('readDraftBtn').onclick = () => speakDraft($('complaintOut')?.textContent || '', getSelectedLanguage());
 $('stopAudioBtn').onclick = stopAudio;
+// warm up voice list (some Android browsers load voices async)
+try { window.speechSynthesis?.getVoices?.(); window.speechSynthesis && (window.speechSynthesis.onvoiceschanged = () => {}); } catch { /* ignore */ }
 
 // CPGRAMS structured export (reviewable JSON, does not auto-file)
 if ($('cpgramsBtn')) {
