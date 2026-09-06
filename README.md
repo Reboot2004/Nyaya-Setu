@@ -24,7 +24,7 @@ First AI load downloads the ~700 MB quantized model to browser cache (one-time).
 
 ## Architecture Notes (honest — local-only)
 
-- **Data sovereignty:** 100% on-device. No cloud path (`src/cloud_fallback.js` deprecated, unimported). Only exceptions: Web Speech transcription (browser cloud where used) + one-time HuggingFace weight CDN fetch, then IndexedDB-cached offline.
+- **Data sovereignty:** 100% on-device. No cloud path exists. Only exceptions: Web Speech transcription (browser cloud where used) + one-time HuggingFace weight CDN fetch, then IndexedDB-cached offline.
 - **Deterministic grounding:** sections come only from `retrieveSections()`; `draftComplaint()` is a template.
 - **Safety:** instant `screenInput()` (`src/safety.js`) + quantized Llama Guard 3 1B q4 local (`src/guard.js`, ctx 512, time-shared engine, 12s timeout, rule fallback) + emergency interstitial + fact-review modal + NALSA 15100.
 - **Corpus:** `v0.5-prototype-partial`, lexical (no vectors). Verify at https://www.indiacode.nic.in/ before filing.
