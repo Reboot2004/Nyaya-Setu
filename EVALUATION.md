@@ -67,11 +67,12 @@ The dataset contains synthetic test cases covering:
 
 ## Current Baseline (Prototype-0.5, REAL pipeline — `node tests/evaluate.js`)
 
-Real calls to `extractEntitiesRuleBased()` + `retrieveSections()` (lexical+Bhashini+fuzzy+rarity+dedupe) + `screenInput()` safety, 27 cases across all 8 UI languages:
+Real calls to `extractEntitiesRuleBased()` + fused `retrieveFused()` (MiniLM semantic + lexical + Bhashini + fuzzy + rarity + dedupe) + `screenInput()` safety, 27 cases across all 8 UI languages:
 
 - **Entity Extraction Recall:** 74.1% (rule regex + sanitizers; LLM WebGPU path not exercised in Node)
-- **Statute Retrieval Recall:** 96.3% (typo-tolerant, Telugu/defamation/docs coverage, BSA-23/32/63 live)
-- **Filtering Accuracy:** 100.0% (27/27: offence-gated incl. extortion/stalking/dowry/theft/forgery scenarios, advice-questions + prompt-injection rejected)
+- **Statute Retrieval Recall:** 98.1% (26/27 full hits; TEST-006 finds 115 of [115, 351])
+- **Filtering Accuracy:** 100.0% (27/27: offence-gated incl. extortion/stalking/dowry/theft/forgery/emergency scenarios, advice-questions + prompt-injection rejected)
+- **Origins:** most hits are `both` (semantic+lexical agree); vernacular-only hits stay `lexical`, which is why trigger lists are retained as the fallback spine.
 - **Previous mocked baseline was 75-80% and is now deprecated.**
 
 Run: `node tests/evaluate.js`. WebGPU LLM path not exercised in Node.

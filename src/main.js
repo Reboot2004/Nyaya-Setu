@@ -266,7 +266,14 @@ if ($('benchBtn')) {
             const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
             retrieveSections('benchmark sample: assault threat theft', 4);
             const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-            const retMs = (now - t0).toFixed(1);
+            let retMs = (now - t0).toFixed(1);
+            if (semanticReady) {
+                try {
+                    const s0 = performance.now();
+                    await retrieveFinal('benchmark sample: assault threat theft', 5, 15000);
+                    retMs += ` (fused: ${(performance.now() - s0).toFixed(0)}ms)`;
+                } catch { /* ignore */ }
+            }
             const memMB = (typeof performance !== 'undefined' && performance?.memory?.usedJSHeapSize) ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB heap' : 'heap n/a';
             const eng = (typeof getEngineStatus === 'function' ? getEngineStatus() : { mode: 'rule-only' });
             let llmPart = 'LLM: rule engine (WebGPU off or AI disabled)';
@@ -283,7 +290,37 @@ if ($('benchBtn')) {
     };
 }
 
-// Automatic model fetch (background, non-blocking). Rule engine stays usable.
+// Background semantic preload (MiniLM ~30MB once, then cached): lexical stays
+// instant and is always the fallback, so tabs never block on this.
+let semanticReady = false;
+if (isAIAssistEnabled()) {
+    setTimeout(() => {
+        import('./semantic.js').then((m) => m.ensureSemantic((p) => {
+            if ($('langHint') && p?.text) $('langHint').textContent = p.text;
+        }).then(() => { semanticReady = true; }).catch((err) => {
+            console.warn('Semantic preload skipped:', err?.message);
+        }));
+    }, 4000);
+}
+
+// Fused rank with timeout: semantic (MiniLM) + lexical(+bhashini); falls back
+// to pure lexical when the embedding engine isn't loaded yet or is slow.
+async function retrieveFinal(narrative, topK = 5, timeoutMs = 8000) {
+    const lex = retrieveSections(narrative, 25);
+    if (!semanticReady) return lex.slice(0, topK);
+    try {
+        const { retrieveFused } = await import('./semantic.js');
+        const fused = await Promise.race([
+            retrieveFused(narrative, lex, topK),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('semantic-timeout')), timeoutMs))
+        ]);
+        return (Array.isArray(fused) && fused.length) ? fused : lex.slice(0, topK);
+    } catch {
+        return lex.slice(0, topK);
+    }
+}
+
+// Automatic LLM fetch (background, non-blocking). Rule engine stays usable.
 if (isWebGPUSupported() && isAIAssistEnabled()) {
     setTimeout(() => {
         ensureEngine().then(() => {
@@ -632,15 +669,17 @@ $('runBtn').onclick = async () => {
             return;
         }
 
-        // ---- Step 4: Statute Retrieval (lexical + Bhashini) ----
+        // ---- Step 4: Statute Retrieval (semantic MiniLM + lexical + Bhashini, fused) ----
         // Draft uses medium/high confidence only; low stays in explorer. Placeholder
         // punishment ("As prescribed...") is hidden to reduce noise.
         setStep(4);
-        const retrievedAll = retrieveSections(narrative, 4);
+        if ($('langHint')) $('langHint').textContent = semanticReady ? 'Ranking provisions (semantic + lexical)…' : 'Ranking provisions (lexical; semantic loads in background)…';
+        const retrievedAll = await retrieveFinal(narrative, 5);
         const isPlaceholderPun = (p) => !p || /^as prescribed under/i.test(String(p));
         const retrieved = retrievedAll.filter((r) => r.confidence !== 'low').slice(0, 3);
         lastRetrieved = retrieved;
         const bhashiniInfo = getBhashiniNormalization(narrative);
+        const semNote = retrievedAll.some((r) => r.origin === 'both' || r.origin === 'semantic') ? ' · semantic rank on' : '';
         const listForUi = (retrieved.length ? retrieved : retrievedAll.slice(0, 2));
         $('secList').innerHTML = listForUi.length
             ? listForUi.map(({ statute, confidence }) => `<li><strong>${escHtml(statute.code)} §${escHtml(statute.section)}</strong> — ${escHtml(statute.title)} <span style="font-size:0.75rem;color:#475569">(${escHtml(confidence)})</span>${!isPlaceholderPun(statute.punishment) ? ` · <span style="color:#b91c1c">${escHtml(statute.punishment)}</span>` : ''}</li>`).join('') + (bhashiniInfo.normalizedConcepts.length ? `<li style="list-style:none;font-size:0.75rem;color:#475569;margin-top:6px;">Matched: ${bhashiniInfo.normalizedConcepts.map(escHtml).join(', ')}</li>` : '')

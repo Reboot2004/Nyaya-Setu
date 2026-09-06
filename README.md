@@ -17,7 +17,8 @@ statute-suggested police-complaint draft (BNS/BNSS 2023). Prototype corpus, not 
 cd nyaya-setu
 npm install
 npm run dev        # open http://localhost:5173
-node tests/evaluate.js  # real pipeline evaluation (rule engine + lexical+Bhashini)
+node tests/evaluate.js  # 27-scenario suite: fused MiniLM+lexical+Bhashini, safety screen, 8 langs
+node scripts/build_vectors.mjs  # regenerate statute embeddings (needs network once)
 ```
 
 First AI load downloads the ~700 MB quantized model to browser cache (one-time). Rule engine works without it.

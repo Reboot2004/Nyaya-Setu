@@ -9,6 +9,7 @@
         "preview": "vite preview --host"
     },
     "dependencies": {
+        "@huggingface/transformers": "^4.2.0",
         "@mlc-ai/web-llm": "^0.2.79"
     },
     "devDependencies": {

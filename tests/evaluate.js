@@ -14,6 +14,27 @@ import { retrieveSections } from '../src/retrieval.js';
 import { extractEntitiesRuleBased } from '../src/llm.js';
 import { screenInput } from '../src/safety.js';
 
+let fusedAvailable = false;
+try {
+    const sem = await import('../src/semantic.js');
+    await sem.ensureSemantic();
+    fusedAvailable = true;
+} catch (err) {
+    console.log(`Semantic engine unavailable in eval (${err?.message || err}); using lexical path.\n`);
+}
+
+async function retrieveFinalEval(narrative, topK = 5) {
+    const lex = retrieveSections(narrative, 25);
+    if (!fusedAvailable) return lex.slice(0, topK);
+    try {
+        const { retrieveFused } = await import('../src/semantic.js');
+        const fused = await retrieveFused(narrative, lex, topK);
+        return (Array.isArray(fused) && fused.length) ? fused : lex.slice(0, topK);
+    } catch {
+        return lex.slice(0, topK);
+    }
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATASET_PATH = path.join(__dirname, 'evaluation_dataset.json');
 const dataset = JSON.parse(fs.readFileSync(DATASET_PATH, 'utf-8'));
@@ -92,12 +113,15 @@ class EvaluationFramework {
             this.metrics.total++;
             console.log(`\n[${tc.id}] ${tc.language.toUpperCase()} - expect:${tc.expected_entities.aggressor} / ${tc.expected_sections.join(', ') || 'NO STATUTE'}`);
             console.log(`  Narrative: "${tc.narrative.substring(0, 70)}..."`);
-            // REAL calls (mirrors src/main.js pipeline order: safety -> entities -> retrieval -> gate)
+            // REAL calls (mirrors src/main.js exactly: safety -> entities -> lexical gate
+            // preview (top 2) -> fused final rank (top 5) -> gate on LEXICAL preview)
             const safety = screenInput(tc.narrative);
             const actualEntities = extractEntitiesRuleBased(tc.narrative);
-            const retrieved = retrieveSections(tc.narrative, 4);
-            const filterResult = safety.ok && isActionableComplaint(tc.narrative, actualEntities, retrieved);
+            const gatePreview = retrieveSections(tc.narrative, 2);
+            const retrieved = await retrieveFinalEval(tc.narrative, 5);
+            const filterResult = safety.ok && isActionableComplaint(tc.narrative, actualEntities, gatePreview);
             if (!safety.ok) console.log(`  Safety blocked: ${safety.reasons.join(', ')}`);
+            if (retrieved.some((r) => r.origin)) console.log(`  Origins: ${retrieved.map((r) => r.origin || '?').join(',')}`);
             console.log(`  Actual entities: aggressor=${actualEntities.aggressor} date=${actualEntities.date} loc=${actualEntities.location} cat=${actualEntities.category}`);
             console.log(`  Retrieved: ${retrieved.map((r) => `${r.statute.code}-${r.statute.section}(${r.confidence})`).join(', ') || 'none'}`);
             const entityEval = this.evaluateEntityExtraction(tc.expected_entities, actualEntities);
@@ -120,7 +144,7 @@ class EvaluationFramework {
         console.log(`  Entity Extraction Recall: ${avg(this.metrics.entityRecall)}%`);
         console.log(`  Statute Retrieval Recall: ${avg(this.metrics.sectionRecall)}%`);
         console.log(`  Filtering Accuracy: ${avg(this.metrics.filteringAccuracy)}%`);
-        console.log(`\nCorpus: prototype-0.5 (~48 curated / 892 slots incl. BSA) | Retrieval: lexical+Bhashini+fuzzy+rarity | Extractor: rule-based`);
+        console.log(`\nCorpus: prototype-0.5 (~48 curated / 892 slots incl. BSA) | Retrieval: fused MiniLM+lexical+Bhashini${fusedAvailable ? '' : ' (lexical-only fallback)'} | Extractor: rule-based`);
         console.log('Note: LLM WebGPU path not exercised in Node; rule engine is the offline fallback.\n');
     }
 }
