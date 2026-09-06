@@ -98,7 +98,7 @@ function isCuratedStatute(s) {
     return !(t.startsWith('BNS Section') || t.startsWith('BNSS Section'));
 }
 
-// Fused rank: 0.55 semantic + 0.45 lexical(+bhashini), curated bonus.
+// Fused rank: 0.55 semantic + 0.45 lexical(+dialect lexicon), curated bonus.
 // Pool hygiene (no demo noise): semantic-only PLACEHOLDERS enter only at cos>=0.50;
 // curated entries always enter. Lexical entries always enter (thresholded upstream).
 // Returns items shaped like retrieveSections() plus { semanticScore, origin }.

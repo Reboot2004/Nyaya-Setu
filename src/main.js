@@ -9,6 +9,7 @@ import { initOfflineIndex, clearIDBCorpus } from './offline_store.js';
 import { detectEmergency, EMERGENCY_CONTACTS } from './emergency.js';
 import { PS_DIRECTORY, getDistricts, getStationsForDistrict, getKioskPS, setKioskPS } from '../data/ps_directory.js';
 import { CITIZEN_CATEGORIES, citizenCategoryFor } from '../data/categories.js';
+import { titleFor, statuteTextFor } from '../data/statute_i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const badge = $('engineBadge');
@@ -157,14 +158,16 @@ function renderLawsExplorer(filterText = '', catId = currentCatFilter()) {
 
     container.innerHTML = filtered.slice(0, 200).map((s) => {
         const cat = citizenCategoryFor(s, getSelectedLanguage());
+        const t = titleFor(s, getSelectedLanguage());
+        const body = statuteTextFor(s, getSelectedLanguage());
         return `
         <div style="border-bottom:1px solid #e2e8f0;padding:8px 0;font-size:0.84rem;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:6px;">
                 <strong style="color:#0f172a;">${s.code} Section ${s.section}</strong>
                 <span class="badge" title="${cat.desc.replace(/"/g, '&quot;')}" style="font-size:0.65rem;border-color:#2563eb;color:#1d4ed8;white-space:nowrap;">${cat.label}</span>
             </div>
-            <div style="font-weight:600;color:#1e293b;margin-bottom:2px;">${s.title}</div>
-            <p style="color:#334155;margin-bottom:4px;line-height:1.35;">${s.text}</p>
+            <div style="font-weight:600;color:#1e293b;margin-bottom:2px;">${t}</div>
+            <p style="color:#334155;margin-bottom:4px;line-height:1.35;">${body}</p>
             ${s.punishment ? `<div style="font-size:0.75rem;color:#b91c1c;font-weight:600;">⚖️ Punishment: ${s.punishment}</div>` : ''}
             <div style="font-size:0.7rem;color:#64748b;margin-top:2px;">🏛️ Source: ${s.source || 'AIKosh / India Code'}</div>
         </div>
@@ -193,7 +196,7 @@ function isActionableComplaint(text, entities, retrieved) {
         'threat', 'threatened', 'assault', 'hit', 'abuse', 'harass', 'fraud', 'cheat', 'stole', 'extortion', 'wage', 'salary', 'payment',
         'dhamki', 'maar', 'marpit', 'gaali', 'paisa', 'rok liya', 'dhokha', 'बेधड़क', 'धमकी', 'मारपीट', 'गाली', 'वेतन', 'पैसे', 'हमला',
         'దాడి', 'బెదిరింపు', 'డబ్బు', 'హింస', 'అధ్యక్షుడు', 'சம்பளம்', 'হুমকি', 'মারধর', 'धमकी', 'मारहाण', 'ಬೆದರಿಕೆ', 'ಹಲ್ಲೆ', 'ഭീഷണി', 'മർദ്ദനം',
-        'chori', 'forgery', 'forg', 'beating', 'money', 'property', 'land', 'kabza', 'struck', 'drugged', 'poison', 'kidnap', 'stalking', 'dowry', 'rape', 'murder', 'robbery', 'theft', 'snatch', 'मजदूरी', 'तनख्वाह', 'जान से मार',
+        'chori', 'forgery', 'forg', 'beating', 'money', 'property', 'land', 'kabza', 'struck', 'drugged', 'poison', 'kidnap', 'ransom', 'abduct', 'stalking', 'bribe', 'dowry', 'rape', 'murder', 'robbery', 'theft', 'snatch', 'मजदूरी', 'तनख्वाह', 'जान से मार', 'rishwat', 'ghoos', 'ஈவ்டீசிங்', 'பின்தொடர்',
         'marhan', 'chori', 'chhed', 'அடி', 'ரத்தம்', 'மிரட்டல்', 'திருட்டு', 'மோசடி', 'ಹೊಡೆ', 'ರಕ್ತ', 'ಬೆದರಿಕೆ', 'ಕಳ್ಳತನ', 'ವಂಚನೆ',
         'కొట్ట', 'దాడి', 'బెదిరి', 'దొంగ', 'మోసం', 'మర్ద', 'തല്ല', 'ഭീഷണ', 'മോഷ', 'വഞ്ച', 'চুরি', 'ছেড়', 'मारहाण', 'छेड'
     ];
@@ -273,7 +276,7 @@ if (isWebGPUSupported()) {
 try {
     initOfflineIndex(() => getLoadedStatutes(), STATUTE_METADATA).then((r) => {
         if (r?.success && $('langHint')) {
-            $('langHint').textContent = `Offline index ready (${r.source}, ${r.count} slots, ~48 curated). Voice transcription still needs network.`;
+            $('langHint').textContent = `Offline index ready (${r.source}, ${r.count} slots, ~55 curated). Voice transcription still needs network.`;
         }
     }).catch(() => { /* ignore */ });
 } catch { /* ignore */ }
@@ -338,7 +341,7 @@ if (isAIAssistEnabled()) {
     }, 4000);
 }
 
-// Fused rank with timeout: semantic (MiniLM) + lexical(+bhashini); falls back
+// Fused rank with timeout: semantic (MiniLM) + lexical(+dialect lexicon); falls back
 // to pure lexical when the embedding engine isn't loaded yet or is slow.
 async function retrieveFinal(narrative, topK = 5, timeoutMs = 8000) {
     const lex = retrieveSections(narrative, 25);
@@ -710,7 +713,7 @@ $('runBtn').onclick = async () => {
             return;
         }
 
-        // ---- Step 4: Statute Retrieval (semantic MiniLM + lexical + Bhashini, fused) ----
+        // ---- Step 4: Statute Retrieval (semantic MiniLM + lexical + dialect lexicon, fused) ----
         // Draft uses medium/high confidence only; low stays in explorer. Placeholder
         // punishment ("As prescribed...") is hidden to reduce noise.
         setStep(4);
@@ -725,7 +728,7 @@ $('runBtn').onclick = async () => {
         $('secList').innerHTML = listForUi.length
             ? listForUi.map(({ statute, confidence }) => {
                 const cat = citizenCategoryFor(statute, selectedLanguage);
-                return `<li><strong>${escHtml(statute.code)} §${escHtml(statute.section)}</strong> — ${escHtml(statute.title)} <span style="font-size:0.75rem;color:#475569">(${escHtml(confidence)} · ${escHtml(cat.label)})</span>${!isPlaceholderPun(statute.punishment) ? ` · <span style="color:#b91c1c">${escHtml(statute.punishment)}</span>` : ''}</li>`;
+                return `<li><strong>${escHtml(statute.code)} §${escHtml(statute.section)}</strong> — ${escHtml(titleFor(statute, selectedLanguage))} <span style="font-size:0.75rem;color:#475569">(${escHtml(confidence)} · ${escHtml(cat.label)})</span>${!isPlaceholderPun(statute.punishment) ? ` · <span style="color:#b91c1c">${escHtml(statute.punishment)}</span>` : ''}</li>`;
             }).join('') + (bhashiniInfo.normalizedConcepts.length ? `<li style="list-style:none;font-size:0.75rem;color:#475569;margin-top:6px;">Matched: ${bhashiniInfo.normalizedConcepts.map(escHtml).join(', ')}</li>` : '')
             : `<li>${t('noMatch')}</li>`;
         $('secCard').classList.remove('hidden');

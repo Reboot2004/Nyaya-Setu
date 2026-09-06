@@ -1,7 +1,7 @@
 // Nyaya-Setu LLM module — WebGPU AI + robust rule-based Indic entity extraction.
 // Helps citizens understand their rights and draft a police complaint in their language.
 import * as webllm from '@mlc-ai/web-llm';
-import { STATUTE_TITLE_MAP } from '../data/statutes.js';
+import { titleFor } from '../data/statute_i18n.js';
 
 const MODEL_CANDIDATES = [
     'Llama-3.2-1B-Instruct-q4f32_1-MLC',
@@ -382,12 +382,9 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
     const lang = normalizeLanguageCode(selectedLang) || 'en';
     const todayDate = new Date().toLocaleDateString('en-IN');
 
-    // ---- Helper to get localized statute title ----
-    const localTitle = (statute) => {
-        if (!statute || !statute.id) return statute?.title || '';
-        const map = STATUTE_TITLE_MAP[statute.id];
-        return (map && map[lang]) ? map[lang] : (statute.title || '');
-    };
+    // ---- Helper: real hi/te title where curated, else honest English title ----
+    // sectionsList already prints "CODE <word> <section> —" so this returns the bare title.
+    const localTitle = (statute) => titleFor(statute, lang) || (statute && statute.title) || '';
 
     // ---- Resolve all fields, avoid "unknown"/JSON in final draft ----
     // Incident date defaults to TODAY when not given (user requirement).
@@ -429,11 +426,12 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
         ? `\n   (English gist via on-device ${opts.gistSource}; original preserved in the other half and verified at review.)`
         : '';
 
-    // ---- Build localized section list — title in selected language ----
+    // ---- Build localized section list — real translation where curated, else honest English ----
+    const sectionWord = lang === 'hi' ? 'धारा' : lang === 'te' ? 'సెక్షన్' : lang === 'ta' ? 'பிரிவு' : lang === 'bn' ? 'ধারা' : lang === 'mr' ? 'कलम' : lang === 'kn' ? 'ಕಲಂ' : lang === 'ml' ? 'സെക്ഷൻ' : 'Section';
     const sectionsList = (Array.isArray(retrieved) && retrieved.length)
         ? retrieved.map(({ statute }) => {
             const title = localTitle(statute);
-            return `${statute.code} ${lang === 'hi' ? 'धारा' : lang === 'te' ? 'సెక్షన్' : lang === 'ta' ? 'பிரிவு' : lang === 'bn' ? 'ধারা' : lang === 'mr' ? 'कलम' : lang === 'kn' ? 'ಕಲಂ' : lang === 'ml' ? 'സെക്ഷൻ' : 'Section'} ${statute.section} — ${title}`;
+            return `${statute.code} ${sectionWord} ${statute.section} — ${title}`;
           }).join('\n   • ')
         : '';
 

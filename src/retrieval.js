@@ -1,4 +1,4 @@
-// Statute retrieval with relevance scoring + Bhashini dialectal normalization.
+// Statute retrieval with relevance scoring + in-house dialect-phrase normalization.
 // Lexical-trigger scoring (prototype). No vector embeddings yet — see STATUTE_METADATA.retrievalMethod.
 // Official sources: https://www.indiacode.nic.in/ | https://www.aikosh.in/
 import { getLoadedStatutes, STATUTE_METADATA, saveDynamicStatutes, resetToDefaultStatutes, BASE_STATUTES } from '../data/statutes.js';
@@ -142,7 +142,7 @@ function scoreStatute(statute, tokens, lowerText) {
 
 /**
  * Retrieve matching BNS/BNSS sections for a given narrative.
- * Uses minScore per statute + Bhashini colloquial boost to prevent weak matches
+ * Uses minScore per statute + dialect-phrase colloquial boost to prevent weak matches
  * while catching vernacular phrasing (mar-peet, dhamki, gali-galoch, etc.).
  */
 export function retrieveSections(narrative, topK = 4) {

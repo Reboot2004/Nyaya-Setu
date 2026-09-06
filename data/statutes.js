@@ -7,17 +7,17 @@
 // Vernacular Mirror: AIKosh Legal Repository (https://www.aikosh.in/)
 
 export const STATUTE_METADATA = {
-    disclaimer: 'Prototype corpus: 892 slots (358 BNS + 531 BNSS + 3 key BSA) with ~48 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
+    disclaimer: 'Prototype corpus: 892 slots (358 BNS + 531 BNSS + 3 key BSA) with ~55 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
     jurisdiction: 'Republic of India (BNS/BNSS/BSA 2023 effective 1 July 2024)',
     version: '0.5-prototype-partial',
     totalSections: 892,
-    curatedSections: 48,
-    placeholderSections: 844,
+    curatedSections: 55,
+    placeholderSections: 837,
     bnsSections: 358,
     bnssSections: 531,
     bsaSections: 3,
     corpusKind: 'prototype-lexical',
-    retrievalMethod: 'lexical-trigger + bhashini + fuzzy + rarity (no vector embeddings yet)',
+    retrievalMethod: 'fused MiniLM semantic + lexical-trigger + dialect-lexicon + fuzzy + rarity',
     lastUpdated: '2026-09-06',
     effectiveDate: '2024-07-01',
     officialSources: [
@@ -27,6 +27,9 @@ export const STATUTE_METADATA = {
     ]
 };
 
+// DEPRECATED: auto-generated "<lang> Section N: <english>" prefixes — NOT real translations.
+// Nothing imports this anymore; use titleFor()/statuteTextFor() from data/statute_i18n.js
+// (real hi/te for the 55 curated sections, honest English fallback otherwise).
 export const STATUTE_TITLE_MAP = {
   "BNS-1": {
     "en": "Short title, commencement and application",
@@ -11266,6 +11269,9 @@ export const BASE_STATUTES = [
       "मारा",
       "थप्पड़",
       "కొట్టారు",
+      "kottaru",
+      "kottadu",
+      "nannu kottaru",
       "মারধর"
     ],
     "negTriggers": [],

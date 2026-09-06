@@ -41,7 +41,7 @@ const specialBns = {
   "104": { title: "Culpable homicide not amounting to murder", text: "Causing death without premeditation under exceptions.", cat: "assault", triggers: ["homicide", "unintentional death", "गैर इरादतन हत्या"] },
   "106": { title: "Causing death by negligence (Hit and Run)", text: "Causing death by rash or negligent act. Enhanced punishment for hit and run.", cat: "assault", triggers: ["hit and run", "road accident", "rash driving death", "दुर्घटना", "टक्कर मारकर भागना"] },
   "109": { title: "Attempt to murder / Attack with dangerous weapon", text: "Attempting murder or severe bodily attack with weapons.", cat: "assault", triggers: ["attempt to murder", "tried to kill", "knife attack", "जानलेवा हमला", "हत्या का प्रयास", "కత్తి దాడి", "चाकू", "तलवार", "laathi", "rod", "iron rod", "danda", "डंडे से", "लाठी-डंडे"] },
-  "115": { title: "Voluntarily causing hurt", text: "Whoever causes bodily pain, disease or infirmity to any person with intention.", cat: "assault", triggers: ["beaten", "beat", "beats", "hit", "slapped", "punched", "kicked", "marpeet", "maara", "peeta", "मारपीट", "पीटा", "मारा", "थप्पड़", "కొట్టారు", "মারধর"] },
+  "115": { title: "Voluntarily causing hurt", text: "Whoever causes bodily pain, disease or infirmity to any person with intention.", cat: "assault", triggers: ["beaten", "beat", "beats", "hit", "slapped", "punched", "kicked", "marpeet", "maara", "peeta", "मारपीट", "पीटा", "मारा", "थप्पड़", "కొట్టారు", "kottaru", "kottadu", "nannu kottaru", "মারধর"] },
   "117": { title: "Voluntarily causing grievous hurt", text: "Causing grievous hurt — fracture, bone dislocation, severe bleeding, or permanent injury.", cat: "assault", triggers: ["grievous hurt", "fracture", "broken bone", "bleeding", "hospital", "gambhir chot", "khoon", "गंभीर चोट", "खून बहा", "हड्डी टूटी", "రక్తం"] },
   "118": { title: "Voluntarily causing hurt or grievous hurt by dangerous weapons", text: "Causing hurt by cutting/stabbing instrument, fire, poison or corrosive substance.", cat: "assault", triggers: ["knife", "acid", "iron rod", "weapon", "laathi", "डंडे से", "लाठी-डंडे", "चाकू", "drugged", "drugging", "drugged me", "poison", "poisoned", "spiked drink", "behosh", "बेहोश", "नशीला", "మత్తుమందు"] },
   "126": { title: "Wrongful restraint", text: "Whoever voluntarily obstructs any person so as to prevent that person from proceeding.", cat: "assault", triggers: ["blocked", "stopped me", "rasta roka", "roka", "रास्ता रोका", "जाने से रोका", "దారి అడ్డగించారు"] },
@@ -234,17 +234,17 @@ const outputCode = `// Nyaya-Setu Prototype Statutory Corpus (NOT a complete off
 // Vernacular Mirror: AIKosh Legal Repository (https://www.aikosh.in/)
 
 export const STATUTE_METADATA = {
-    disclaimer: 'Prototype corpus: 892 slots (358 BNS + 531 BNSS + 3 key BSA) with ~48 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
+    disclaimer: 'Prototype corpus: 892 slots (358 BNS + 531 BNSS + 3 key BSA) with ~55 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
     jurisdiction: 'Republic of India (BNS/BNSS/BSA 2023 effective 1 July 2024)',
     version: '0.5-prototype-partial',
     totalSections: \${allStatutes.length},
-    curatedSections: 48,
-    placeholderSections: 844,
+    curatedSections: 55,
+    placeholderSections: 837,
     bnsSections: 358,
     bnssSections: 531,
     bsaSections: 3,
     corpusKind: 'prototype-lexical',
-    retrievalMethod: 'lexical-trigger + bhashini + fuzzy + rarity (no vector embeddings yet)',
+    retrievalMethod: 'fused MiniLM semantic + lexical-trigger + dialect-lexicon + fuzzy + rarity',
     lastUpdated: '2026-09-06',
     effectiveDate: '2024-07-01',
     officialSources: [

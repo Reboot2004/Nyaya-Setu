@@ -25,35 +25,35 @@ const PDF_TEXT = {
     },
     ta: {
         title: 'அதிகாரப்பூர்வ புகார்',
-        meta: 'Nyaya-Setu மூலம் தயாரிக்கப்பட்டது - AIKosh & Bhashini',
+        meta: 'Nyaya-Setu மூலம் தயாரிக்கப்பட்டது - AIKosh corpus',
         dateLabel: 'தேதி',
         sectionsTitle: 'பொருந்தும் சட்டப் பிரிவுகள்',
         disclaimer: 'பொறுப்புத்துறப்பு: இது கணினி உதவியுடன் உருவாக்கப்பட்ட வரைவு; வழக்கறிஞரின் சட்ட ஆலோசனை அல்ல. இலவச சட்ட உதவி: NALSA உதவி எண் 15100.'
     },
     bn: {
         title: 'আনুষ্ঠানিক অভিযোগপত্র',
-        meta: 'Nyaya-Setu দ্বারা প্রস্তুত - AIKosh & Bhashini',
+        meta: 'Nyaya-Setu দ্বারা প্রস্তুত - AIKosh corpus',
         dateLabel: 'তারিখ',
         sectionsTitle: 'প্রযোজ্য আইনগত ধারা',
         disclaimer: 'দাবিত্যাগ: এটি কম্পিউটার-সহায়িত খসড়া, আইনজীবীর আইনি পরামর্শ নয়। বিনামূল্যে আইনি সহায়তা: NALSA হেল্পলাইন 15100।'
     },
     mr: {
         title: 'औपचारिक तक्रारपत्र',
-        meta: 'Nyaya-Setu द्वारे तयार - AIKosh & Bhashini',
+        meta: 'Nyaya-Setu द्वारे तयार - AIKosh corpus',
         dateLabel: 'दिनांक',
         sectionsTitle: 'लागू कायदेशीर तरतुदी',
         disclaimer: 'सूचना: हा संगणक-सहाय्यित मसुदा आहे; वकिलाचा कायदेशीर सल्ला नाही. मोफत कायदेशीर मदत: NALSA हेल्पलाइन 15100.'
     },
     kn: {
         title: 'ಅಧಿಕೃತ ದೂರು ಪತ್ರ',
-        meta: 'Nyaya-Setu ಮೂಲಕ ರಚಿಸಲಾಗಿದೆ - AIKosh & Bhashini',
+        meta: 'Nyaya-Setu ಮೂಲಕ ರಚಿಸಲಾಗಿದೆ - AIKosh corpus',
         dateLabel: 'ದಿನಾಂಕ',
         sectionsTitle: 'ಅನ್ವಯಿಸುವ ಕಾನೂನು ವಿಧಿಗಳು',
         disclaimer: 'ಸೂಚನೆ: ಇದು ಕಂಪ್ಯೂಟರ್ ಸಹಾಯದ ಕರಡು ಮಾತ್ರ; ವಕೀಲರ ಕಾನೂನು ಸಲಹೆ ಅಲ್ಲ. ಉಚಿತ ಕಾನೂನು ಸಹಾಯ: NALSA ಹೆಲ್ಪ್‌ಲೈನ್ 15100.'
     },
     ml: {
         title: 'ഔപചാരിക പരാതിപത്രം',
-        meta: 'Nyaya-Setu വഴി തയ്യാറാക്കിയത് - AIKosh & Bhashini',
+        meta: 'Nyaya-Setu വഴി തയ്യാറാക്കിയത് - AIKosh corpus',
         dateLabel: 'തീയതി',
         sectionsTitle: 'പ്രയോഗിക്കുന്ന നിയമ വകുപ്പുകൾ',
         disclaimer: 'അറിയിപ്പ്: ഇത് കമ്പ്യ्यूटर സഹായത്തോടെ തയ്യാറാക്കിയ ഡ്രാഫ്റ്റാണ്. സൗജന്യ നിയമ സഹായം: NALSA ഹെൽപ്‌ലൈൻ 15100.'
@@ -64,17 +64,20 @@ function esc(s) {
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+import { titleFor } from '../data/statute_i18n.js';
+
 export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en') {
-    // Include source attribution for each statute (Fix #6)
+    const lang = (uiLanguage || 'en').toLowerCase();
+    // Section titles in the citizen's language where really translated (hi/te curated),
+    // else honest English — never a fake prefix.
     const sections = retrieved.map(({ statute, source, confidence }) => {
         const sourceUrl = statute.officialUrl || 'https://www.indiacode.nic.in/';
         const conf = confidence ? ` · confidence: ${esc(confidence)}` : '';
         const curated = statute.triggers && statute.triggers.length > 5 && !String(statute.title).startsWith('BNS Section') && !String(statute.title).startsWith('BNSS Section') ? '' : ' · placeholder entry — verify';
-        return `<li><strong>${esc(statute.code)} Section ${esc(statute.section)}</strong> — ${esc(statute.title)}${conf}${curated}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${esc(source || 'India Code')}</a></span></li>`;
+        return `<li><strong>${esc(statute.code)} Section ${esc(statute.section)}</strong> — ${esc(titleFor(statute, lang))}${conf}${curated}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${esc(source || 'India Code')}</a></span></li>`;
     }).join('');
     const englishText = esc(complaint?.english || complaint?.native || complaint?.hindi || '');
     const nativeText = esc(complaint?.native || complaint?.hindi || complaint?.english || '');
-    const lang = (uiLanguage || 'en').toLowerCase();
     const labels = PDF_TEXT[lang] || PDF_TEXT.en;
     return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><title>Police-Complaint Draft — Nyaya-Setu</title>
   <style>body{font-family:Georgia,'Noto Sans Devanagari','Noto Sans Telugu','Noto Sans Tamil','Noto Sans Bengali','Nirmala UI',Mangal,serif;max-width:170mm;margin:20mm auto;line-height:1.6;color:#111}
@@ -87,7 +90,7 @@ export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en
   @media print{body{margin:12mm 14mm}.no-print{display:none}}</style></head><body>
   <h1>${labels.title}</h1>
   <div class="meta">${labels.meta} | ${labels.dateLabel}: ${new Date().toLocaleDateString('en-IN')}</div>
-  <div class="version">Nyaya-Setu v0.5 prototype (~48 curated / 892 slots incl. 3 BSA) · Verify at indiacode.nic.in · Not legal advice</div>
+  <div class="version">Nyaya-Setu v0.5 prototype (~55 curated / 892 slots incl. 3 BSA) · Verify at indiacode.nic.in · Not legal advice</div>
     <pre>${englishText}\n\n---\n\n${nativeText}</pre>
   <h2>${labels.sectionsTitle}</h2><ul>${sections}</ul>
   <p class="disc">${labels.disclaimer}</p>

@@ -5,6 +5,7 @@ const EMERGENCY_PATTERNS = [
     /murder/i, /rape/i, /burn (me|us|alive|house)/i,
     /attack.*now/i, /coming to kill/i, /jaan se maar/i, /जान से मार/,
     /suicide|self[-\s]?harm|आत्महत्या/i,
+    /end my (own )?life|don't want to live|dont want to live|want to die|kill myself/i,
     /kidnap/i, /अपहरण/i, /అపహరించ/i,
     /acid/i, /stab/i, /चाकू.*मार/i,
 ];

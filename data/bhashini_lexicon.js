@@ -1,5 +1,7 @@
-﻿// Bhashini Indic Dialectal Lexicon & Normalizer
-// Powered by Bhashini parallel language representations for vernacular-to-statute mapping.
+﻿// In-house Indic dialect-phrase lexicon & normalizer (Bhashini-inspired).
+// Hand-written colloquial mappings for vernacular-to-statute matching.
+// NOTE: no Bhashini API, model, or dataset is bundled or called — everything here
+// is curated in-repo so the app stays fully offline.
 // Covers colloquial phrases in Hindi, Telugu, Tamil, Marathi, Bengali, Kannada, and Malayalam.
 
 export const BHASHINI_COLLOQUIAL_LEXICON = [
@@ -10,7 +12,7 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
         terms: {
             hi: ['मारपीट', 'मार-पीट', 'मारा', 'पीटा', 'हाथापाई', 'पीटा गया', 'चोट पहुंचाई', 'खून निकला', 'हड्डी तोड़ी', 'अस्पताल', 'गंभीर चोट', 'लाठी से मारा', 'थप्पड़ मारा', 'बेहोश किया', 'नशीला पदार्थ'],
             en: ['mar-peet', 'marpeet', 'beating', 'hit me', 'assaulted', 'physical assault', 'struck me', 'bleeding', 'fracture', 'broken bone', 'hospitalized', 'lathi', 'slapped', 'drugged', 'drugging', 'drugged me', 'poisoned', 'spiked', '6 people', 'group attack', 'gang'],
-            te: ['కొట్టారు', 'దెబ్బలాట', 'దాడి చేశారు', 'గాయపరిచారు', 'రక్తం వచ్చింది', 'ఎముక విరిగింది', 'ఆసుపత్రి', 'చెంపదెబ్బ'],
+            te: ['కొట్టారు', 'దెబ్బలాట', 'దాడి చేశారు', 'గాయపరిచారు', 'రక్తం వచ్చింది', 'ఎముక విరిగింది', 'ఆసుపత్రి', 'చెంపదెబ్బ', 'nannu kottaru', 'kottaru', 'kottadu', 'dabbulu dobbaru'],
             ta: ['அடித்தார்கள்', 'தாக்குதல்', 'காயம்', 'ரத்தம் வந்தது', 'எலும்பு முறிவு', 'மருத்துவமனை', 'அடிதடி'],
             mr: ['मारहाण', 'मारहाण केली', 'हाणामारी', 'जखमी केले', 'रक्तस्त्राव', 'हाड मोडले', 'रुग्णालय', 'चापट मारली'],
             bn: ['মারধর', 'মারপিট', 'আঘাত করেছে', 'রক্তপাত', 'হাড় ভেঙেছে', 'হাসপাতাল', 'চড় মেরেছে'],
@@ -25,7 +27,7 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
         terms: {
             hi: ['धमकी', 'धमकाया', 'जान से मारने की धमकी', 'धमकी दी', 'डराया', 'भगा दिया', 'चमकाया', 'धमकाना'],
             en: ['dhamki', 'threatened', 'death threat', 'warned to kill', 'intimidation', 'scared me', 'threat', 'warning'],
-            te: ['బెదిరింపు', 'చంపేస్తామని బెదిరించారు', 'భయపెట్టారు', 'బెదిరించాడు'],
+            te: ['బెదిరింపు', 'చంపేస్తామని బెదిరించారు', 'భయపెట్టారు', 'బెదిరించాడు', 'bediristunnaru', 'champestham'],
             ta: ['மிரட்டல்', 'கொலை மிரட்டல்', 'பயமுறுத்தினார்கள்', 'எச்சரித்தார்'],
             mr: ['धमकी', 'जीवे मारण्याची धमकी', 'घाबरवले', 'धमकावले'],
             bn: ['হুমকি', 'খুনের হুমকি', 'ভয় দেখিয়েছে', 'হুমকি দিয়েছে'],
@@ -186,7 +188,7 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
 ];
 
 /**
- * Normalizes colloquial narrative using Bhashini Indic parallel concept representations.
+ * Normalizes colloquial narrative using the in-house dialect-phrase lexicon.
  * Returns array of enriched canonical search concepts and target section suggestions.
  */
 export function normalizeWithBhashini(text) {
