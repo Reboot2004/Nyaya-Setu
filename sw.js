@@ -1,7 +1,7 @@
 // Nyaya-Setu Service Worker — offline-first PWA caching (prototype).
 // Local-only: app shell cached. Llama-3.2-1B + Guard-3-1B weights are NOT
 // pre-cached here; WebLLM caches them in IndexedDB on first auto-download.
-const CACHE = 'nyaya-setu-v4';
+const CACHE = 'nyaya-setu-v5';
 const ASSETS = [
     './',
     './index.html',

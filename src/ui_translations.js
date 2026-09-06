@@ -38,7 +38,7 @@ export const UI_TEXT = {
         englishBtnBack: '🌐 Back to Selected Language',
         audioBtn: '🔊 Play Legal Rights Briefing',
         stopAudioBtn: '⏹ Stop Audio',
-        footer: 'Local drafting where supported · Prototype corpus · Verify before submission · Not legal advice · NALSA Helpline 15100',
+        footer: 'Nyaya-Setu v0.5 (2026-09-06) · Local-only · Prototype corpus — verify · Not legal advice · NALSA 15100',
         statusEngineReady: 'Engine: ready (on-device)',
         statusEngineUnavailable: 'Instant Rule Engine active (100% offline compatible)',
         statusEngineLoaded: 'Llama 3.2 1B Loaded (WebGPU)',

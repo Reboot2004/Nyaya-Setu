@@ -176,11 +176,13 @@ export function extractEntitiesRuleBased(narrative) {
     const accusedMatches = [
         /([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+उसके\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)\s+ने\s+(?:मेरा\s+रास्ता|मुझे|हमला|पीटा|मारा|धमकी)/i,
         /(?:आरोपी|accused|attacked by|threatened by|beaten by)\s*[:=-]?\s*([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)/i,
-        /(?:सामने|द्वारा|खिलाफ)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+)?)\s+ने/i
+        /(?:सामने|द्वारा|खिलाफ)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+)?)\s+ने/i,
+        // English subject-verb: "People hit me", "Mohan beat me", "Ramu threatened me"
+        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|neighbours|neighbors|relatives|contractor|officials|goons)\b\s+(?:hit|beat|beats|beaten|threatened|cheated|grabbed|attacked|stole|hit\s+me)\b/i
     ];
     for (const pat of accusedMatches) {
         const m = text.match(pat);
-        if (m && m[1] && m[1].length > 1 && !/^(the|a|an|on|in|at|yesterday|today|my|me|i|मैं|मुझे|हम)$/i.test(m[1].trim())) {
+        if (m && m[1] && m[1].length > 1 && !/^(the|a|an|on|in|at|yesterday|today|my|me|i|they|them|he|she|it|we|you|मैं|मुझे|हम)$/i.test(m[1].trim())) {
             aggressor = m[1].trim();
             break;
         }
@@ -222,7 +224,7 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 6. Offence Category Classification
     const low = text.toLowerCase();
-    if (/marpit|assault|hit|beaten|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल/i.test(low)) category = 'assault';
+    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल/i.test(low)) category = 'assault';
     else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मारने|गाली|गाली-गलौज/i.test(low)) category = 'intimidation';
     else if (/fraud|cheat|dhokha|chori|stole|theft|robbery|extortion|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी/i.test(low)) category = 'property_fraud';
     else if (/woman|chhed|modesty|molest|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी/i.test(low)) category = 'women_safety';
