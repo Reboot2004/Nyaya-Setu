@@ -39,7 +39,7 @@
             "narrative": "मेरे पड़ोसी ने मुझे धमकी दी कि अगर मैंने उनसे पैसे नहीं दिए तो वह मेरा घर जला देंगे और मेरे परिवार को मार देंगे।",
             "expected_entities": {
                 "summary": "Criminal intimidation with threats to property and life",
-                "aggressor": "neighbor",
+                "aggressor": "पड़ोसी",
                 "date": "unknown",
                 "location": "residence",
                 "category": "intimidation"
@@ -429,7 +429,7 @@
                 "summary": "Domestic assault with death threat, victim in hiding",
                 "aggressor": "husband",
                 "date": "unknown",
-                "location": "unknown",
+                "location": "mother's house",
                 "category": "assault"
             },
             "expected_sections": [

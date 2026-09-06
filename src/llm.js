@@ -181,11 +181,13 @@ export function extractEntitiesRuleBased(narrative) {
         /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|neighbours|neighbors|relatives|contractor|officials|goons|policeman)\b\s+(?:hit|beat|beats|beaten|slapped|abused|assaulted|attacked|threatened|cheated|grabbed|stole|molested)\b/i,
         // "Rajesh Kumar used abusive language" (adjacent — avoids "March ... used" spans)
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+used\s+abusive\b/,
+        // "<name> did kabza / grabbed the land" (encroachment phrasing)
+        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+did\s+kabza\b/i,
         // "...slapped / abused me" with a few words in between (months/days excluded below)
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b[^.!?]{0,40}?\b(?:slapped|abused|assaulted|threatened|attacked|molested)\b/
     ];
-    const BAD_SUBJECT = /^(the|a|an|on|in|at|and|or|of|to|for|with|from|against|language|yesterday|today|my|me|i|they|them|he|she|it|we|you|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|मैं|मुझे|हम)$/i;
-    const LOWCASE_NOUNS = /^(people|neighbours|neighbors|relatives|contractor|officials|goons|policeman)$/i;
+    const BAD_SUBJECT = /^(the|a|an|on|in|at|and|or|of|to|for|with|from|against|language|did|yesterday|today|my|me|i|they|them|he|she|it|we|you|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|मैं|मुझे|हम)$/i;
+    const LOWCASE_NOUNS = /^(people|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper)$/i;
     for (const pat of accusedMatches) {
         const m = text.match(pat);
         if (!m || !m[1] || m[1].length <= 1 || BAD_SUBJECT.test(m[1].trim())) continue;
@@ -201,11 +203,14 @@ export function extractEntitiesRuleBased(narrative) {
         if (directAccused && directAccused[1]) aggressor = directAccused[1].trim();
     }
 
-    // 4. Extract Date / Time (incl. ISO 2023-02-20)
+    // 4. Extract Date / Time (incl. ISO 2023-02-20, weekdays, month-first)
     // Note: no lookbehind (older Safari compat) — digit-glued matches like
     // "00 rupees" inside "15000" are rejected by the boundary check below.
     const dateMatches = [
         /(\d{4}\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{1,2})/,
+        /\b((?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))\b/i,
+        /\b((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*,?\s*\d{2,4})?)/i,
+        /\b(सोमवार|मंगलवार|बुधवार|गुरुवार|शुक्रवार|शनिवार|रविवार)\b/,
         /(?:दिनांक|तारीख|दिनांकित|on|dated|dinank)?\s*(\d{1,2}(?:\s+[A-Za-z\u0900-\u0D7F]+(?:\s+\d{2,4})?|\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{2,4}))/i,
         /\b(कल|आज|परसों|yesterday|today|ninna|netru)\b/i
     ];
@@ -232,8 +237,10 @@ export function extractEntitiesRuleBased(narrative) {
     for (const pat of locMatches) {
         const m = text.match(pat);
         if (m && m[1] && m[1].length > 2 && !/^(the|a|an|my|me|i|his|her|this|that|मुझे|मेरा|मेरी|हमारा)$/i.test(m[1].trim())) {
-            // strip leading pronouns/articles the preposition pattern swallowed ("me badly...")
-            incidentLoc = m[1].trim().replace(/^(me|my|the|a|an|this|that|his|her|our)\s+/i, '').trim() || 'unknown';
+            // strip leading pronouns/articles the preposition pattern swallowed ("me badly...", "me during work")
+            let loc = m[1].trim();
+            for (let i = 0; i < 2; i++) loc = loc.replace(/^(me|my|the|a|an|this|that|his|her|our|during|at|in)\s+/i, '').trim();
+            incidentLoc = loc || 'unknown';
             if (incidentLoc.length > 2) break;
             incidentLoc = 'unknown';
         }
