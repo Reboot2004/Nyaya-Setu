@@ -87,7 +87,7 @@ export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en
   @media print{body{margin:12mm 14mm}.no-print{display:none}}</style></head><body>
   <h1>${labels.title}</h1>
   <div class="meta">${labels.meta} | ${labels.dateLabel}: ${new Date().toLocaleDateString('en-IN')}</div>
-  <div class="version">Nyaya-Setu v0.5 prototype (~45 curated / 889 slots) · Verify at indiacode.nic.in · Not legal advice</div>
+  <div class="version">Nyaya-Setu v0.5 prototype (~48 curated / 892 slots incl. 3 BSA) · Verify at indiacode.nic.in · Not legal advice</div>
     <pre>${englishText}\n\n---\n\n${nativeText}</pre>
   <h2>${labels.sectionsTitle}</h2><ul>${sections}</ul>
   <p class="disc">${labels.disclaimer}</p>

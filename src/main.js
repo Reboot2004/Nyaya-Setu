@@ -1,11 +1,11 @@
-import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage, getEngineStatus, isAIAssistEnabled, setAIAssistEnabled } from './llm.js';
-import { retrieveSections, getLoadedStatutes, syncStatutesFromSource, resetToDefaultStatutes, STATUTE_METADATA, getBhashiniNormalization } from './retrieval.js';
+import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage, getEngineStatus, isAIAssistEnabled, setAIAssistEnabled, measureInferenceSpeed } from './llm.js';
+import { retrieveSections, getLoadedStatutes, resetToDefaultStatutes, STATUTE_METADATA, getBhashiniNormalization } from './retrieval.js';
 import { complaintToHtml, downloadComplaint, speakRightsBriefing, speakDraft, stopAudio } from './output.js';
 import { UI_TEXT } from './ui_translations.js';
 import { screenInput } from './safety.js';
 import { guardWithLocalModel as guardCheck, unloadGuard } from './guard.js';
 import { toCPGRAMSSchema, downloadCPGRAMSJson } from './cpgrams.js';
-import { initOfflineIndex } from './offline_store.js';
+import { initOfflineIndex, clearIDBCorpus } from './offline_store.js';
 import { detectEmergency, EMERGENCY_CONTACTS } from './emergency.js';
 import { PS_DIRECTORY, getDistricts, getStationsForDistrict, getKioskPS, setKioskPS } from '../data/ps_directory.js';
 
@@ -158,13 +158,20 @@ function isActionableComplaint(text, entities, retrieved) {
         'threat', 'threatened', 'assault', 'hit', 'abuse', 'harass', 'fraud', 'cheat', 'stole', 'extortion', 'wage', 'salary', 'payment',
         'dhamki', 'maar', 'marpit', 'gaali', 'paisa', 'rok liya', 'dhokha', 'बेधड़क', 'धमकी', 'मारपीट', 'गाली', 'वेतन', 'पैसे', 'हमला',
         'దాడి', 'బెదిరింపు', 'డబ్బు', 'హింస', 'అధ్యక్షుడు', 'சம்பளம்', 'হুমকি', 'মারধর', 'धमकी', 'मारहाण', 'ಬೆದರಿಕೆ', 'ಹಲ್ಲೆ', 'ഭീഷണി', 'മർദ്ദനം',
-        'chori', 'forgery', 'beating', 'police', 'fir', 'station', 'money', 'property', 'land', 'kabza', 'struck'
+        'chori', 'forgery', 'beating', 'money', 'property', 'land', 'kabza', 'struck', 'drugged', 'poison', 'kidnap', 'stalking', 'dowry', 'rape', 'murder', 'robbery', 'theft', 'snatch',
+        'marhan', 'chori', 'chhed', 'அடி', 'ரத்தம்', 'மிரட்டல்', 'திருட்டு', 'மோசடி', 'ಹೊಡೆ', 'ರಕ್ತ', 'ಬೆದರಿಕೆ', 'ಕಳ್ಳತನ', 'ವಂಚನೆ',
+        'కొట్ట', 'దాడి', 'బెదిరి', 'దొంగ', 'మోసం', 'మర్ద', 'തല്ല', 'ഭീഷണ', 'മോഷ', 'വഞ്ച', 'চুরি', 'ছেড়', 'मारहाण', 'छेड'
     ];
     const hasIssueSignal = issueKeywords.some((k) => low.includes(k.toLowerCase()));
-    const hasEntitySignal = entities && ((entities.aggressor && entities.aggressor !== 'unknown') || (entities.events || []).length > 0 || (entities.summary && entities.summary.length > 10));
-    const hasStatuteSignal = Array.isArray(retrieved) && retrieved.length > 0;
+    // Statute signal counts only medium/high — low-confidence hints must not auto-accept.
+    // (Entity signal is always present since events=[narrative], so it must not suffice alone.)
+    const hasStrongStatute = Array.isArray(retrieved) && retrieved.some((r) => r.confidence === 'high' || r.confidence === 'medium');
+    // Advice-seeking questions ("should I report?") are not complaints until an
+    // offence signal or solid statute match exists — route to legal aid instead.
+    const isQuestion = /\?\s*$/.test(value) || /^(क्या|kya |should i\b|do i need\b|can i\b)/i.test(low);
+    if (isQuestion && !hasStrongStatute && !hasIssueSignal) return false;
 
-    return hasIssueSignal || hasEntitySignal || hasStatuteSignal;
+    return hasIssueSignal || hasStrongStatute;
 }
 
 async function bootstrapLanguageGate() {
@@ -231,7 +238,7 @@ if (isWebGPUSupported()) {
 try {
     initOfflineIndex(() => getLoadedStatutes(), STATUTE_METADATA).then((r) => {
         if (r?.success && $('langHint')) {
-            $('langHint').textContent = `Offline index ready (${r.source}, ${r.count} slots, ~45 curated). Voice transcription still needs network.`;
+            $('langHint').textContent = `Offline index ready (${r.source}, ${r.count} slots, ~48 curated). Voice transcription still needs network.`;
         }
     }).catch(() => { /* ignore */ });
 } catch { /* ignore */ }
@@ -248,6 +255,33 @@ onLoadingProgress((report) => {
         badge.classList.add('ok');
     }
 });
+
+// Measured on-device benchmark (real numbers, no claimed tok/s): retrieval ms +
+// LLM tok/s (WebGPU only) + JS heap. Always runnable — rule/retrieval path measured everywhere.
+if ($('benchBtn')) {
+    $('benchBtn').onclick = async () => {
+        const out = $('benchOut');
+        try {
+            if (out) out.textContent = 'Measuring…';
+            const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            retrieveSections('benchmark sample: assault threat theft', 4);
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            const retMs = (now - t0).toFixed(1);
+            const memMB = (typeof performance !== 'undefined' && performance?.memory?.usedJSHeapSize) ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB heap' : 'heap n/a';
+            const eng = (typeof getEngineStatus === 'function' ? getEngineStatus() : { mode: 'rule-only' });
+            let llmPart = 'LLM: rule engine (WebGPU off or AI disabled)';
+            if (isWebGPUSupported() && isAIAssistEnabled()) {
+                try {
+                    const m = await measureInferenceSpeed();
+                    llmPart = m.supported ? `LLM: ${m.tokensPerSec} tok/s (${m.tokens} tok / ${m.seconds}s, ${m.model || 'webgpu'})` : `LLM: unavailable (${m.error || m.note || 'fallback to rules'})`;
+                } catch (e) { llmPart = `LLM: unavailable (${e?.message || e})`; }
+            }
+            if (out) out.textContent = `Retrieval: ${retMs}ms · ${memMB} · ${llmPart} · engine:${eng.mode || 'n/a'}`;
+        } catch (e) {
+            if (out) out.textContent = `Benchmark failed: ${e?.message || e}`;
+        }
+    };
+}
 
 // Automatic model fetch (background, non-blocking). Rule engine stays usable.
 if (isWebGPUSupported() && isAIAssistEnabled()) {
@@ -395,18 +429,18 @@ if ($('statuteSearch')) {
 
 if ($('syncBtn')) {
     $('syncBtn').onclick = async () => {
-        // Runnable offline: show provenance instead of fake network sync.
-        // syncStatutesFromSource() is retained for future verified feeds but not required.
+        // Local-only: show offline corpus provenance (no network sync exists by design).
         const m = STATUTE_METADATA;
         alert(`Corpus ${m.version} (${m.corpusKind})\nSlots: ${m.totalSections} (~${m.curatedSections} curated)\nRetrieval: ${m.retrievalMethod}\nEffective: ${m.effectiveDate || '2024-07-01'}\nSources:\n- ${(m.officialSources || []).join('\n- ')}\n\nVerify at https://www.indiacode.nic.in/ before filing. See data/provenance.json for hash.`);
     };
 }
 
 if ($('resetStatutesBtn')) {
-    $('resetStatutesBtn').addEventListener('click', () => {
+    $('resetStatutesBtn').addEventListener('click', async () => {
         resetToDefaultStatutes();
+        try { await clearIDBCorpus(); await initOfflineIndex(() => getLoadedStatutes(), STATUTE_METADATA); } catch { /* ignore */ }
         renderLawsExplorer($('statuteSearch')?.value || '');
-        alert('Statutory corpus reset to official Gazette 2023 baseline.');
+        alert('Local prototype corpus reset (memory + offline cache).');
     });
 }
 
@@ -680,8 +714,7 @@ if ($('cpgramsBtn')) {
 }
 
 // Opt-in cloud fallback toggle (privacy-first, off by default)
-// Local-only build: cloud fallback removed. No grievance text ever leaves device.
-// (src/cloud_fallback.js retained unimported for reference; not bundled in pipeline.)
+// Local-only build: no cloud path exists. No grievance text ever leaves device.
 
 // On-device AI toggle (local-only; rule engine fallback for tabs)
 if ($('aiOptin')) {

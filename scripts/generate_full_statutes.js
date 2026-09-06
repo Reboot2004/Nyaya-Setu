@@ -204,26 +204,48 @@ for (let i = 1; i <= 531; i++) {
 
 console.log(`Total generated statutes: ${allStatutes.length} (BNS: 358, BNSS: 531)`);
 
+// Curated BSA key sections (Bharatiya Sakshya Adhiniyam, 2023) — appended after regen
+const bsaCurated = [
+  { sec: "23", title: "Confession to police-officer not proved", text: "No confession made to a police-officer shall be proved as against a person accused of any offence.", triggers: ["confession to police", "confess to police", "police confession", "police custody confession", "forced confession", "पुलिस कबूल", "पुलिस के सामने इकबाल", "జబర్దస్తీ ఒప్పుకోలు"], chapter: "Bharatiya Sakshya Adhiniyam, 2023: Admissions and Confessions" },
+  { sec: "32", title: "Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)", text: "Statements made by a person as to the cause of his death, or as to any of the circumstances resulting in his death, are relevant (dying declaration).", triggers: ["dying declaration", "deathbed statement", "cause of death statement", "मरते समय बयान", "मृत्युपूर्व बयान"], chapter: "Bharatiya Sakshya Adhiniyam, 2023: Relevancy of Facts" },
+  { sec: "63", title: "Admissibility of electronic records", text: "Electronic records — including e-mail, server logs, CCTV footage, screenshots and messages — are admissible with the prescribed certificate.", triggers: ["electronic record", "electronic evidence", "cctv", "cctv footage", "screenshot", "whatsapp", "whatsapp chat", "video recording", "call recording", "audio recording", "ई-सबूत", "सीसीटीवी", "ఎలక్ట్రానిక్"], chapter: "Bharatiya Sakshya Adhiniyam, 2023: Electronic Records" }
+];
+for (const b of bsaCurated) {
+  allStatutes.push({
+    id: `BSA-${b.sec}`, code: "BSA", section: b.sec, title: b.title, text: b.text,
+    punishment: "Evidentiary rule under Bharatiya Sakshya Adhiniyam, 2023.",
+    triggers: b.triggers, negTriggers: [], minScore: 6, category: "procedure",
+    chapter: b.chapter, source: "Official India Code: https://www.indiacode.nic.in/"
+  });
+  statuteTitleMap[`BSA-${b.sec}`] = {
+    en: b.title, hi: `बीएसए धारा ${b.sec}: ${b.title}`, te: `బీఎస్ఎ సెక్షన్ ${b.sec}: ${b.title}`,
+    ta: `பிஎஸ்ஏ பிரிவு ${b.sec}: ${b.title}`, bn: `বিএসএ ধারা ${b.sec}: ${b.title}`,
+    mr: `बीएसए कलम ${b.sec}: ${b.title}`, kn: `ಬಿಎಸ್‌ಎ ಕಲಂ ${b.sec}: ${b.title}`,
+    ml: `ബിഎസ്എ സെക്ഷൻ ${b.sec}: ${b.title}`
+  };
+}
+
 const outputCode = `// Nyaya-Setu Prototype Statutory Corpus (NOT a complete official database)
-// Structure covers BNS 2023 (358 sections) + BNSS 2023 (531 sections) = 889 slots,
-// but only ~45 sections are hand-curated with real triggers/text. The rest are
+// Structure covers BNS 2023 (358) + BNSS 2023 (531) + 3 key BSA sections = 892 slots,
+// but only ~48 sections are hand-curated with real triggers/text. The rest are
 // clearly-marked placeholders generated from chapter structure. Always verify
 // against Official Gazette / India Code before filing.
 // Primary Source: Official Gazette of India / India Code (https://www.indiacode.nic.in/)
 // Vernacular Mirror: AIKosh Legal Repository (https://www.aikosh.in/)
 
 export const STATUTE_METADATA = {
-    disclaimer: 'Prototype corpus: 889 slots with ~45 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
-    jurisdiction: 'Republic of India (BNS/BNSS 2023 effective 1 July 2024)',
-    version: '0.4-prototype-partial',
+    disclaimer: 'Prototype corpus: 892 slots (358 BNS + 531 BNSS + 3 key BSA) with ~48 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
+    jurisdiction: 'Republic of India (BNS/BNSS/BSA 2023 effective 1 July 2024)',
+    version: '0.5-prototype-partial',
     totalSections: \${allStatutes.length},
-    curatedSections: 45,
+    curatedSections: 48,
     placeholderSections: 844,
     bnsSections: 358,
     bnssSections: 531,
+    bsaSections: 3,
     corpusKind: 'prototype-lexical',
-    retrievalMethod: 'lexical-trigger scoring (no vector embeddings yet)',
-    lastUpdated: '2026-09-05',
+    retrievalMethod: 'lexical-trigger + bhashini + fuzzy + rarity (no vector embeddings yet)',
+    lastUpdated: '2026-09-06',
     effectiveDate: '2024-07-01',
     officialSources: [
         'https://www.indiacode.nic.in/',

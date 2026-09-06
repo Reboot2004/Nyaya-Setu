@@ -1,5 +1,5 @@
 // Nyaya-Setu Prototype Statutory Corpus (NOT a complete official database)
-// Structure covers BNS 2023 (358 sections) + BNSS 2023 (531 sections) = 889 slots,
+// Structure covers BNS 2023 (358) + BNSS 2023 (531) + 3 key BSA sections = 892 slots,
 // but only ~45 sections are hand-curated with real triggers/text. The rest are
 // clearly-marked placeholders generated from chapter structure. Always verify
 // against Official Gazette / India Code before filing.
@@ -7,17 +7,18 @@
 // Vernacular Mirror: AIKosh Legal Repository (https://www.aikosh.in/)
 
 export const STATUTE_METADATA = {
-    disclaimer: 'Prototype corpus: 889 slots with ~45 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
-    jurisdiction: 'Republic of India (BNS/BNSS 2023 effective 1 July 2024)',
-    version: '0.4-prototype-partial',
-    totalSections: 889,
-    curatedSections: 45,
+    disclaimer: 'Prototype corpus: 892 slots (358 BNS + 531 BNSS + 3 key BSA) with ~48 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
+    jurisdiction: 'Republic of India (BNS/BNSS/BSA 2023 effective 1 July 2024)',
+    version: '0.5-prototype-partial',
+    totalSections: 892,
+    curatedSections: 48,
     placeholderSections: 844,
     bnsSections: 358,
     bnssSections: 531,
+    bsaSections: 3,
     corpusKind: 'prototype-lexical',
-    retrievalMethod: 'lexical-trigger scoring (no vector embeddings yet)',
-    lastUpdated: '2026-09-05',
+    retrievalMethod: 'lexical-trigger + bhashini + fuzzy + rarity (no vector embeddings yet)',
+    lastUpdated: '2026-09-06',
     effectiveDate: '2024-07-01',
     officialSources: [
         'https://www.indiacode.nic.in/',
@@ -8916,6 +8917,36 @@ export const STATUTE_TITLE_MAP = {
     "mr": "बीएनएसएस कलम 531: BNSS Section 531 (Miscellaneous)",
     "kn": "ಬಿಎನ್‌ಎಸ್‌ಎಸ್ ಕಲಂ 531: BNSS Section 531 (Miscellaneous)",
     "ml": "ബിഎൻഎസ്എസ് സെക്ഷൻ 531: BNSS Section 531 (Miscellaneous)"
+  },
+  "BSA-23": {
+    "en": "Confession to police-officer not proved",
+    "hi": "बीएसए धारा 23: Confession to police-officer not proved",
+    "te": "బీఎస్ఎ సెక్షన్ 23: Confession to police-officer not proved",
+    "ta": "பிஎஸ்ஏ பிரிவு 23: Confession to police-officer not proved",
+    "bn": "বিএসএ ধারা 23: Confession to police-officer not proved",
+    "mr": "बीएसए कलम 23: Confession to police-officer not proved",
+    "kn": "ಬಿಎಸ್‌ಎ ಕಲಂ 23: Confession to police-officer not proved",
+    "ml": "ബിഎസ്എ സെക്ഷൻ 23: Confession to police-officer not proved"
+  },
+  "BSA-32": {
+    "en": "Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)",
+    "hi": "बीएसए धारा 32: Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)",
+    "te": "బీఎస్ఎ సెక్షన్ 32: Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)",
+    "ta": "பிஎஸ்ஏ பிரிவு 32: Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)",
+    "bn": "বিএসএ ধারা 32: Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)",
+    "mr": "बीएसए कलम 32: Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)",
+    "kn": "ಬಿಎಸ್‌ಎ ಕಲಂ 32: Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)",
+    "ml": "ബിഎസ്എ സെക്ഷൻ 32: Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)"
+  },
+  "BSA-63": {
+    "en": "Admissibility of electronic records",
+    "hi": "बीएसए धारा 63: Admissibility of electronic records",
+    "te": "బీఎస్ఎ సెక్షన్ 63: Admissibility of electronic records",
+    "ta": "பிஎஸ்ஏ பிரிவு 63: Admissibility of electronic records",
+    "bn": "বিএসএ ধারা 63: Admissibility of electronic records",
+    "mr": "बीएसए कलम 63: Admissibility of electronic records",
+    "kn": "ಬಿಎಸ್‌ಎ ಕಲಂ 63: Admissibility of electronic records",
+    "ml": "ബിഎസ്എ സെക്ഷൻ 63: Admissibility of electronic records"
   }
 };
 
@@ -26267,6 +26298,77 @@ export const BASE_STATUTES = [
     "category": "procedure",
     "chapter": "Chapter XXXIX: Miscellaneous",
     "source": "Official India Code / AIKosh: https://www.indiacode.nic.in/"
+  },
+  {
+    "id": "BSA-23",
+    "code": "BSA",
+    "section": "23",
+    "title": "Confession to police-officer not proved",
+    "text": "No confession made to a police-officer shall be proved as against a person accused of any offence.",
+    "punishment": "Evidentiary rule under Bharatiya Sakshya Adhiniyam, 2023.",
+    "triggers": [
+      "confession to police",
+      "confess to police",
+      "police confession",
+      "police custody confession",
+      "forced confession",
+      "पुलिस कबूल",
+      "पुलिस के सामने इकबाल",
+      "జబర్దస్తీ ఒప్పుకోలు"
+    ],
+    "negTriggers": [],
+    "minScore": 6,
+    "category": "procedure",
+    "chapter": "Bharatiya Sakshya Adhiniyam, 2023: Admissions and Confessions",
+    "source": "Official India Code: https://www.indiacode.nic.in/"
+  },
+  {
+    "id": "BSA-32",
+    "code": "BSA",
+    "section": "32",
+    "title": "Cases in which statement of relevant fact by person who is dead or cannot be found (dying declaration)",
+    "text": "Statements made by a person as to the cause of his death, or as to any of the circumstances resulting in his death, are relevant (dying declaration).",
+    "punishment": "Evidentiary rule under Bharatiya Sakshya Adhiniyam, 2023.",
+    "triggers": [
+      "dying declaration",
+      "deathbed statement",
+      "cause of death statement",
+      "मरते समय बयान",
+      "मृत्युपूर्व बयान"
+    ],
+    "negTriggers": [],
+    "minScore": 6,
+    "category": "procedure",
+    "chapter": "Bharatiya Sakshya Adhiniyam, 2023: Relevancy of Facts",
+    "source": "Official India Code: https://www.indiacode.nic.in/"
+  },
+  {
+    "id": "BSA-63",
+    "code": "BSA",
+    "section": "63",
+    "title": "Admissibility of electronic records",
+    "text": "Electronic records — including e-mail, server logs, CCTV footage, screenshots and messages — are admissible with the prescribed certificate.",
+    "punishment": "Evidentiary rule under Bharatiya Sakshya Adhiniyam, 2023.",
+    "triggers": [
+      "electronic record",
+      "electronic evidence",
+      "cctv",
+      "cctv footage",
+      "screenshot",
+      "whatsapp",
+      "whatsapp chat",
+      "video recording",
+      "call recording",
+      "audio recording",
+      "ई-सबूत",
+      "सीसीटीवी",
+      "ఎలక్ట్రానిక్"
+    ],
+    "negTriggers": [],
+    "minScore": 6,
+    "category": "procedure",
+    "chapter": "Bharatiya Sakshya Adhiniyam, 2023: Electronic Records",
+    "source": "Official India Code: https://www.indiacode.nic.in/"
   }
 ];
 

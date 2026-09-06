@@ -65,13 +65,13 @@ The dataset contains synthetic test cases covering:
 - **Calculation:** 2 * (recall * precision) / (recall + precision)
 - **Target:** >0.75 F1
 
-## Current Baseline (Prototype-0.4, REAL pipeline — `node tests/evaluate.js`)
+## Current Baseline (Prototype-0.5, REAL pipeline — `node tests/evaluate.js`)
 
-Real calls to `extractEntitiesRuleBased()` + `retrieveSections()` (lexical+Bhashini), 6 cases:
+Real calls to `extractEntitiesRuleBased()` + `retrieveSections()` (lexical+Bhashini+fuzzy+rarity+dedupe), 11 cases across all 8 UI languages:
 
-- **Entity Extraction Recall:** 36.7% (rule regex misses names/dates; LLM WebGPU path not exercised in Node)
-- **Statute Retrieval Recall:** 91.7% (lexical + Bhashini + typo-tolerance + rarity + dedupe; TEST-003 Telugu fixed via 356/352)
-- **Filtering Accuracy:** 66.7% (TEST-004/005 short non-actionable still accepted — gate too permissive)
+- **Entity Extraction Recall:** 60.0% (rule regex; LLM WebGPU path not exercised in Node)
+- **Statute Retrieval Recall:** 95.5% (typo-tolerant, Telugu/defamation/docs coverage, BSA-23/32/63 live)
+- **Filtering Accuracy:** 100.0% (11/11: offence-gated, advice-questions rejected, low-only hints don't auto-accept)
 - **Previous mocked baseline was 75-80% and is now deprecated.**
 
 Run: `node tests/evaluate.js`. WebGPU LLM path not exercised in Node.

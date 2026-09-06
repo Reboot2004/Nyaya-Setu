@@ -177,15 +177,24 @@ export function extractEntitiesRuleBased(narrative) {
         /([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+उसके\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)\s+ने\s+(?:मेरा\s+रास्ता|मुझे|हमला|पीटा|मारा|धमकी)/i,
         /(?:आरोपी|accused|attacked by|threatened by|beaten by)\s*[:=-]?\s*([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)/i,
         /(?:सामने|द्वारा|खिलाफ)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+)?)\s+ने/i,
-        // English subject-verb: "People hit me", "Mohan beat me", "Ramu threatened me"
-        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|neighbours|neighbors|relatives|contractor|officials|goons)\b\s+(?:hit|beat|beats|beaten|threatened|cheated|grabbed|attacked|stole|hit\s+me)\b/i
+        // English subject-verb: "People hit me", "Mohan beat me", "Rajesh slapped me"
+        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|neighbours|neighbors|relatives|contractor|officials|goons|policeman)\b\s+(?:hit|beat|beats|beaten|slapped|abused|assaulted|attacked|threatened|cheated|grabbed|stole|molested)\b/i,
+        // "Rajesh Kumar used abusive language" (adjacent — avoids "March ... used" spans)
+        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+used\s+abusive\b/,
+        // "...slapped / abused me" with a few words in between (months/days excluded below)
+        /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b[^.!?]{0,40}?\b(?:slapped|abused|assaulted|threatened|attacked|molested)\b/
     ];
+    const BAD_SUBJECT = /^(the|a|an|on|in|at|and|or|of|to|for|with|from|against|language|yesterday|today|my|me|i|they|them|he|she|it|we|you|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|मैं|मुझे|हम)$/i;
+    const LOWCASE_NOUNS = /^(people|neighbours|neighbors|relatives|contractor|officials|goons|policeman)$/i;
     for (const pat of accusedMatches) {
         const m = text.match(pat);
-        if (m && m[1] && m[1].length > 1 && !/^(the|a|an|on|in|at|yesterday|today|my|me|i|they|them|he|she|it|we|you|मैं|मुझे|हम)$/i.test(m[1].trim())) {
-            aggressor = m[1].trim();
-            break;
-        }
+        if (!m || !m[1] || m[1].length <= 1 || BAD_SUBJECT.test(m[1].trim())) continue;
+        // English names start uppercase ("against me and slapped" is not a name);
+        // known lowercase role-nouns (people, policeman, ...) pass through.
+        const cand = m[1].trim();
+        if (/^[a-z]/.test(cand) && !LOWCASE_NOUNS.test(cand.split(/\s+/).pop())) continue;
+        aggressor = cand;
+        break;
     }
     if (aggressor === 'unknown') {
         const directAccused = text.match(/([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^\s,।]+)?)\s+ने\s+(?:मेरा|मुझे|हमला|पीटा|रास्ता)/i);
@@ -209,24 +218,26 @@ export function extractEntitiesRuleBased(narrative) {
         }
     }
 
-    // 5. Extract Location
+    // 5. Extract Location (latin prepositions need word boundaries: "beat" must not match "at")
     const locMatches = [
-        /(?:के\s+सामने|के\s+पास|निकट|में|पर|ग्राम|स्थान|near|at|in|outside|opposite)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){1,3})/i,
+        /(?:के\s+सामने|के\s+पास|निकट|में|पर|ग्राम|स्थान|\bnear\b|\bat\b|\bin\b|\boutside\b|\bopposite\b)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){1,3})/i,
         /([A-Za-z\u0900-\u0D7F]+(?:\s+पंचायत\s+भवन|\s+चौराहा|\s+बाजार|\s+थाना|\s+रोड|\s+गांव))/i
     ];
     for (const pat of locMatches) {
         const m = text.match(pat);
         if (m && m[1] && m[1].length > 2 && !/^(the|a|an|my|me|i|his|her|this|that|मुझे|मेरा|मेरी|हमारा)$/i.test(m[1].trim())) {
-            incidentLoc = m[1].trim();
-            break;
+            // strip leading pronouns/articles the preposition pattern swallowed ("me badly...")
+            incidentLoc = m[1].trim().replace(/^(me|my|the|a|an|this|that|his|her|our)\s+/i, '').trim() || 'unknown';
+            if (incidentLoc.length > 2) break;
+            incidentLoc = 'unknown';
         }
     }
 
-    // 6. Offence Category Classification
+    // 6. Offence Category Classification (all 8 lexicon languages, not just EN/HI)
     const low = text.toLowerCase();
-    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल/i.test(low)) category = 'assault';
-    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मारने|गाली|गाली-गलौज/i.test(low)) category = 'intimidation';
-    else if (/fraud|cheat|dhokha|chori|stole|theft|robbery|extortion|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी/i.test(low)) category = 'property_fraud';
+    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി/i.test(low)) category = 'assault';
+    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मारने|गाली|गाली-गलौज|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|social media/i.test(low)) category = 'intimidation';
+    else if (/fraud|cheat|dhokha|chori|stole|theft|robbery|extortion|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|దొంగతనం|మోసం|డబ్బులు|திருட்டு|மோசடி|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ವಂಚನೆ|മോഷണം|വഞ്ചന/i.test(low)) category = 'property_fraud';
     else if (/woman|chhed|modesty|molest|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी/i.test(low)) category = 'women_safety';
 
     return {

@@ -70,3 +70,20 @@ export async function initOfflineIndex(getFallbackList, metadata) {
     } catch { /* ignore */ }
     return { success: false, source: 'bundled-memory' };
 }
+
+export async function clearIDBCorpus() {
+    if (!isBrowser()) return { success: false, reason: 'no-indexeddb' };
+    try {
+        const db = await openDb();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            tx.objectStore(STORE).delete('corpus');
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+        try { localStorage.removeItem(META_KEY); } catch { /* ignore */ }
+        return { success: true };
+    } catch (err) {
+        return { success: false, error: err?.message || String(err) };
+    }
+}

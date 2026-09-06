@@ -1,14 +1,19 @@
 {
     "metadata": {
-        "version": "1.0",
-        "description": "Evaluation dataset for Nyaya-Setu complaint processing pipeline (Fix #7)",
+        "version": "1.1",
+        "description": "Evaluation dataset for Nyaya-Setu complaint processing pipeline (all 8 UI languages)",
         "disclaimer": "All complaints are synthetic/anonymized for testing. Not based on real cases.",
         "languages": [
             "en",
             "hi",
-            "te"
+            "te",
+            "ta",
+            "bn",
+            "mr",
+            "kn",
+            "ml"
         ],
-        "corpus_version": "prototype-0.3"
+        "corpus_version": "prototype-0.5"
     },
     "test_cases": [
         {
@@ -105,6 +110,91 @@
             },
             "expected_sections": [
                 "BNS-115",
+                "BNS-351"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-007",
+            "language": "ta",
+            "narrative": "என்னை அடித்தார்கள், ரத்தம் வந்தது. மருத்துவமனை சென்றேன்.",
+            "expected_entities": {
+                "summary": "Physical assault with bleeding and hospital visit",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "assault"
+            },
+            "expected_sections": [
+                "BNS-115"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-008",
+            "language": "bn",
+            "narrative": "আমাকে খুনের হুমকি দিয়েছে। ভয় দেখিয়েছে।",
+            "expected_entities": {
+                "summary": "Death threats causing fear",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "intimidation"
+            },
+            "expected_sections": [
+                "BNS-351"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-009",
+            "language": "mr",
+            "narrative": "माझी चोरी झाली. पैसे चोरून नेले.",
+            "expected_entities": {
+                "summary": "Theft of money",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "property_fraud"
+            },
+            "expected_sections": [
+                "BNS-303"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-010",
+            "language": "kn",
+            "narrative": "ನನ್ನನ್ನು ಹೊಡೆದರು, ರಕ್ತ ಬಂತು.",
+            "expected_entities": {
+                "summary": "Assault with bleeding",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "assault"
+            },
+            "expected_sections": [
+                "BNS-115"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-011",
+            "language": "ml",
+            "narrative": "എന്നെ ഭീഷണിപ്പെടുത്തി, കൊല്ലുമെന്ന് പറഞ്ഞു.",
+            "expected_entities": {
+                "summary": "Threats to kill",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "intimidation"
+            },
+            "expected_sections": [
                 "BNS-351"
             ],
             "should_accept": true,

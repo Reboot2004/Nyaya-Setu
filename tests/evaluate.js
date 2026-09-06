@@ -26,11 +26,12 @@ function isActionableComplaint(text, entities, retrieved) {
     if (words.length < 4) return false;
     const junkPatterns = [/\bi am doing good\b/, /\bhow are you\b/, /\bgood morning\b/, /\bjust testing\b/, /\brandom\b/, /\bhello\b.*\bthank you\b/];
     if (junkPatterns.some((p) => p.test(low))) return false;
-    const issueKeywords = ['threat', 'threatened', 'assault', 'hit', 'abuse', 'harass', 'fraud', 'cheat', 'stole', 'extortion', 'wage', 'salary', 'payment', 'dhamki', 'maar', 'marpit', 'gaali', 'paisa', 'rok liya', 'dhokha', 'धमकी', 'मारपीट', 'गाली', 'वेतन', 'पैसे', 'हमला', 'దాడి', 'బెదిరింపు', 'డబ్బు', 'హింస', 'சம்பளம்', 'হুমকি', 'মারধর', 'धमकी', 'मारहाण', 'ಬೆದರಿಕೆ', 'ಹಲ್ಲೆ', 'ഭീഷണി', 'മർദ്ദനം', 'chori', 'forgery', 'beating', 'police', 'fir', 'station', 'money', 'property', 'land', 'kabza', 'struck'];
+    const issueKeywords = ['threat', 'threatened', 'assault', 'hit', 'abuse', 'harass', 'fraud', 'cheat', 'stole', 'extortion', 'wage', 'salary', 'payment', 'dhamki', 'maar', 'marpit', 'gaali', 'paisa', 'rok liya', 'dhokha', 'धमकी', 'मारपीट', 'गाली', 'वेतन', 'पैसे', 'हमला', 'దాడి', 'బెదిరింపు', 'డబ్బు', 'హింస', 'சம்பளம்', 'হুমকি', 'মারধর', 'धमकी', 'मारहाण', 'ಬೆದರಿಕೆ', 'ಹಲ್ಲೆ', 'ഭീഷണി', 'മർദ്ദനം', 'chori', 'forgery', 'beating', 'money', 'property', 'land', 'kabza', 'struck', 'drugged', 'poison', 'kidnap', 'stalking', 'dowry', 'rape', 'murder', 'robbery', 'theft', 'snatch', 'marhan', 'chori', 'chhed', 'அடி', 'ரத்தம்', 'மிரட்டல்', 'திருட்டு', 'மோசடி', 'ಹೊಡೆ', 'ರಕ್ತ', 'ಬೆದರಿಕೆ', 'ಕಳ್ಳತನ', 'ವಂಚನೆ', 'కొట్ట', 'దాడి', 'బెదిరి', 'దొంగ', 'మోసం', 'మర్ద', 'തല്ല', 'ഭീഷണ', 'മോഷ', 'വഞ്ച', 'চুরি', 'ছেড়', 'मारहाण', 'छेड'];
     const hasIssueSignal = issueKeywords.some((k) => low.includes(k.toLowerCase()));
-    const hasEntitySignal = entities && ((entities.aggressor && entities.aggressor !== 'unknown') || (entities.events || []).length > 0 || (entities.summary && entities.summary.length > 10));
-    const hasStatuteSignal = Array.isArray(retrieved) && retrieved.length > 0;
-    return hasIssueSignal || hasEntitySignal || hasStatuteSignal;
+    const hasStrongStatute = Array.isArray(retrieved) && retrieved.some((r) => r.confidence === 'high' || r.confidence === 'medium');
+    const isQuestion = /\?\s*$/.test(value) || /^(क्या|kya |should i\b|do i need\b|can i\b)/i.test(low);
+    if (isQuestion && !hasStrongStatute && !hasIssueSignal) return false;
+    return hasIssueSignal || hasStrongStatute;
 }
 
 // Category families: dataset uses fine labels, extractor uses coarse taxonomy
@@ -84,7 +85,7 @@ class EvaluationFramework {
         return { recall, precision, f1: 2 * (recall * precision) / (recall + precision + 0.0001) };
     }
     async evaluate() {
-        console.log('\n=== Nyaya-Setu Evaluation (REAL pipeline, prototype-0.4) ===\n');
+        console.log('\n=== Nyaya-Setu Evaluation (REAL pipeline, prototype-0.5) ===\n');
         console.log(`Running ${this.testCases.length} test cases...\n`);
         for (const tc of this.testCases) {
             this.metrics.total++;
@@ -116,7 +117,7 @@ class EvaluationFramework {
         console.log(`  Entity Extraction Recall: ${avg(this.metrics.entityRecall)}%`);
         console.log(`  Statute Retrieval Recall: ${avg(this.metrics.sectionRecall)}%`);
         console.log(`  Filtering Accuracy: ${avg(this.metrics.filteringAccuracy)}%`);
-        console.log(`\nCorpus: prototype-0.4 (~45 curated / 889 slots) | Retrieval: lexical+Bhashini | Extractor: rule-based`);
+        console.log(`\nCorpus: prototype-0.5 (~48 curated / 892 slots incl. BSA) | Retrieval: lexical+Bhashini+fuzzy+rarity | Extractor: rule-based`);
         console.log('Note: LLM WebGPU path not exercised in Node; rule engine is the offline fallback.\n');
     }
 }

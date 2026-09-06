@@ -195,24 +195,4 @@ export function getBhashiniNormalization(narrative) {
     return normalizeWithBhashini(narrative || '');
 }
 
-/**
- * Sync statutory corpus from a remote verified JSON feed.
- */
-export async function syncStatutesFromSource(sourceUrl) {
-    try {
-        const url = sourceUrl || 'https://raw.githubusercontent.com/Reboot2004/Nyaya-Setu/main/data/statutes_feed.json';
-        const res = await fetch(url, { cache: 'no-cache' });
-        if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-            saveDynamicStatutes(data);
-            return { success: true, count: data.length, source: url };
-        }
-        throw new Error('Invalid statute schema.');
-    } catch (err) {
-        console.warn('Remote sync error, using local corpus:', err);
-        return { success: false, error: err.message };
-    }
-}
-
 export { STATUTE_METADATA, getLoadedStatutes, saveDynamicStatutes, resetToDefaultStatutes, BASE_STATUTES };
