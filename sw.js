@@ -1,7 +1,7 @@
 // Nyaya-Setu Service Worker — offline-first PWA caching (prototype).
-// Caches app shell + data + src. AI model (~700MB) is NOT pre-cached and loads
-// only if citizen opts in; voice transcription still needs network.
-const CACHE = 'nyaya-setu-v3';
+// Local-only: app shell cached. Llama-3.2-1B + Guard-3-1B weights are NOT
+// pre-cached here; WebLLM caches them in IndexedDB on first auto-download.
+const CACHE = 'nyaya-setu-v4';
 const ASSETS = [
     './',
     './index.html',
@@ -14,7 +14,7 @@ const ASSETS = [
     './src/output.js',
     './src/ui_translations.js',
     './src/safety.js',
-    './src/cloud_fallback.js',
+    './src/guard.js',
     './src/cpgrams.js',
     './src/offline_store.js',
     './src/voice.js',

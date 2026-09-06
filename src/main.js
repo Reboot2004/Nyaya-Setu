@@ -3,7 +3,7 @@ import { retrieveSections, getLoadedStatutes, syncStatutesFromSource, resetToDef
 import { complaintToHtml, downloadComplaint, speakRightsBriefing, stopAudio } from './output.js';
 import { UI_TEXT } from './ui_translations.js';
 import { screenInput } from './safety.js';
-import { isCloudFallbackEnabled, setCloudFallbackEnabled, extractEntitiesViaCloud } from './cloud_fallback.js';
+import { guardWithLocalModel as guardCheck, unloadGuard } from './guard.js';
 import { toCPGRAMSSchema, downloadCPGRAMSJson } from './cpgrams.js';
 import { initOfflineIndex } from './offline_store.js';
 import { detectEmergency, EMERGENCY_CONTACTS } from './emergency.js';
@@ -444,7 +444,7 @@ $('runBtn').onclick = async () => {
         return;
     }
 
-    // Prototype safety screen (rule-based; Llama Guard hook in src/safety.js)
+    // Safety: instant rule screen + local quantized Guard-3-1B (no cloud, best-effort)
     const safety = screenInput(narrative);
     if (!safety.ok) {
         alert(`Input blocked for safety (${safety.reasons.join(', ')}). Please rephrase factually.`);
@@ -454,6 +454,15 @@ $('runBtn').onclick = async () => {
     if (safety.piiHint && $('langHint')) {
         $('langHint').textContent = 'Note: avoid Aadhaar/bank numbers in the narrative.';
     }
+    try {
+        if ($('langHint')) $('langHint').textContent = 'Local safety check…';
+        const g = await guardCheck(narrative, 12000);
+        if (!g.ok) {
+            alert(`Blocked by local safety (${g.source}: ${g.reasons.join(', ')}). Please rephrase factually.`);
+            if ($('langHint')) $('langHint').textContent = `Blocked: ${g.reasons.join(', ')}`;
+            return;
+        }
+    } catch { /* guard best-effort; rule screen already passed */ }
 
     // Blocking emergency interstitial (offline, runnable everywhere)
     const emg = detectEmergency(narrative);
@@ -480,18 +489,7 @@ $('runBtn').onclick = async () => {
 
         setStep(2);
         let entities = await extractEntities(narrative);
-        // Opt-in cloud refinement only (never silent). Falls back to on-device result.
-        try {
-            if (isCloudFallbackEnabled()) {
-                const cloudEnt = await extractEntitiesViaCloud(narrative);
-                if (cloudEnt && typeof cloudEnt === 'object') {
-                    entities = { ...entities, ...cloudEnt, events: [narrative] };
-                    if ($('langHint')) $('langHint').textContent = 'Cloud refinement applied (opt-in).';
-                }
-            }
-        } catch (cloudErr) {
-            console.warn('Cloud fallback skipped:', cloudErr?.message);
-        }
+        // Local-only: no cloud refinement. Grievance never leaves device.
 
         // Auto-fill intake form fields if user hadn't typed them
         if ($('cName') && !$('cName').value && entities.complainantName && entities.complainantName !== 'unknown') {
@@ -608,22 +606,16 @@ if ($('cpgramsBtn')) {
 }
 
 // Opt-in cloud fallback toggle (privacy-first, off by default)
-if ($('cloudOptin')) {
-    $('cloudOptin').checked = isCloudFallbackEnabled();
-    $('cloudOptin').addEventListener('change', (e) => {
-        const on = !!e.target.checked;
-        setCloudFallbackEnabled(on);
-        if ($('langHint')) $('langHint').textContent = on ? 'Cloud assist ON (opt-in): narrative may leave device.' : 'Cloud assist OFF: fully on-device.';
-    });
-}
+// Local-only build: cloud fallback removed. No grievance text ever leaves device.
+// (src/cloud_fallback.js retained unimported for reference; not bundled in pipeline.)
 
-// Opt-in on-device AI assist (no auto 700MB download; runnable on tabs by default)
+// On-device AI toggle (local-only; rule engine fallback for tabs)
 if ($('aiOptin')) {
     const aiNote = $('aiOptinNote');
     const refreshAiNote = () => {
         const on = $('aiOptin').checked;
         const gpu = isWebGPUSupported();
-        if (aiNote) aiNote.textContent = !gpu ? 'WebGPU not detected — rule engine will be used.' : on ? 'AI auto-download ON: fetching once (~700MB), then offline.' : 'AI OFF: instant rule engine.';
+        if (aiNote) aiNote.textContent = !gpu ? 'WebGPU not detected — rule engine will be used.' : on ? 'AI + Guard auto-download ON: Llama-3.2-1B + Guard-3-1B q4, cached offline.' : 'AI OFF: instant rule engine.';
     };
     $('aiOptin').checked = isAIAssistEnabled() && isWebGPUSupported();
     refreshAiNote();
@@ -636,13 +628,13 @@ if ($('aiOptin')) {
         } else {
             setAIAssistEnabled(on);
             if (on && isWebGPUSupported()) {
-                badge.textContent = '⏳ AI model downloading…';
+                badge.textContent = '⏳ AI models downloading…';
                 ensureEngine().then(() => {
                     badge.textContent = '✓ AI Ready';
                     badge.classList.add('ok');
                 }).catch(() => { badge.textContent = '⚡ Instant Mode (rule-based, offline)'; });
             }
-            if (!on) { try { resetEngine(); } catch { /* ignore */ } }
+            if (!on) { try { resetEngine(); } catch { /* ignore */ } try { unloadGuard(); } catch { /* ignore */ } }
         }
         refreshAiNote();
     });

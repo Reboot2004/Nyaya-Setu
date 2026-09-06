@@ -520,18 +520,13 @@
                 <button id="stopAudioBtn" class="danger">⏹ Stop Audio</button>
                 <button id="cpgramsBtn" class="secondary">🧾 Export CPGRAMS JSON</button>
             </div>
-            <div class="row" style="margin-top:8px;font-size:0.75rem;color:#475569;">
-                <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
-                    <input type="checkbox" id="cloudOptin" style="width:15px;height:15px;"> Allow opt-in cloud assist (off by default; narrative may leave device)
-                </label>
-            </div>
             <div class="row" style="margin-top:6px;font-size:0.75rem;color:#475569;">
                 <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
-                    <input type="checkbox" id="aiOptin" style="width:15px;height:15px;" checked> On-device AI fact assist (auto-downloads ~700MB once, then offline)
+                    <input type="checkbox" id="aiOptin" style="width:15px;height:15px;" checked> On-device AI (auto-downloads once, then offline · never sends data out)
                 </label>
                 <span id="aiOptinNote" style="font-size:0.72rem;color:#64748b;"></span>
             </div>
-            <p style="font-size:0.75rem;color:#64748b;margin-top:6px;">Drafting is deterministic from retrieved sections; LLM (where available) only refines fact extraction. Voice transcription needs network; typing works fully offline.</p>
+            <p style="font-size:0.75rem;color:#64748b;margin-top:6px;">Local-only: Llama-3.2-1B facts + Guard-3-1B safety (quantized q4, cached). Drafting deterministic from retrieved sections. Typing fully offline.</p>
         </section>
 
         <!-- Laws Explorer & Corpus Provenance Card -->

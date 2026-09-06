@@ -21,12 +21,19 @@ export function getActiveModelId() {
 }
 
 async function createEngine(modelId) {
+    // Smooth on tabs: small context (1024), persistent IndexedDB weight cache
+    // so the ~700MB downloads once then runs offline.
+    let appConfig;
+    try {
+        appConfig = { ...webllm.prebuiltAppConfig, useIndexedDBCache: true };
+    } catch { appConfig = undefined; }
     return webllm.CreateMLCEngine(modelId, {
         initProgressCallback: (report) => {
             if (loadingProgressCb) loadingProgressCb(report);
         },
-        context_window_size: 2048,
-        sliding_window_size: -1
+        context_window_size: 1024,
+        sliding_window_size: 512,
+        ...(appConfig ? { appConfig } : {})
     });
 }
 

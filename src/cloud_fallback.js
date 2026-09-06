@@ -1,7 +1,6 @@
-// Nyaya-Setu opt-in cloud fallback (disabled by default).
-// Privacy-first: grievance text is NEVER sent off-device unless the citizen
-// explicitly opts in via the UI checkbox. Prototype uses any OpenAI-compatible
-// chat endpoint configured at runtime; no hardcoded keys or URLs.
+// DEPRECATED — local-only build. Not imported by src/main.js.
+// Retained for reference; pipeline never sends grievance text off-device.
+// Use on-device src/llm.js (facts) + src/guard.js (safety) instead.
 const FLAG_KEY = 'nyaya_setu_cloud_optin_v1';
 let endpointOverride = null;
 
