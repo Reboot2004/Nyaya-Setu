@@ -18,6 +18,7 @@ cd nyaya-setu
 npm install
 npm run dev        # open http://localhost:5173
 node tests/evaluate.js  # 27-scenario suite: fused MiniLM+lexical+Bhashini, safety screen, 8 langs
+node scripts/verify_no_bleed.mjs  # regression: LLM-shaped JSON garbage never reaches form or draft
 node scripts/build_vectors.mjs  # regenerate statute embeddings (needs network once)
 ```
 

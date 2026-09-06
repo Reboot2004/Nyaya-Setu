@@ -25,11 +25,23 @@ function t(key, fallback = '') {
 function cleanVal(v, fallback = 'unknown') {
     let cur = v;
     let guard = 0;
+    if (typeof cur === 'string') {
+        const t = cur.trim();
+        if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+            try { cur = JSON.parse(t); } catch { /* not JSON — continue as string */ }
+        }
+    }
     while (cur !== null && typeof cur === 'object' && guard++ < 4) {
         if (Array.isArray(cur)) { cur = cur[0]; continue; }
         const keys = Object.keys(cur);
         if (!keys.length) { cur = fallback; break; }
         cur = cur.name ?? cur.description ?? cur.date ?? cur.place ?? cur.value ?? cur.text ?? fallback;
+        if (typeof cur === 'string') {
+            const t = cur.trim();
+            if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+                try { cur = JSON.parse(t); continue; } catch { /* keep string */ }
+            }
+        }
     }
     if (cur === null || cur === undefined) return fallback;
     let s = String(cur).trim().replace(/^["'`\s]+|["'`\s]+$/g, '').trim();

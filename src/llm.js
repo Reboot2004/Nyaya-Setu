@@ -268,16 +268,30 @@ export function extractEntitiesRuleBased(narrative) {
 const ALLOWED_CATEGORIES = new Set(['assault', 'intimidation', 'property_fraud', 'women_safety', 'procedure']);
 
 // Coerce any LLM/rule value to a clean plain string. Unwraps single-key objects
-// like {name}, {description}, {date}, {place}, strips surrounding quotes/braces,
+// like {name}, {description}, {date}, {place} — including when the model returns
+// them STRINGIFIED ('{"name": "Unknown", ...}'), strips surrounding quotes/braces,
 // and maps "unknown"-variants to 'unknown'. Never returns objects.
 function cleanStr(v, fallback = 'unknown') {
     let cur = v;
     let guard = 0;
+    // parse stringified JSON blobs first ('{"name": ...}' -> object -> unwrap below)
+    if (typeof cur === 'string') {
+        const t = cur.trim();
+        if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+            try { cur = JSON.parse(t); } catch { /* not JSON — continue as string */ }
+        }
+    }
     while (cur !== null && typeof cur === 'object' && guard++ < 4) {
         if (Array.isArray(cur)) { cur = cur[0]; continue; }
         const keys = Object.keys(cur);
         if (keys.length === 0) { cur = fallback; break; }
         cur = cur.name ?? cur.description ?? cur.date ?? cur.place ?? cur.value ?? cur.text ?? cur[0] ?? fallback;
+        if (typeof cur === 'string') {
+            const t = cur.trim();
+            if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+                try { cur = JSON.parse(t); continue; } catch { /* keep string */ }
+            }
+        }
     }
     if (cur === null || cur === undefined) return fallback;
     let s = String(cur).trim();
