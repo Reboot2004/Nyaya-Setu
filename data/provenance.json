@@ -12,5 +12,21 @@
     "https://www.aikosh.in/",
     "https://legislative.gov.in/"
   ],
-  "note": "Prototype: ~45 hand-curated sections, rest placeholders. Verify before filing."
+  "note": "Prototype: ~45 hand-curated sections, rest placeholders. Verify before filing.",
+  "dialectSample": {
+    "source": "ai4bharat/samanantar (HuggingFace)",
+    "license": "CC-BY-NC-4.0",
+    "pairs": 2800,
+    "langs": [
+      "hi",
+      "te",
+      "ta",
+      "bn",
+      "mr",
+      "kn",
+      "ml"
+    ],
+    "file": "data/samanantar_sample.json",
+    "note": "Vetted complaint-register phrases curated into data/bhashini_lexicon.js; raw sample not shipped in app logic"
+  }
 }
