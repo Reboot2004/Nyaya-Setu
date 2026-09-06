@@ -62,9 +62,11 @@ const PDF_TEXT = {
 
 export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en') {
     // Include source attribution for each statute (Fix #6)
-    const sections = retrieved.map(({ statute, source }) => {
+    const sections = retrieved.map(({ statute, source, confidence }) => {
         const sourceUrl = statute.officialUrl || 'https://www.indiacode.nic.in/';
-        return `<li><strong>${statute.code} Section ${statute.section}</strong> — ${statute.title}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${source || 'India Code'}</a></span></li>`;
+        const conf = confidence ? ` · confidence: ${confidence}` : '';
+        const curated = statute.triggers && statute.triggers.length > 5 && !String(statute.title).startsWith('BNS Section') && !String(statute.title).startsWith('BNSS Section') ? '' : ' · placeholder entry — verify';
+        return `<li><strong>${statute.code} Section ${statute.section}</strong> — ${statute.title}${conf}${curated}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${source || 'India Code'}</a></span></li>`;
     }).join('');
     const englishText = complaint?.english || complaint?.native || complaint?.hindi || '';
     const nativeText = complaint?.native || complaint?.hindi || complaint?.english || '';
@@ -79,7 +81,7 @@ export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en
   a{color:#0284c7;text-decoration:none}</style></head><body>
   <h1>${labels.title}</h1>
   <div class="meta">${labels.meta} | ${labels.dateLabel}: ${new Date().toLocaleDateString('en-IN')}</div>
-  <div class="version">${labels.corpusVersion}</div>
+  <div class="version">Prototype corpus v0.4 (~45 curated / 889 slots) · Verify at indiacode.nic.in · Not legal advice</div>
     <pre style="white-space:pre-wrap;font-family:Georgia,serif">${englishText}\n\n---\n\n${nativeText}</pre>
   <h2>${labels.sectionsTitle}</h2><ul>${sections}</ul>
   <p class="disc">${labels.disclaimer}</p>
@@ -97,18 +99,33 @@ export function speakRightsBriefing(lang = 'en') {
         alert('Audio briefing not supported in this browser.');
         return;
     }
+    // Static fallback if dynamic import fails (offline / first load)
+    const FALLBACK_EN = [
+        'This is a computer-assisted complaint draft, not legal advice and not an FIR.',
+        'Under BNSS Section 173, police must register cognizable offences, including as Zero FIR, and give a free copy.',
+        'Free legal aid: NALSA helpline 15100. In immediate danger, call 112 first.'
+    ];
     import('../data/statutes.js').then(({ RIGHTS_BRIEFING }) => {
         const synth = window.speechSynthesis;
         synth.cancel();
 
         const selectedLang = (lang || 'en').toLowerCase();
-        const lines = RIGHTS_BRIEFING[selectedLang] || RIGHTS_BRIEFING.en;
-        const voiceLangCode = selectedLang === 'hi' ? 'hi-IN' : selectedLang === 'te' ? 'te-IN' : 'en-IN';
+        const lines = (RIGHTS_BRIEFING && (RIGHTS_BRIEFING[selectedLang] || RIGHTS_BRIEFING.en)) || FALLBACK_EN;
+        const VOICE_MAP = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN', ta: 'ta-IN', bn: 'bn-IN', mr: 'mr-IN', kn: 'kn-IN', ml: 'ml-IN' };
+        const voiceLangCode = VOICE_MAP[selectedLang] || 'en-IN';
 
         for (const line of lines) {
             const u = new SpeechSynthesisUtterance(line);
             u.lang = voiceLangCode;
             u.rate = 0.95;
+            synth.speak(u);
+        }
+    }).catch(() => {
+        const synth = window.speechSynthesis;
+        synth.cancel();
+        for (const line of FALLBACK_EN) {
+            const u = new SpeechSynthesisUtterance(line);
+            u.lang = 'en-IN';
             synth.speak(u);
         }
     });

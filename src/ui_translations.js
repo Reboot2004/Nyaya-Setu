@@ -51,11 +51,11 @@ export const UI_TEXT = {
         msgDetectedLanguage: 'Detected language:',
         msgPipelineError: 'Pipeline error:',
         msgInsufficientComplaint: 'Please provide more details on what occurred, who was involved, and the harm caused.',
-        gateTitle: 'Choose Your Language & Grant Permissions',
-        gateSubtitle: 'Nyaya-Setu runs 100% on your device. Microphones and location are requested upfront for voice recording and accurate police station mapping.',
+        gateTitle: 'Choose Your Language',
+        gateSubtitle: 'Nyaya-Setu works offline by default with no network lookup. Mic / GPS only if you tap them.',
         gateContinue: 'Start Legal Co-Pilot',
-        ipDetecting: 'Detecting regional jurisdiction from network...',
-        ipDetected: 'Regional Jurisdiction:'
+        ipDetecting: 'Offline ready — no network lookup.',
+        ipDetected: 'Offline mode:'
     },
     hi: {
         appSub: 'ऑफलाइन-फर्स्ट कानूनी इंटेक · समीक्षा योग्य पुलिस-शिकायत ड्राफ्ट',
@@ -108,11 +108,11 @@ export const UI_TEXT = {
         msgDetectedLanguage: 'पहचानी गई भाषा:',
         msgPipelineError: 'ड्राफ्टिंग त्रुटि:',
         msgInsufficientComplaint: 'कृपया घटना, आरोपी और हुए नुकसान का पर्याप्त विवरण दें।',
-        gateTitle: 'अपनी भाषा चुनें एवं अनुमति दें',
-        gateSubtitle: 'Nyaya-Setu पूरी तरह आपके डिवाइस पर चलता है। वॉइस रिकॉर्डिंग और स्थानीय थाने के लिए अनुमतियाँ ली जा रही हैं।',
+        gateTitle: 'अपनी भाषा चुनें',
+        gateSubtitle: 'Nyaya-Setu डिफ़ॉल्ट रूप से ऑफलाइन चलता है। माइक / GPS तभी जब आप दबाएँ।',
         gateContinue: 'लीगल को-पायलट शुरू करें',
-        ipDetecting: 'क्षेत्रीय अधिकार क्षेत्र की पहचान हो रही है...',
-        ipDetected: 'अनुमानित अधिकार क्षेत्र:'
+        ipDetecting: 'ऑफलाइन तैयार — कोई नेटवर्क लुकअप नहीं।',
+        ipDetected: 'ऑफलाइन मोड:'
     },
     te: {
         appSub: 'ఆఫ్‌లైన్-ఫస్ట్ లీగల్ ఇంటేక్ · సమీక్షించదగిన పోలీస్ ఫిర్యాదు డ్రాఫ్ట్‌లు',

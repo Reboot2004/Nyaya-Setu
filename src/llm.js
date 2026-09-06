@@ -61,6 +61,27 @@ export function isWebGPUSupported() {
     return typeof navigator !== 'undefined' && 'gpu' in navigator;
 }
 
+// AI assist is AUTOMATIC where WebGPU exists: model downloads once (~700MB),
+// then cached offline. Opt-out via setAIAssistEnabled(false). Rule engine stays
+// usable during download so low-end tabs never block.
+const AI_OPTIN_KEY = 'nyaya_setu_ai_optin_v1';
+export function isAIAssistEnabled() {
+    try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            const v = localStorage.getItem(AI_OPTIN_KEY);
+            if (v === '0') return false;
+            if (v === '1') return true;
+            // default: auto-ON (automatic download)
+            return true;
+        }
+    } catch { /* ignore */ }
+    return true;
+}
+export function setAIAssistEnabled(on) {
+    try { if (typeof window !== 'undefined' && window.localStorage) localStorage.setItem(AI_OPTIN_KEY, on ? '1' : '0'); } catch { /* ignore */ }
+    return !!on;
+}
+
 export function normalizeLanguageCode(code) {
     const raw = (code || 'en').toLowerCase().trim();
     if (raw.startsWith('hi')) return 'hi';
@@ -210,7 +231,8 @@ export function extractEntitiesRuleBased(narrative) {
 export async function extractEntities(narrative) {
     const ruleEntities = extractEntitiesRuleBased(narrative);
 
-    if (!isWebGPUSupported()) {
+    // Runnable by default: skip 700MB WebGPU download unless explicitly opted in.
+    if (!isAIAssistEnabled() || !isWebGPUSupported()) {
         return ruleEntities;
     }
 
@@ -639,6 +661,36 @@ ${sectionsBlock}
 }
 
 export async function draftComplaint(complainantInfo, entities, retrieved, langLabel) {
+    // Deterministic template drafting (prototype). LLM never invents section numbers;
+    // sections come only from retrieval.js. LLM is used only for optional fact extraction.
     const selectedLanguage = normalizeLanguageCode(langLabel) || 'en';
     return buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, selectedLanguage);
+}
+
+// Honest engine status + optional perf measurement (no fake 10-12 tok/s claims).
+export function getEngineStatus() {
+    if (engine && activeModelId) return { mode: 'ai', model: activeModelId };
+    if (isWebGPUSupported()) return { mode: 'webgpu-available', model: null };
+    return { mode: 'rule-only', model: null };
+}
+
+export async function measureInferenceSpeed(samplePrompt = 'Extract: name, date, place.') {
+    if (!isWebGPUSupported()) return { supported: false, mode: 'rule-only', note: 'WebGPU unavailable; rule engine ~1-3ms (see EVALUATION.md).' };
+    try {
+        const eng = await ensureEngine();
+        const t0 = performance.now();
+        const reply = await eng.chat.completions.create({
+            messages: [{ role: 'user', content: samplePrompt }],
+            temperature: 0.1,
+            max_tokens: 32
+        });
+        const dt = (performance.now() - t0) / 1000;
+        const text = reply.choices[0]?.message?.content || '';
+        const toks = Math.max(1, Math.round(text.length / 4));
+        const tps = dt > 0 ? +(toks / dt).toFixed(1) : 0;
+        const memMB = (performance?.memory?.usedJSHeapSize ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null);
+        return { supported: true, mode: 'ai', tokens: toks, seconds: +dt.toFixed(2), tokensPerSec: tps, jsHeapMB: memMB, model: activeModelId };
+    } catch (err) {
+        return { supported: false, mode: 'rule-only', error: err?.message || String(err) };
+    }
 }

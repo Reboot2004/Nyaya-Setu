@@ -204,20 +204,27 @@ for (let i = 1; i <= 531; i++) {
 
 console.log(`Total generated statutes: ${allStatutes.length} (BNS: 358, BNSS: 531)`);
 
-const outputCode = `// Nyaya-Setu Complete Statutory Corpus
-// Full Official Database of Bharatiya Nyaya Sanhita (BNS 2023 - 358 Sections) 
-// and Bharatiya Nagarik Suraksha Sanhita (BNSS 2023 - 531 Sections).
+const outputCode = `// Nyaya-Setu Prototype Statutory Corpus (NOT a complete official database)
+// Structure covers BNS 2023 (358 sections) + BNSS 2023 (531 sections) = 889 slots,
+// but only ~45 sections are hand-curated with real triggers/text. The rest are
+// clearly-marked placeholders generated from chapter structure. Always verify
+// against Official Gazette / India Code before filing.
 // Primary Source: Official Gazette of India / India Code (https://www.indiacode.nic.in/)
 // Vernacular Mirror: AIKosh Legal Repository (https://www.aikosh.in/)
 
 export const STATUTE_METADATA = {
-    disclaimer: 'Complete BNS 2023 (358 sections) & BNSS 2023 (531 sections) offline corpus. Official reference: https://www.indiacode.nic.in/',
+    disclaimer: 'Prototype corpus: 889 slots with ~45 hand-curated sections; remainder are placeholders. NOT authoritative. Verify against https://www.indiacode.nic.in/ before submission.',
     jurisdiction: 'Republic of India (BNS/BNSS 2023 effective 1 July 2024)',
-    version: '1.0-complete-statutes',
-    totalSections: ${allStatutes.length},
+    version: '0.4-prototype-partial',
+    totalSections: \${allStatutes.length},
+    curatedSections: 45,
+    placeholderSections: 844,
     bnsSections: 358,
     bnssSections: 531,
-    lastUpdated: '2026-09-02',
+    corpusKind: 'prototype-lexical',
+    retrievalMethod: 'lexical-trigger scoring (no vector embeddings yet)',
+    lastUpdated: '2026-09-05',
+    effectiveDate: '2024-07-01',
     officialSources: [
         'https://www.indiacode.nic.in/',
         'https://www.aikosh.in/',
@@ -255,6 +262,60 @@ export function resetToDefaultStatutes() {
     catch (e) { console.error('Failed to reset:', e); }
     return BASE_STATUTES;
 }
+
+// Procedural-rights audio briefing (prototype text, not legal advice).
+// NOTE: generator preserves this block — do not delete. If regenerating, this
+// static copy is re-emitted so data/statutes.js never loses RIGHTS_BRIEFING.
+export const RIGHTS_BRIEFING = {
+  en: [
+    'This is a computer-assisted complaint draft, not legal advice and not an FIR.',
+    'Under BNSS Section 173, police must register cognizable offences, including as Zero FIR at any station, and give you a free copy under Section 173 sub-section 2.',
+    'If the station refuses, you may approach the Superintendent of Police or Magistrate with a written copy. Keep a dated copy for yourself.',
+    'Free legal aid is available on NALSA helpline 15100. In immediate danger, call emergency 112 first.'
+  ],
+  hi: [
+    'यह कंप्यूटर-सहायित शिकायत मसौदा है, कानूनी सलाह या FIR नहीं।',
+    'BNSS धारा 173 के तहत संज्ञेय अपराध दर्ज करना अनिवार्य है, किसी भी थाने में Zero FIR सहित, और धारा 173 उपधारा 2 के तहत निशुल्क प्रति मिलनी चाहिए।',
+    'यदि थाना मना करे तो पुलिस अधीक्षक या मजिस्ट्रेट को लिखित प्रति दें। अपनी दिनांकित प्रति रखें।',
+    'निशुल्क कानूनी सहायता NALSA हेल्पलाइन 15100 पर उपलब्ध है। तत्काल खतरे में पहले 112 पर कॉल करें।'
+  ],
+  te: [
+    'ఇది కంప్యూటర్ సహాయంతో తయారైన ఫిర్యాదు డ్రాఫ్ట్ మాత్రమే; న్యాయ సలహా కాదు, FIR కాదు.',
+    'BNSS సెక్షన్ 173 ప్రకారం కాగ్నిజబుల్ నేరాన్ని ఏ స్టేషన్‌లో అయినా Zero FIR గా నమోదు చేయాలి, సెక్షన్ 173 సబ్-సెక్షన్ 2 ప్రకారం ఉచిత కాపీ ఇవ్వాలి.',
+    'స్టేషన్ నిరాకరిస్తే SP లేదా మేజిస్ట్రేట్‌కు లిఖితపూర్వక కాపీ ఇవ్వండి. తేదీ ఉన్న కాపీని మీ వద్ద ఉంచండి.',
+    'ఉచిత న్యాయ సహాయం NALSA 15100 లో అందుబాటులో ఉంది. ప్రమాదంలో ఉంటే ముందుగా 112 కు కాల్ చేయండి.'
+  ],
+  ta: [
+    'இது கணினி உதவியுடன் உருவாக்கப்பட்ட புகார் வரைவு; சட்ட ஆலோசனை அல்ல, FIR அல்ல.',
+    'BNSS பிரிவு 173-ன் கீழ் காவல்துறை புகாரை Zero FIR ஆகவும் பதிவு செய்ய வேண்டும், பிரிவு 173 உட்பிரிவு 2-ன் கீழ் இலவச நகல் தர வேண்டும்.',
+    'மறுத்தால் SP அல்லது Magistrate-இடம் எழுத்து நகல் கொடுங்கள். தேதியிட்ட நகலை வைத்திருங்கள்.',
+    'இலவச சட்ட உதவி NALSA 15100. ஆபத்தில் இருந்தால் முதலில் 112-ஐ அழையுங்கள்.'
+  ],
+  bn: [
+    'এটি কম্পিউটার-সহায়িত অভিযোগের খসড়া; আইনি পরামর্শ বা FIR নয়।',
+    'BNSS ধারা 173 অনুযায়ী আমলযোগ্য অপরাধ Zero FIR সহ নথিভুক্ত করতে হবে এবং 173 উপধারা 2 অনুযায়ী বিনামূল্যে কপি দিতে হবে।',
+    'থানা অস্বীকার করলে SP বা ম্যাজিস্ট্রেটের কাছে লিখিত কপি দিন। তারিখসহ কপি রাখুন।',
+    'বিনামূল্যে আইনি সহায়তা NALSA 15100। বিপদে থাকলে প্রথমে 112-তে কল করুন।'
+  ],
+  mr: [
+    'हा संगणक-सहाय्यित तक्रार मसुदा आहे; कायदेशीर सल्ला किंवा FIR नाही.',
+    'BNSS कलम 173 नुसार दखलपात्र गुन्हा Zero FIR सह नोंदवणे बंधनकारक आहे आणि कलम 173 पोटकलम 2 नुसार मोफत प्रत मिळाली पाहिजे.',
+    'ठाण्याने नकार दिल्यास SP किंवा दंडाधिकाऱ्यांकडे लेखी प्रत द्या. दिनांकित प्रत स्वतःकडे ठेवा.',
+    'मोफत कायदेशीर मदत NALSA 15100. तात्काळ धोक्यात प्रथम 112 वर कॉल करा.'
+  ],
+  kn: [
+    'ಇದು ಕಂಪ್ಯೂಟರ್ ಸಹಾಯದ ದೂರು ಕರಡು ಮಾತ್ರ; ಕಾನೂನು ಸಲಹೆಯಲ್ಲ, FIR ಅಲ್ಲ.',
+    'BNSS ಕಲಂ 173 ರ ಅಡಿಯಲ್ಲಿ ಪೊಲೀಸರು Zero FIR ಸೇರಿ ದೂರನ್ನು ದಾಖಲಿಸಬೇಕು ಮತ್ತು 173(2) ರಂತೆ ಉಚಿತ ಪ್ರತಿ ನೀಡಬೇಕು.',
+    'ಠಾಣೆ ನಿರಾಕರಿಸಿದರೆ SP ಅಥವಾ ಮ್ಯಾಜಿಸ್ಟ್ರೇಟ್‌ಗೆ ಲಿಖಿತ ಪ್ರತಿ ನೀಡಿ. ದಿನಾಂಕದ ಪ್ರತಿ ಇಟ್ಟುಕೊಳ್ಳಿ.',
+    'ಉಚಿತ ಕಾನೂನು ಸಹಾಯ NALSA 15100. ಅಪಾಯದಲ್ಲಿದ್ದರೆ ಮೊದಲು 112 ಗೆ ಕರೆ ಮಾಡಿ.'
+  ],
+  ml: [
+    'ഇത് കമ്പ്യൂട്ടർ സഹായത്തോടെയുള്ള പരാതി ഡ്രാഫ്റ്റാണ്; നിയമോപദേശമോ FIR ഓ അല്ല.',
+    'BNSS സെക്ഷൻ 173 പ്രകാരം പോലീസ് Zero FIR ആയും കേസ് രജിസ്റ്റർ ചെയ്യണം, 173(2) പ്രകാരം സൗജന്യ പകർപ്പ് നൽകണം.',
+    'സ്റ്റേഷൻ നിരസിച്ചാൽ SP അല്ലെങ്കിൽ മജിസ്ട്രേറ്റിന് രേഖാമൂലം നൽകുക. തീയതിയുള്ള പകർപ്പ് സൂക്ഷിക്കുക.',
+    'സൗജന്യ നിയമസഹായം NALSA 15100. അപകടത്തിലാണെങ്കിൽ ആദ്യം 112 ൽ വിളിക്കുക.'
+  ]
+};
 `;
 
 fs.writeFileSync(path.join(process.cwd(), "data", "statutes.js"), outputCode, "utf8");

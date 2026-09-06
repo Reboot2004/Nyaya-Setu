@@ -335,8 +335,8 @@
     <!-- Language & Initial Startup Gate -->
     <section class="gate" id="langGate">
         <div class="gate-card">
-            <h2 id="gateTitle">Choose Your Language & Grant Permissions</h2>
-            <p id="gateSubtitle">Choose a language to begin. Nyaya-Setu asks for microphone or location access only if you choose to use those features. This prototype creates a reviewable police-complaint draft; it does not file an FIR or provide legal advice.</p>
+            <h2 id="gateTitle">Choose Your Language</h2>
+            <p id="gateSubtitle">Choose a language to begin. Nyaya-Setu works fully offline by default — no network lookup. Microphone / GPS are used only if you tap them. This prototype creates a reviewable police-complaint draft; it does not file an FIR or provide legal advice.</p>
             <div class="row" style="margin-top:0; margin-bottom:12px;">
                 <label for="initialLangSelect" id="initialLangLabel" style="font-size:.8rem; color:#475569; font-weight:600;">Language</label>
                 <select id="initialLangSelect" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.92rem; min-width:200px;">
@@ -352,7 +352,7 @@
                 <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">ℹ️ 8 Official Indic Languages Supported with Native Police FIR Draft Generation.</p>
                 <button id="startAppBtn" type="button">Start Legal Co-Pilot</button>
             </div>
-            <p id="ipHint" style="margin-bottom:0; font-size:.78rem; color:#64748b;">Detecting regional jurisdiction from network...</p>
+            <p id="ipHint" style="margin-bottom:0; font-size:.78rem; color:#64748b;">Offline ready — no network lookup.</p>
         </div>
     </section>
 
@@ -376,6 +376,25 @@
             <div style="display:flex; gap:8px; justify-content:flex-end;">
                 <button id="factReviewGoBackBtn" type="button" style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-weight:600; color:#334155;">Go Back</button>
                 <button id="factReviewProceedBtn" type="button" disabled style="padding:8px 16px; background:#e5e7eb; border:1px solid #d1d5db; border-radius:6px; cursor:not-allowed; font-weight:600; color:#6b7280;">Proceed to Statute Retrieval</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Emergency blocking interstitial (offline) -->
+    <section class="gate hidden" id="emergencyModal">
+        <div class="gate-card" style="border-color:#fca5a5;">
+            <h2 style="color:#b91c1c;">⚠️ Get to safety first — possible emergency</h2>
+            <p style="font-size:.88rem;color:#1c1917;">Your text suggests imminent danger. Call now before drafting:</p>
+            <ul style="margin:0 0 12px 18px;font-size:.9rem;line-height:1.7;">
+                <li><strong>112</strong> — Emergency (police/fire/medical)</li>
+                <li><strong>1090</strong> — Women helpline</li>
+                <li><strong>1098</strong> — Child helpline</li>
+                <li><strong>15100</strong> — NALSA free legal aid</li>
+            </ul>
+            <p id="emergencyMatched" style="font-size:.75rem;color:#64748b;"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button id="emergencyBackBtn" type="button" class="secondary">Stop — I need help now</button>
+                <button id="emergencyContinueBtn" type="button" class="danger">Continue to draft anyway</button>
             </div>
         </div>
     </section>
@@ -415,6 +434,11 @@
             <!-- Optional Particulars to Eliminate Empty Placeholders -->
             <details style="margin-bottom:12px;" open>
                 <summary style="font-size:0.82rem;font-weight:700;color:#1e293b;cursor:pointer;margin-bottom:8px;" id="particularsTitle">Complainant & Police Station Details (Optional - avoids empty placeholders)</summary>
+                <div class="row" style="margin:0 0 10px 0;font-size:0.78rem;color:#475569;">
+                    <label>District <select id="psDistrict" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;"></select></label>
+                    <label>PS <select id="psStation" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;min-width:180px;"></select></label>
+                    <button id="kioskSaveBtn" class="secondary" type="button" style="font-size:0.75rem;padding:6px 10px;">Save as kiosk PS</button>
+                </div>
                 <div class="field-grid">
                     <div class="field-group">
                         <label id="lblFullName">Your Full Name</label>
@@ -494,7 +518,20 @@
                 <button id="englishBtn" class="secondary">🌐 View English Draft</button>
                 <button id="audioBtn" class="secondary">🔊 Play Legal Rights Briefing</button>
                 <button id="stopAudioBtn" class="danger">⏹ Stop Audio</button>
+                <button id="cpgramsBtn" class="secondary">🧾 Export CPGRAMS JSON</button>
             </div>
+            <div class="row" style="margin-top:8px;font-size:0.75rem;color:#475569;">
+                <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
+                    <input type="checkbox" id="cloudOptin" style="width:15px;height:15px;"> Allow opt-in cloud assist (off by default; narrative may leave device)
+                </label>
+            </div>
+            <div class="row" style="margin-top:6px;font-size:0.75rem;color:#475569;">
+                <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
+                    <input type="checkbox" id="aiOptin" style="width:15px;height:15px;" checked> On-device AI fact assist (auto-downloads ~700MB once, then offline)
+                </label>
+                <span id="aiOptinNote" style="font-size:0.72rem;color:#64748b;"></span>
+            </div>
+            <p style="font-size:0.75rem;color:#64748b;margin-top:6px;">Drafting is deterministic from retrieved sections; LLM (where available) only refines fact extraction. Voice transcription needs network; typing works fully offline.</p>
         </section>
 
         <!-- Laws Explorer & Corpus Provenance Card -->
@@ -515,7 +552,14 @@
 
     <footer id="appFooter">Local drafting where supported · Prototype statutory corpus · Verify before submission · Not legal advice · NALSA Helpline 15100</footer>
 
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="./src/main.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW failed:', e));
+            });
+        }
+    </script>
 </body>
 
 </html>

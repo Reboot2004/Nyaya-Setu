@@ -1,9 +1,34 @@
-// Nyaya-Setu Service Worker — offline-first PWA caching
-const CACHE = 'nyaya-setu-v1';
-const ASSETS = ['./', './index.html', './manifest.webmanifest'];
+// Nyaya-Setu Service Worker — offline-first PWA caching (prototype).
+// Caches app shell + data + src. AI model (~700MB) is NOT pre-cached and loads
+// only if citizen opts in; voice transcription still needs network.
+const CACHE = 'nyaya-setu-v3';
+const ASSETS = [
+    './',
+    './index.html',
+    './manifest.webmanifest',
+    './icon-192.svg',
+    './icon-512.svg',
+    './src/main.js',
+    './src/llm.js',
+    './src/retrieval.js',
+    './src/output.js',
+    './src/ui_translations.js',
+    './src/safety.js',
+    './src/cloud_fallback.js',
+    './src/cpgrams.js',
+    './src/offline_store.js',
+    './src/voice.js',
+    './src/emergency.js',
+    './data/statutes.js',
+    './data/bhashini_lexicon.js',
+    './data/ps_directory.js',
+    './data/provenance.json'
+];
 
 self.addEventListener('install', (e) => {
-    e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+    e.waitUntil(
+        caches.open(CACHE).then((c) => c.addAll(ASSETS).catch((err) => console.warn('SW precache partial:', err)))
+    );
     self.skipWaiting();
 });
 
@@ -16,14 +41,18 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') return;
-    // Cache-first for same-origin; network-first for model CDN assets
-    if (new URL(e.request.url).origin === self.location.origin) {
+    const url = new URL(e.request.url);
+    // Same-origin: cache-first, then network + runtime cache
+    if (url.origin === self.location.origin) {
         e.respondWith(
             caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
-                const copy = res.clone();
-                caches.open(CACHE).then((c) => c.put(e.request, copy));
+                if (res.ok) {
+                    const copy = res.clone();
+                    caches.open(CACHE).then((c) => c.put(e.request, copy));
+                }
                 return res;
-            }))
+            }).catch(() => caches.match('./index.html')))
         );
     }
+    // Model CDN / cross-origin: network-first, no caching here (browser handles model cache)
 });

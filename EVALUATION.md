@@ -65,13 +65,16 @@ The dataset contains synthetic test cases covering:
 - **Calculation:** 2 * (recall * precision) / (recall + precision)
 - **Target:** >0.75 F1
 
-## Current Baseline (Prototype-0.3)
+## Current Baseline (Prototype-0.4, REAL pipeline — `node tests/evaluate.js`)
 
-Running on the 6 test cases:
-- **Entity Extraction Recall:** ~80-90% (varies by language)
-- **Statute Retrieval Recall:** ~60-75% (limited corpus)
-- **Filtering Accuracy:** ~83% (tested on known actionable complaints)
-- **Baseline Overall Accuracy:** ~75-80%
+Real calls to `extractEntitiesRuleBased()` + `retrieveSections()` (lexical+Bhashini), 6 cases:
+
+- **Entity Extraction Recall:** 33.3% (rule regex misses English names, Telugu aggressor/date/loc)
+- **Statute Retrieval Recall:** 75.0% (Bhashini boost fixed TEST-001/002/006; TEST-003 Telugu defamation still 0%)
+- **Filtering Accuracy:** 66.7% (TEST-004/005 short non-actionable still accepted — gate too permissive)
+- **Previous mocked baseline was 75-80% and is now deprecated.**
+
+Run: `node tests/evaluate.js`. WebGPU LLM path not exercised in Node.
 
 ## Interpreting Results
 

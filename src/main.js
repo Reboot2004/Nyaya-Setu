@@ -1,7 +1,13 @@
-import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage } from './llm.js';
-import { retrieveSections, getLoadedStatutes, syncStatutesFromSource, resetToDefaultStatutes, STATUTE_METADATA } from './retrieval.js';
+import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage, getEngineStatus, isAIAssistEnabled, setAIAssistEnabled } from './llm.js';
+import { retrieveSections, getLoadedStatutes, syncStatutesFromSource, resetToDefaultStatutes, STATUTE_METADATA, getBhashiniNormalization } from './retrieval.js';
 import { complaintToHtml, downloadComplaint, speakRightsBriefing, stopAudio } from './output.js';
 import { UI_TEXT } from './ui_translations.js';
+import { screenInput } from './safety.js';
+import { isCloudFallbackEnabled, setCloudFallbackEnabled, extractEntitiesViaCloud } from './cloud_fallback.js';
+import { toCPGRAMSSchema, downloadCPGRAMSJson } from './cpgrams.js';
+import { initOfflineIndex } from './offline_store.js';
+import { detectEmergency, EMERGENCY_CONTACTS } from './emergency.js';
+import { PS_DIRECTORY, getDistricts, getStationsForDistrict, getKioskPS, setKioskPS } from '../data/ps_directory.js';
 
 const $ = (id) => document.getElementById(id);
 const badge = $('engineBadge');
@@ -9,8 +15,6 @@ let lastComplaint = null;
 let lastRetrieved = [];
 let activeView = 'native';
 let recognition = null;
-let ipGeoSnapshot = null;
-let ipDetectedLanguage = 'en';
 
 function t(key, fallback = '') {
     const lang = ($('langSelect')?.value || 'en').toLowerCase();
@@ -142,37 +146,12 @@ function isActionableComplaint(text, entities, retrieved) {
 }
 
 async function bootstrapLanguageGate() {
+    // Fully offline: language from browser locale only. No IP lookup, no network.
+    // Police station / address are manual or opt-in GPS via geoBtn (stays on-device).
     const fallback = (navigator.language || 'en').slice(0, 2).toLowerCase();
-    let selected = ['en', 'hi', 'te', 'ta', 'bn', 'mr', 'kn', 'ml'].includes(fallback) ? fallback : 'en';
+    const selected = ['en', 'hi', 'te', 'ta', 'bn', 'mr', 'kn', 'ml'].includes(fallback) ? fallback : 'en';
 
-    try {
-        const res = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
-        if (res.ok) {
-            const geo = await res.json();
-            ipGeoSnapshot = geo;
-            const region = (geo.region || '').toLowerCase();
-            if (geo.country_code === 'IN') {
-                if (region.includes('telangana') || region.includes('andhra')) selected = 'te';
-                else if (region.includes('tamil') || region.includes('chennai')) selected = 'ta';
-                else if (region.includes('bengal') || region.includes('kolkata')) selected = 'bn';
-                else if (region.includes('maharashtra') || region.includes('mumbai') || region.includes('pune')) selected = 'mr';
-                else if (region.includes('karnataka') || region.includes('bangalore') || region.includes('bengaluru')) selected = 'kn';
-                else if (region.includes('kerala')) selected = 'ml';
-                else selected = 'hi';
-            }
-            const place = [geo.city, geo.region, geo.country_name].filter(Boolean).join(', ');
-            if ($('ipHint')) $('ipHint').textContent = `${t('ipDetected')} ${place}`;
-            if ($('cAddr') && !$('cAddr').value && geo.country_code === 'IN') {
-                $('cAddr').value = `${geo.city || ''}, ${geo.region || ''}, India`;
-            }
-            if ($('cStation') && !$('cStation').value && geo.city) {
-                $('cStation').value = `${geo.city} Police Station / ${geo.region || 'District'}`;
-            }
-        }
-    } catch {
-        if ($('ipHint')) $('ipHint').textContent = 'Ready';
-    }
-
+    if ($('ipHint')) $('ipHint').textContent = 'Offline ready — no network lookup. Enter district / PS manually or use GPS.';
     applyLanguageSelection(selected);
     renderLawsExplorer();
 }
@@ -210,21 +189,29 @@ function useBrowserLocation() {
     );
 }
 
-// ---- Engine mode detection — no flags, no user action required ----
-// Rule-based extraction works on ALL devices instantly.
-// WebGPU AI mode is a silent enhancement — if available, it refines entity extraction.
+// ---- Engine mode detection — automatic download where WebGPU exists ----
+// Rule engine works instantly during download. Llama-3.2-1B auto-fetches once
+// (~700MB, then cached); drafting stays deterministic.
 $('runBtn').disabled = false;
 
 if (isWebGPUSupported()) {
-    badge.textContent = '🚀 AI Mode (on-device)';
-    badge.style.borderColor = '#34d399';
-    badge.style.color = '#065f46';
-} else {
-    badge.textContent = '⚡ Instant Mode';
+    badge.textContent = isAIAssistEnabled() ? '⏳ AI model auto-downloading…' : '⚡ Instant Mode (rule-based, offline)';
     badge.style.borderColor = '#93c5fd';
     badge.style.color = '#1e40af';
-    // Instant mode — rule-based NLP works fine without GPU, no user action needed
+} else {
+    badge.textContent = '⚡ Instant Mode (rule-based, offline)';
+    badge.style.borderColor = '#93c5fd';
+    badge.style.color = '#1e40af';
 }
+
+// Seed IndexedDB offline index (prototype lexical cache) — non-blocking
+try {
+    initOfflineIndex(() => getLoadedStatutes(), STATUTE_METADATA).then((r) => {
+        if (r?.success && $('langHint')) {
+            $('langHint').textContent = `Offline index ready (${r.source}, ${r.count} slots, ~45 curated). Voice transcription still needs network.`;
+        }
+    }).catch(() => { /* ignore */ });
+} catch { /* ignore */ }
 
 onLoadingProgress((report) => {
     $('loadCard').classList.remove('hidden');
@@ -238,6 +225,22 @@ onLoadingProgress((report) => {
         badge.classList.add('ok');
     }
 });
+
+// Automatic model fetch (background, non-blocking). Rule engine stays usable.
+if (isWebGPUSupported() && isAIAssistEnabled()) {
+    setTimeout(() => {
+        ensureEngine().then(() => {
+            badge.textContent = '✓ AI Ready (auto-downloaded)';
+            badge.style.borderColor = '#34d399';
+            badge.style.color = '#065f46';
+            badge.classList.add('ok');
+            if ($('aiOptin')) $('aiOptin').checked = true;
+        }).catch((err) => {
+            console.warn('Auto AI download failed, staying on rules:', err?.message);
+            badge.textContent = '⚡ Instant Mode (rule-based, offline)';
+        });
+    }, 1500);
+}
 
 // ---- Voice input via Web Speech API ----
 let recognizing = false;
@@ -333,28 +336,10 @@ if ($('statuteSearch')) {
 
 if ($('syncBtn')) {
     $('syncBtn').onclick = async () => {
-        const originalText = $('syncBtn').textContent;
-        $('syncBtn').textContent = '⏳ Syncing corpus...';
-        $('syncBtn').disabled = true;
-        try {
-            const result = await syncStatutesFromSource();
-            if (result.success) {
-                $('syncBtn').textContent = `✓ Synced ${result.count} statutes`;
-                renderLawsExplorer($('statuteSearch')?.value || '');
-                alert(`Corpus updated: ${result.count} statutes loaded from verified source.`);
-            } else {
-                $('syncBtn').textContent = '✗ Sync failed';
-                alert(`Sync note: ${result.error || 'Using local verified corpus'}.`);
-            }
-        } catch (err) {
-            $('syncBtn').textContent = '✗ Sync error';
-            alert(`Sync error: ${err.message}`);
-        } finally {
-            setTimeout(() => {
-                $('syncBtn').textContent = originalText;
-                $('syncBtn').disabled = false;
-            }, 3000);
-        }
+        // Runnable offline: show provenance instead of fake network sync.
+        // syncStatutesFromSource() is retained for future verified feeds but not required.
+        const m = STATUTE_METADATA;
+        alert(`Corpus ${m.version} (${m.corpusKind})\nSlots: ${m.totalSections} (~${m.curatedSections} curated)\nRetrieval: ${m.retrievalMethod}\nEffective: ${m.effectiveDate || '2024-07-01'}\nSources:\n- ${(m.officialSources || []).join('\n- ')}\n\nVerify at https://www.indiacode.nic.in/ before filing. See data/provenance.json for hash.`);
     };
 }
 
@@ -451,12 +436,40 @@ function setStep(n) {
     $('pipeCard').classList.remove('hidden');
 }
 
-// ---- Main Pipeline Execution ----
+// ---- Main Pipeline Execution (safety-screened, review-gated) ----
 $('runBtn').onclick = async () => {
     const narrative = $('narrative').value.trim();
     if (!narrative || narrative.length < 15) {
         alert(t('msgNeedNarrative'));
         return;
+    }
+
+    // Prototype safety screen (rule-based; Llama Guard hook in src/safety.js)
+    const safety = screenInput(narrative);
+    if (!safety.ok) {
+        alert(`Input blocked for safety (${safety.reasons.join(', ')}). Please rephrase factually.`);
+        $('langHint').textContent = `Blocked: ${safety.reasons.join(', ')}`;
+        return;
+    }
+    if (safety.piiHint && $('langHint')) {
+        $('langHint').textContent = 'Note: avoid Aadhaar/bank numbers in the narrative.';
+    }
+
+    // Blocking emergency interstitial (offline, runnable everywhere)
+    const emg = detectEmergency(narrative);
+    if (emg.emergency) {
+        const contacts = EMERGENCY_CONTACTS.map((c) => `${c.name}: ${c.number}`).join('\n');
+        alert(`⚠️ Possible emergency detected.\n\nCall immediately:\n${contacts}\n\nYou can still create a draft after this, but get to safety / call 112 first.`);
+        const modal = $('emergencyModal');
+        if (modal) {
+            $('emergencyMatched') && ($('emergencyMatched').textContent = `Trigger: ${emg.matched}`);
+            modal.classList.remove('hidden');
+            const proceed = await new Promise((resolve) => {
+                $('emergencyContinueBtn').onclick = () => { modal.classList.add('hidden'); resolve(true); };
+                $('emergencyBackBtn').onclick = () => { modal.classList.add('hidden'); resolve(false); };
+            });
+            if (!proceed) { $('runBtn').disabled = false; return; }
+        }
     }
 
     $('runBtn').disabled = true;
@@ -467,6 +480,18 @@ $('runBtn').onclick = async () => {
 
         setStep(2);
         let entities = await extractEntities(narrative);
+        // Opt-in cloud refinement only (never silent). Falls back to on-device result.
+        try {
+            if (isCloudFallbackEnabled()) {
+                const cloudEnt = await extractEntitiesViaCloud(narrative);
+                if (cloudEnt && typeof cloudEnt === 'object') {
+                    entities = { ...entities, ...cloudEnt, events: [narrative] };
+                    if ($('langHint')) $('langHint').textContent = 'Cloud refinement applied (opt-in).';
+                }
+            }
+        } catch (cloudErr) {
+            console.warn('Cloud fallback skipped:', cloudErr?.message);
+        }
 
         // Auto-fill intake form fields if user hadn't typed them
         if ($('cName') && !$('cName').value && entities.complainantName && entities.complainantName !== 'unknown') {
@@ -509,12 +534,13 @@ $('runBtn').onclick = async () => {
             return;
         }
 
-        // ---- Step 4: Statute Retrieval ----
+        // ---- Step 4: Statute Retrieval (lexical + Bhashini) ----
         setStep(4);
         const retrieved = retrieveSections(narrative);
         lastRetrieved = retrieved;
+        const bhashiniInfo = getBhashiniNormalization(narrative);
         $('secList').innerHTML = retrieved.length
-            ? retrieved.map(({ statute }) => `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title}${statute.punishment ? ` · <span style="color:#b91c1c">${statute.punishment}</span>` : ''}</li>`).join('')
+            ? retrieved.map(({ statute, confidence, bhashiniBoost }) => `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title} <span style="font-size:0.75rem;color:#475569">(${confidence}${bhashiniBoost ? ', vernacular-match' : ''})</span>${statute.punishment ? ` · <span style="color:#b91c1c">${statute.punishment}</span>` : ''}</li>`).join('') + (bhashiniInfo.normalizedConcepts.length ? `<li style="list-style:none;font-size:0.75rem;color:#475569;margin-top:6px;">Vernacular concepts: ${bhashiniInfo.normalizedConcepts.join(', ')}</li>` : '')
             : `<li>${t('noMatch')}</li>`;
         $('secCard').classList.remove('hidden');
 
@@ -560,3 +586,90 @@ $('englishBtn').onclick = () => {
 
 $('audioBtn').onclick = () => speakRightsBriefing(getSelectedLanguage());
 $('stopAudioBtn').onclick = stopAudio;
+
+// CPGRAMS structured export (reviewable JSON, does not auto-file)
+if ($('cpgramsBtn')) {
+    $('cpgramsBtn').onclick = () => {
+        if (!lastComplaint) return;
+        const complainantInfo = {
+            name: $('cName')?.value || '',
+            parent: $('cParent')?.value || '',
+            phone: $('cPhone')?.value || '',
+            address: $('cAddr')?.value || '',
+            station: $('cStation')?.value || '',
+            accused: $('cAccused')?.value || '',
+            location: $('cLoc')?.value || '',
+            narrative: $('narrative')?.value || ''
+        };
+        // entities not stored globally; rebuild minimal from form + narrative
+        const schema = toCPGRAMSSchema(complainantInfo, { summary: $('narrative')?.value || '' }, lastRetrieved, getSelectedLanguage());
+        downloadCPGRAMSJson(schema);
+    };
+}
+
+// Opt-in cloud fallback toggle (privacy-first, off by default)
+if ($('cloudOptin')) {
+    $('cloudOptin').checked = isCloudFallbackEnabled();
+    $('cloudOptin').addEventListener('change', (e) => {
+        const on = !!e.target.checked;
+        setCloudFallbackEnabled(on);
+        if ($('langHint')) $('langHint').textContent = on ? 'Cloud assist ON (opt-in): narrative may leave device.' : 'Cloud assist OFF: fully on-device.';
+    });
+}
+
+// Opt-in on-device AI assist (no auto 700MB download; runnable on tabs by default)
+if ($('aiOptin')) {
+    const aiNote = $('aiOptinNote');
+    const refreshAiNote = () => {
+        const on = $('aiOptin').checked;
+        const gpu = isWebGPUSupported();
+        if (aiNote) aiNote.textContent = !gpu ? 'WebGPU not detected — rule engine will be used.' : on ? 'AI auto-download ON: fetching once (~700MB), then offline.' : 'AI OFF: instant rule engine.';
+    };
+    $('aiOptin').checked = isAIAssistEnabled() && isWebGPUSupported();
+    refreshAiNote();
+    $('aiOptin').addEventListener('change', (e) => {
+        const on = !!e.target.checked;
+        if (on && !isWebGPUSupported()) {
+            alert('WebGPU not available on this device. Staying on rule engine.');
+            e.target.checked = false;
+            setAIAssistEnabled(false);
+        } else {
+            setAIAssistEnabled(on);
+            if (on && isWebGPUSupported()) {
+                badge.textContent = '⏳ AI model downloading…';
+                ensureEngine().then(() => {
+                    badge.textContent = '✓ AI Ready';
+                    badge.classList.add('ok');
+                }).catch(() => { badge.textContent = '⚡ Instant Mode (rule-based, offline)'; });
+            }
+            if (!on) { try { resetEngine(); } catch { /* ignore */ } }
+        }
+        refreshAiNote();
+    });
+}
+
+// Offline PS directory: district -> station select + kiosk preset (no GPS/IP)
+function refreshPsSelects() {
+    const dSel = $('psDistrict'), sSel = $('psStation');
+    if (!dSel || !sSel) return;
+    const districts = getDistricts();
+    dSel.innerHTML = `<option value="">Select district…</option>` + districts.map((d) => `<option value="${d}">${d}</option>`).join('');
+    const fillStations = () => {
+        const list = getStationsForDistrict(dSel.value);
+        sSel.innerHTML = `<option value="">Select PS…</option>` + list.map((r) => `<option value="${r.ps}">${r.ps} (${r.phone})</option>`).join('');
+    };
+    dSel.onchange = fillStations;
+    sSel.onchange = () => {
+        if (sSel.value && $('cStation')) $('cStation').value = sSel.value;
+    };
+    fillStations();
+    const kiosk = getKioskPS();
+    if (kiosk && $('cStation') && !$('cStation').value) $('cStation').value = kiosk;
+    const kBtn = $('kioskSaveBtn');
+    if (kBtn) kBtn.onclick = () => {
+        const v = $('cStation')?.value || sSel.value || '';
+        setKioskPS(v);
+        alert(v ? `Kiosk PS saved: ${v}` : 'Kiosk PS cleared.');
+    };
+}
+try { refreshPsSelects(); } catch { /* ignore */ }

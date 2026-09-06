@@ -1,0 +1,16 @@
+{
+  "corpusVersion": "0.4-prototype-partial",
+  "corpusKind": "prototype-lexical",
+  "totalSlots": 889,
+  "curatedSections": 45,
+  "effectiveDate": "2024-07-01",
+  "generatedAt": "2026-09-05",
+  "sha256": "99bbf62bbfd3f2c97ca0f490b550f5db6c542c7c7bcfb891ae158ee59299575e",
+  "sha256_short": "99bbf62bbfd3f2c9",
+  "sources": [
+    "https://www.indiacode.nic.in/",
+    "https://www.aikosh.in/",
+    "https://legislative.gov.in/"
+  ],
+  "note": "Prototype: ~45 hand-curated sections, rest placeholders. Verify before filing."
+}
