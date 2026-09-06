@@ -190,15 +190,19 @@ export function extractEntitiesRuleBased(narrative) {
         if (directAccused && directAccused[1]) aggressor = directAccused[1].trim();
     }
 
-    // 4. Extract Date / Time
+    // 4. Extract Date / Time (incl. ISO 2023-02-20)
     const dateMatches = [
+        /(\d{4}\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{1,2})/,
         /(?:दिनांक|तारीख|दिनांकित|on|dated|dinank)?\s*(\d{1,2}(?:\s+[A-Za-z\u0900-\u0D7F]+(?:\s+\d{2,4})?|\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{2,4}))/i,
         /\b(कल|आज|परसों|yesterday|today|ninna|netru)\b/i
     ];
     for (const pat of dateMatches) {
         const m = text.match(pat);
         if (m && m[1]) {
-            incidentDate = m[1].trim();
+            const cand = m[1].trim();
+            // guard: "6 people" / "2 men" are counts, not dates
+            if (/people|person|men|women|boys|girls|persons/i.test(cand)) continue;
+            incidentDate = cand;
             break;
         }
     }
@@ -235,6 +239,56 @@ export function extractEntitiesRuleBased(narrative) {
     };
 }
 
+const ALLOWED_CATEGORIES = new Set(['assault', 'intimidation', 'property_fraud', 'women_safety', 'procedure']);
+
+// Coerce any LLM/rule value to a clean plain string. Unwraps single-key objects
+// like {name}, {description}, {date}, {place}, strips surrounding quotes/braces,
+// and maps "unknown"-variants to 'unknown'. Never returns objects.
+function cleanStr(v, fallback = 'unknown') {
+    let cur = v;
+    let guard = 0;
+    while (cur !== null && typeof cur === 'object' && guard++ < 4) {
+        if (Array.isArray(cur)) { cur = cur[0]; continue; }
+        const keys = Object.keys(cur);
+        if (keys.length === 0) { cur = fallback; break; }
+        cur = cur.name ?? cur.description ?? cur.date ?? cur.place ?? cur.value ?? cur.text ?? cur[0] ?? fallback;
+    }
+    if (cur === null || cur === undefined) return fallback;
+    let s = String(cur).trim();
+    // strip wrapping quotes/backticks/braces repeatedly: "\"Unknown\"", "{...}", "'x'"
+    for (let i = 0; i < 3; i++) {
+        const t = s.trim();
+        if (/^[{[].*[}\]]$/.test(t) && !/\s/.test(t.slice(0, 20))) break; // leave real JSON blobs to caller fallback
+        if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")) || (t.startsWith('`') && t.endsWith('`'))) {
+            s = t.slice(1, -1).trim();
+            continue;
+        }
+        break;
+    }
+    s = s.replace(/^["'`\s]+|["'`\s]+$/g, '').trim();
+    if (!s) return fallback;
+    if (/^(unknown|not\s*given|not\s*specified|n\/a|na|none|null|undefined|nil|-+)$/i.test(s)) return 'unknown';
+    if (/^unknown$/i.test(s.replace(/["']/g, ''))) return 'unknown';
+    return s;
+}
+
+function isKnown(v) {
+    const s = cleanStr(v, 'unknown');
+    return s !== 'unknown';
+}
+
+// "assault|intimidation|..." (model echoing the enum) -> first valid single label.
+function normalizeCategory(v, fallback = 'needs_human_review') {
+    const raw = cleanStr(v, '');
+    if (!raw) return fallback;
+    const parts = raw.toLowerCase().split(/[|/,;\s]+/).map((p) => p.trim()).filter(Boolean);
+    for (const p of parts) {
+        if (ALLOWED_CATEGORIES.has(p)) return p;
+    }
+    if (ALLOWED_CATEGORIES.has(raw.toLowerCase())) return raw.toLowerCase();
+    return fallback;
+}
+
 export async function extractEntities(narrative) {
     const ruleEntities = extractEntitiesRuleBased(narrative);
 
@@ -259,14 +313,20 @@ export async function extractEntities(narrative) {
         const jsonEnd = raw.lastIndexOf('}');
         const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
 
+        // Sanitize: LLM sometimes returns nested objects or echoes the category enum.
+        // Summary must stay a prose string — fall back to rule summary if it looks like JSON.
+        let summary = cleanStr(parsed.summary, '');
+        if (!summary || /^[{[].*[}\]]$/.test(summary) || /"aggressor"|"parentName"|"complainantName"/.test(summary)) {
+            summary = ruleEntities.summary;
+        }
         return {
-            summary: parsed.summary || ruleEntities.summary,
-            complainantName: parsed.complainantName && parsed.complainantName !== 'unknown' ? parsed.complainantName : ruleEntities.complainantName,
-            parentName: parsed.parentName && parsed.parentName !== 'unknown' ? parsed.parentName : ruleEntities.parentName,
-            aggressor: parsed.aggressor && parsed.aggressor !== 'unknown' ? parsed.aggressor : ruleEntities.aggressor,
-            date: parsed.date && parsed.date !== 'unknown' ? parsed.date : ruleEntities.date,
-            location: parsed.location && parsed.location !== 'unknown' ? parsed.location : ruleEntities.location,
-            category: parsed.category || ruleEntities.category,
+            summary,
+            complainantName: cleanStr(parsed.complainantName, ruleEntities.complainantName),
+            parentName: cleanStr(parsed.parentName, ruleEntities.parentName),
+            aggressor: cleanStr(parsed.aggressor, ruleEntities.aggressor),
+            date: cleanStr(parsed.date, ruleEntities.date),
+            location: cleanStr(parsed.location, ruleEntities.location),
+            category: normalizeCategory(parsed.category, ruleEntities.category),
             events: [narrative]
         };
     } catch {
@@ -289,35 +349,39 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
         return (map && map[lang]) ? map[lang] : (statute.title || '');
     };
 
-    // ---- Resolve all fields, avoid "unknown" in final draft ----
-    const cName = (complainantInfo?.name && complainantInfo.name !== 'unknown') ? complainantInfo.name
-        : ((entities?.complainantName && entities.complainantName !== 'unknown') ? entities.complainantName
-        : ({ hi: 'शिकायतकर्ता', te: 'ఫిర్యాదుదారు', ta: 'புகார்தாரர்', bn: 'অভিযোগকারী', mr: 'तक्रारदार', kn: 'ದೂರುದಾರ', ml: 'പരാതിക്കാരൻ' }[lang] || 'The Complainant'));
+    // ---- Resolve all fields, avoid "unknown"/JSON in final draft ----
+    // Incident date defaults to TODAY when not given (user requirement).
+    const cNameRaw = isKnown(complainantInfo?.name) ? cleanStr(complainantInfo.name) : (isKnown(entities?.complainantName) ? cleanStr(entities.complainantName) : '');
+    const cName = cNameRaw
+        || ({ hi: 'शिकायतकर्ता', te: 'ఫిర్యాదుదారు', ta: 'புகார்தாரர்', bn: 'অভিযোগকারী', mr: 'तक्रारदार', kn: 'ದೂರುದಾರ', ml: 'പരാതിക്കാരൻ' }[lang] || 'The Complainant');
 
-    const cParent = (complainantInfo?.parent && complainantInfo.parent !== 'unknown') ? complainantInfo.parent
-        : ((entities?.parentName && entities.parentName !== 'unknown') ? entities.parentName : '');
+    const cParent = isKnown(complainantInfo?.parent) ? cleanStr(complainantInfo.parent)
+        : (isKnown(entities?.parentName) ? cleanStr(entities.parentName) : '');
 
-    const cPhone = (complainantInfo?.phone && complainantInfo.phone !== 'unknown') ? complainantInfo.phone : '';
+    const cPhone = isKnown(complainantInfo?.phone) ? cleanStr(complainantInfo.phone) : '';
 
-    const cAddress = (complainantInfo?.address && complainantInfo.address !== 'unknown') ? complainantInfo.address
+    const cAddress = isKnown(complainantInfo?.address) ? cleanStr(complainantInfo.address)
         : ({ hi: 'थाना क्षेत्र के भीतर', te: 'పోలీస్ స్టేషన్ పరిధిలో', ta: 'காவல் நிலைய பகுதியில்', bn: 'থানা এলাকায়', mr: 'ठाण्याच्या हद्दीत', kn: 'ಠಾಣೆ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ', ml: 'സ്റ്റേഷൻ പരിധിക്കുള്ളിൽ' }[lang] || 'Within the police station area');
 
-    const psName = (complainantInfo?.station && complainantInfo.station !== 'unknown') ? complainantInfo.station
-        : ({ hi: 'स्थानीय थाना', te: 'స్థానిక పోలీస్ స్టేషన్', ta: 'உள்ளூர் காவல் நிலையம்', bn: 'স্থানীয় থানা', mr: 'स्थानिक पोलीस ठाणे', kn: 'ಸ್ಥಳೀಯ ಠಾಣೆ', ml: 'പ്രാദേശിക പോലീസ് സ്റ്റേഷൻ' }[lang] || 'Local Police Station');
+    // PS: dynamic or blank — never a stale/wrong default.
+    const psName = isKnown(complainantInfo?.station) ? cleanStr(complainantInfo.station)
+        : '________ (fill at station — Zero FIR can be filed at any station)';
 
-    const incidentLoc = (complainantInfo?.location && complainantInfo.location !== 'unknown') ? complainantInfo.location
-        : ((entities?.location && entities.location !== 'unknown') ? entities.location
+    const incidentLoc = isKnown(complainantInfo?.location) ? cleanStr(complainantInfo.location)
+        : (isKnown(entities?.location) ? cleanStr(entities.location)
         : ({ hi: 'घटनास्थल (विवरण अनुसार)', te: 'సంఘటనా స్థలం', ta: 'சம்பவ இடம்', bn: 'ঘটনাস্থল', mr: 'घटनास्थळ', kn: 'ಘಟನಾ ಸ್ಥಳ', ml: 'സ്ഥലം' }[lang] || 'As described in the complaint'));
 
-    const aggressor = (complainantInfo?.accused && complainantInfo.accused !== 'unknown') ? complainantInfo.accused
-        : ((entities?.aggressor && entities.aggressor !== 'unknown') ? entities.aggressor
+    const aggressor = isKnown(complainantInfo?.accused) ? cleanStr(complainantInfo.accused)
+        : (isKnown(entities?.aggressor) ? cleanStr(entities.aggressor)
         : ({ hi: 'आरोपी व्यक्ति (विवरण अनुसार)', te: 'నిందితుడు', ta: 'குற்றம் சாட்டப்பட்டவர்', bn: 'অভিযুক্ত ব্যক্তি', mr: 'आरोपी', kn: 'ಆರೋಪಿ', ml: 'പ്രതി' }[lang] || 'The accused person(s) as described below'));
 
-    const incidentDate = (complainantInfo?.date && complainantInfo.date !== 'unknown') ? complainantInfo.date
-        : ((entities?.date && entities.date !== 'unknown') ? entities.date
-        : ({ hi: 'वर्णित तिथि के अनुसार', te: 'వివరించిన తేదీ', ta: 'குறிப்பிட்ட தேதி', bn: 'উল্লেখিত তারিখ', mr: 'नमूद केलेली तारीख', kn: 'ವಿವರಿಸಿದ ದಿನಾಂಕ', ml: 'വിവരിച്ച തീയതി' }[lang] || 'As stated in the complaint'));
+    const incidentDate = isKnown(complainantInfo?.date) ? cleanStr(complainantInfo.date)
+        : (isKnown(entities?.date) ? cleanStr(entities.date) : todayDate);
 
-    const summaryFacts = (entities?.summary || complainantInfo?.narrative || '').trim();
+    let summaryFacts = cleanStr(entities?.summary, '') || cleanStr(complainantInfo?.narrative, '');
+    if (!summaryFacts || summaryFacts === 'unknown' || /^[{[].*[}\]]$/.test(summaryFacts)) {
+        summaryFacts = cleanStr(complainantInfo?.narrative, '');
+    }
 
     // ---- Build localized section list — title in selected language ----
     const sectionsList = (Array.isArray(retrieved) && retrieved.length)

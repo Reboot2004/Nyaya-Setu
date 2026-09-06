@@ -332,14 +332,14 @@
 </head>
 
 <body>
-    <!-- Language & Initial Startup Gate -->
+    <!-- Language FIRST gate (blocks app until chosen — rural users may not read English) -->
     <section class="gate" id="langGate">
         <div class="gate-card">
-            <h2 id="gateTitle">Choose Your Language</h2>
-            <p id="gateSubtitle">Choose a language to begin. Nyaya-Setu works fully offline by default — no network lookup. Microphone / GPS are used only if you tap them. This prototype creates a reviewable police-complaint draft; it does not file an FIR or provide legal advice.</p>
+            <h2 id="gateTitle">अपनी भाषा चुनें · మీ భాషను ఎంచుకోండి · Choose Your Language</h2>
+            <p id="gateSubtitle">पहले भाषा चुनें — पूरा ऐप उसी भाषा में चलेगा। The whole app follows this choice. Works fully offline; mic / GPS only if you tap them. Draft only — not an FIR, not legal advice.</p>
             <div class="row" style="margin-top:0; margin-bottom:12px;">
-                <label for="initialLangSelect" id="initialLangLabel" style="font-size:.8rem; color:#475569; font-weight:600;">Language</label>
-                <select id="initialLangSelect" style="padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; font-size:.92rem; min-width:200px;">
+                <label for="initialLangSelect" id="initialLangLabel" style="font-size:.8rem; color:#475569; font-weight:600;">भाषा / భాష / Language</label>
+                <select id="initialLangSelect" style="padding:10px 12px; border:2px solid #0f172a; border-radius:8px; background:#fff; font-size:1rem; min-width:220px;">
                     <option value="en">English</option>
                     <option value="hi">हिन्दी / Hindi</option>
                     <option value="te">తెలుగు / Telugu</option>
@@ -349,8 +349,8 @@
                     <option value="kn">ಕನ್ನಡ / Kannada</option>
                     <option value="ml">മലയാളം / Malayalam</option>
                 </select>
-                <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">ℹ️ 8 Official Indic Languages Supported with Native Police FIR Draft Generation.</p>
-                <button id="startAppBtn" type="button">Start Legal Co-Pilot</button>
+                <p id="langSupport" style="font-size:.75rem; color:#64748b; margin-top:6px;">ℹ️ 8 भाषाएँ · 8 భాషలు · Voice + draft follow this choice.</p>
+                <button id="startAppBtn" type="button" style="font-size:1rem;padding:12px 22px;">Start / शुरू करें / ప్రారంభించండి</button>
             </div>
             <p id="ipHint" style="margin-bottom:0; font-size:.78rem; color:#64748b;">Offline ready — no network lookup.</p>
         </div>
@@ -438,6 +438,9 @@
                     <label>District <select id="psDistrict" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;"></select></label>
                     <label>PS <select id="psStation" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;min-width:180px;"></select></label>
                     <button id="kioskSaveBtn" class="secondary" type="button" style="font-size:0.75rem;padding:6px 10px;">Save as kiosk PS</button>
+                    <button id="kioskUseBtn" class="secondary" type="button" style="font-size:0.75rem;padding:6px 10px;">Use kiosk PS</button>
+                    <button id="kioskClearBtn" class="secondary" type="button" style="font-size:0.75rem;padding:6px 10px;">Clear PS</button>
+                    <span id="kioskHint" style="font-size:0.72rem;color:#64748b;"></span>
                 </div>
                 <div class="field-grid">
                     <div class="field-group">

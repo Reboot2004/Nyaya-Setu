@@ -21,6 +21,28 @@ function t(key, fallback = '') {
     return UI_TEXT[lang]?.[key] || UI_TEXT.en[key] || fallback;
 }
 
+// Display-sanitizer: mirrors llm.js cleanStr so review/draft never show JSON or quoted Unknown.
+function cleanVal(v, fallback = 'unknown') {
+    let cur = v;
+    let guard = 0;
+    while (cur !== null && typeof cur === 'object' && guard++ < 4) {
+        if (Array.isArray(cur)) { cur = cur[0]; continue; }
+        const keys = Object.keys(cur);
+        if (!keys.length) { cur = fallback; break; }
+        cur = cur.name ?? cur.description ?? cur.date ?? cur.place ?? cur.value ?? cur.text ?? fallback;
+    }
+    if (cur === null || cur === undefined) return fallback;
+    let s = String(cur).trim().replace(/^["'`\s]+|["'`\s]+$/g, '').trim();
+    if (!s || /^(unknown|not\s*given|not\s*specified|n\/a|na|none|null|undefined|-+)$/i.test(s)) return 'unknown';
+    return s;
+}
+function isKnownVal(v) {
+    return cleanVal(v, 'unknown') !== 'unknown';
+}
+function escHtml(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export function applyUiLanguage() {
     const lang = ($('langSelect')?.value || 'en').toLowerCase();
     $('rootHtml').setAttribute('lang', lang);
@@ -146,12 +168,13 @@ function isActionableComplaint(text, entities, retrieved) {
 }
 
 async function bootstrapLanguageGate() {
-    // Fully offline: language from browser locale only. No IP lookup, no network.
-    // Police station / address are manual or opt-in GPS via geoBtn (stays on-device).
+    // Language-first for rural users: browser locale preselects the gate dropdown,
+    // gate blocks the app until Start, then the whole UI follows. Fully offline.
     const fallback = (navigator.language || 'en').slice(0, 2).toLowerCase();
     const selected = ['en', 'hi', 'te', 'ta', 'bn', 'mr', 'kn', 'ml'].includes(fallback) ? fallback : 'en';
 
-    if ($('ipHint')) $('ipHint').textContent = 'Offline ready — no network lookup. Enter district / PS manually or use GPS.';
+    if ($('initialLangSelect')) $('initialLangSelect').value = selected;
+    if ($('ipHint')) $('ipHint').textContent = 'Offline ready — no network lookup. District / PS optional below.';
     applyLanguageSelection(selected);
     renderLawsExplorer();
 }
@@ -361,30 +384,37 @@ function showExtractedFactsReview(entities, retrieved) {
         const proceedBtn = $('factReviewProceedBtn');
         const goBackBtn = $('factReviewGoBackBtn');
 
+        const todayStr = new Date().toLocaleDateString('en-IN');
+        const dName = cleanVal(entities.complainantName);
+        const dSum = cleanVal(entities.summary, '');
+        const dAgg = cleanVal(entities.aggressor);
+        const dDate = cleanVal(entities.date);
+        const dLoc = cleanVal(entities.location);
+        const dCat = cleanVal(entities.category, 'needs_human_review');
         const factsHtml = `
-            <div class="fact-field ${entities.complainantName === 'unknown' ? 'unknown' : ''}">
+            <div class="fact-field ${dName === 'unknown' ? 'unknown' : ''}">
                 <div class="fact-label">Complainant Name</div>
-                <div class="fact-value">${entities.complainantName !== 'unknown' ? entities.complainantName : '(identity from signature/intake)'}</div>
+                <div class="fact-value">${dName !== 'unknown' ? escHtml(dName) : '(not given — leave blank, sign by hand)'}</div>
             </div>
-            <div class="fact-field ${entities.summary === 'unknown' || !entities.summary ? 'unknown' : ''}">
+            <div class="fact-field ${!dSum || dSum === 'unknown' ? 'unknown' : ''}">
                 <div class="fact-label">Summary of Events</div>
-                <div class="fact-value">${entities.summary || '(not extracted)'}</div>
+                <div class="fact-value">${dSum && dSum !== 'unknown' ? escHtml(dSum) : '(not extracted)'}</div>
             </div>
-            <div class="fact-field ${entities.aggressor === 'unknown' ? 'unknown' : ''}">
+            <div class="fact-field ${dAgg === 'unknown' ? 'unknown' : ''}">
                 <div class="fact-label">Accused / Aggressor</div>
-                <div class="fact-value">${entities.aggressor || '(not identified)'}</div>
+                <div class="fact-value">${dAgg !== 'unknown' ? escHtml(dAgg) : '(not identified — describe in draft)'}</div>
             </div>
-            <div class="fact-field ${entities.date === 'unknown' || !entities.date ? 'unknown' : ''}">
+            <div class="fact-field ${dDate === 'unknown' ? 'unknown' : ''}">
                 <div class="fact-label">Date of Incident</div>
-                <div class="fact-value">${entities.date || '(not specified)'}</div>
+                <div class="fact-value">${dDate !== 'unknown' ? escHtml(dDate) : `Not specified — draft will use today (${escHtml(todayStr)})`}</div>
             </div>
-            <div class="fact-field ${entities.location === 'unknown' || !entities.location ? 'unknown' : ''}">
+            <div class="fact-field ${dLoc === 'unknown' ? 'unknown' : ''}">
                 <div class="fact-label">Location</div>
-                <div class="fact-value">${entities.location || '(not specified)'}</div>
+                <div class="fact-value">${dLoc !== 'unknown' ? escHtml(dLoc) : '(not specified)'}</div>
             </div>
             <div class="fact-field">
                 <div class="fact-label">Offence Category</div>
-                <div class="fact-value">${entities.category || 'general_offence'}</div>
+                <div class="fact-value">${escHtml(dCat)}</div>
             </div>
         `;
         contentEl.innerHTML = factsHtml;
@@ -491,18 +521,18 @@ $('runBtn').onclick = async () => {
         let entities = await extractEntities(narrative);
         // Local-only: no cloud refinement. Grievance never leaves device.
 
-        // Auto-fill intake form fields if user hadn't typed them
-        if ($('cName') && !$('cName').value && entities.complainantName && entities.complainantName !== 'unknown') {
-            $('cName').value = entities.complainantName;
+        // Auto-fill intake form fields only with real values (never "Unknown"/JSON)
+        if ($('cName') && !$('cName').value.trim() && isKnownVal(entities.complainantName)) {
+            $('cName').value = cleanVal(entities.complainantName);
         }
-        if ($('cParent') && !$('cParent').value && entities.parentName && entities.parentName !== 'unknown') {
-            $('cParent').value = entities.parentName;
+        if ($('cParent') && !$('cParent').value.trim() && isKnownVal(entities.parentName)) {
+            $('cParent').value = cleanVal(entities.parentName);
         }
-        if ($('cAccused') && !$('cAccused').value && entities.aggressor && entities.aggressor !== 'unknown') {
-            $('cAccused').value = entities.aggressor;
+        if ($('cAccused') && !$('cAccused').value.trim() && isKnownVal(entities.aggressor)) {
+            $('cAccused').value = cleanVal(entities.aggressor);
         }
-        if ($('cLoc') && !$('cLoc').value && entities.location && entities.location !== 'unknown') {
-            $('cLoc').value = entities.location;
+        if ($('cLoc') && !$('cLoc').value.trim() && isKnownVal(entities.location)) {
+            $('cLoc').value = cleanVal(entities.location);
         }
 
         const complainantInfo = {
@@ -513,7 +543,7 @@ $('runBtn').onclick = async () => {
             station: $('cStation')?.value || '',
             accused: $('cAccused')?.value || '',
             location: $('cLoc')?.value || '',
-            date: entities.date !== 'unknown' ? entities.date : '',
+            date: isKnownVal(entities.date) ? cleanVal(entities.date) : '',
             narrative: narrative
         };
 
@@ -533,12 +563,17 @@ $('runBtn').onclick = async () => {
         }
 
         // ---- Step 4: Statute Retrieval (lexical + Bhashini) ----
+        // Draft uses medium/high confidence only; low stays in explorer. Placeholder
+        // punishment ("As prescribed...") is hidden to reduce noise.
         setStep(4);
-        const retrieved = retrieveSections(narrative);
+        const retrievedAll = retrieveSections(narrative, 4);
+        const isPlaceholderPun = (p) => !p || /^as prescribed under/i.test(String(p));
+        const retrieved = retrievedAll.filter((r) => r.confidence !== 'low').slice(0, 3);
         lastRetrieved = retrieved;
         const bhashiniInfo = getBhashiniNormalization(narrative);
-        $('secList').innerHTML = retrieved.length
-            ? retrieved.map(({ statute, confidence, bhashiniBoost }) => `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title} <span style="font-size:0.75rem;color:#475569">(${confidence}${bhashiniBoost ? ', vernacular-match' : ''})</span>${statute.punishment ? ` · <span style="color:#b91c1c">${statute.punishment}</span>` : ''}</li>`).join('') + (bhashiniInfo.normalizedConcepts.length ? `<li style="list-style:none;font-size:0.75rem;color:#475569;margin-top:6px;">Vernacular concepts: ${bhashiniInfo.normalizedConcepts.join(', ')}</li>` : '')
+        const listForUi = (retrieved.length ? retrieved : retrievedAll.slice(0, 2));
+        $('secList').innerHTML = listForUi.length
+            ? listForUi.map(({ statute, confidence }) => `<li><strong>${escHtml(statute.code)} §${escHtml(statute.section)}</strong> — ${escHtml(statute.title)} <span style="font-size:0.75rem;color:#475569">(${escHtml(confidence)})</span>${!isPlaceholderPun(statute.punishment) ? ` · <span style="color:#b91c1c">${escHtml(statute.punishment)}</span>` : ''}</li>`).join('') + (bhashiniInfo.normalizedConcepts.length ? `<li style="list-style:none;font-size:0.75rem;color:#475569;margin-top:6px;">Matched: ${bhashiniInfo.normalizedConcepts.map(escHtml).join(', ')}</li>` : '')
             : `<li>${t('noMatch')}</li>`;
         $('secCard').classList.remove('hidden');
 
@@ -640,7 +675,9 @@ if ($('aiOptin')) {
     });
 }
 
-// Offline PS directory: district -> station select + kiosk preset (no GPS/IP)
+// Offline PS directory: district -> station select + kiosk preset (no GPS/IP).
+// Nothing pre-selected: cStation stays EMPTY until the user picks, types, or taps
+// "Use kiosk PS". Stale demo defaults (e.g. Saifabad) must never leak into drafts.
 function refreshPsSelects() {
     const dSel = $('psDistrict'), sSel = $('psStation');
     if (!dSel || !sSel) return;
@@ -650,18 +687,33 @@ function refreshPsSelects() {
         const list = getStationsForDistrict(dSel.value);
         sSel.innerHTML = `<option value="">Select PS…</option>` + list.map((r) => `<option value="${r.ps}">${r.ps} (${r.phone})</option>`).join('');
     };
-    dSel.onchange = fillStations;
+    dSel.onchange = () => {
+        fillStations();
+        if ($('cStation')) $('cStation').value = ''; // district change clears stale PS
+    };
     sSel.onchange = () => {
-        if (sSel.value && $('cStation')) $('cStation').value = sSel.value;
+        if ($('cStation')) $('cStation').value = sSel.value || '';
     };
     fillStations();
     const kiosk = getKioskPS();
-    if (kiosk && $('cStation') && !$('cStation').value) $('cStation').value = kiosk;
+    if (kiosk && $('kioskHint')) $('kioskHint').textContent = `Kiosk default: ${kiosk}`;
     const kBtn = $('kioskSaveBtn');
     if (kBtn) kBtn.onclick = () => {
         const v = $('cStation')?.value || sSel.value || '';
         setKioskPS(v);
+        if ($('kioskHint')) $('kioskHint').textContent = v ? `Kiosk default: ${v}` : '';
         alert(v ? `Kiosk PS saved: ${v}` : 'Kiosk PS cleared.');
+    };
+    const kUse = $('kioskUseBtn');
+    if (kUse) kUse.onclick = () => {
+        const v = getKioskPS();
+        if (v && $('cStation')) $('cStation').value = v;
+        else alert('No kiosk PS saved yet.');
+    };
+    const kClear = $('kioskClearBtn');
+    if (kClear) kClear.onclick = () => {
+        if ($('cStation')) $('cStation').value = '';
+        dSel.value = ''; fillStations();
     };
 }
 try { refreshPsSelects(); } catch { /* ignore */ }

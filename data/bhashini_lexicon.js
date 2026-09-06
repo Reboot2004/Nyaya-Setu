@@ -6,10 +6,10 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
     // Physical assault / Hurt (BNS 115, 117)
     {
         canonical: 'assault_hurt',
-        targetSections: ['115', '117'],
+        targetSections: ['115', '117', '118'],
         terms: {
-            hi: ['मारपीट', 'मार-पीट', 'मारा', 'पीटा', 'हाथापाई', 'पीटा गया', 'चोट पहुंचाई', 'खून निकला', 'हड्डी तोड़ी', 'अस्पताल', 'गंभीर चोट', 'लाठी से मारा', 'थप्पड़ मारा'],
-            en: ['mar-peet', 'marpeet', 'beating', 'hit me', 'assaulted', 'physical assault', 'struck me', 'bleeding', 'fracture', 'broken bone', 'hospitalized', 'lathi', 'slapped'],
+            hi: ['मारपीट', 'मार-पीट', 'मारा', 'पीटा', 'हाथापाई', 'पीटा गया', 'चोट पहुंचाई', 'खून निकला', 'हड्डी तोड़ी', 'अस्पताल', 'गंभीर चोट', 'लाठी से मारा', 'थप्पड़ मारा', 'बेहोश किया', 'नशीला पदार्थ'],
+            en: ['mar-peet', 'marpeet', 'beating', 'hit me', 'assaulted', 'physical assault', 'struck me', 'bleeding', 'fracture', 'broken bone', 'hospitalized', 'lathi', 'slapped', 'drugged', 'drugging', 'drugged me', 'poisoned', 'spiked', '6 people', 'group attack', 'gang'],
             te: ['కొట్టారు', 'దెబ్బలాట', 'దాడి చేశారు', 'గాయపరిచారు', 'రక్తం వచ్చింది', 'ఎముక విరిగింది', 'ఆసుపత్రి', 'చెంపదెబ్బ'],
             ta: ['அடித்தார்கள்', 'தாக்குதல்', 'காயம்', 'ரத்தம் வந்தது', 'எலும்பு முறிவு', 'மருத்துவமனை', 'அடிதடி'],
             mr: ['मारहाण', 'मारहाण केली', 'हाणामारी', 'जखमी केले', 'रक्तस्त्राव', 'हाड मोडले', 'रुग्णालय', 'चापट मारली'],

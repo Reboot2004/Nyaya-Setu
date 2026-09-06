@@ -11300,7 +11300,17 @@ export const BASE_STATUTES = [
       "laathi",
       "डंडे से",
       "लाठी-डंडे",
-      "चाकू"
+      "चाकू",
+      "drugged",
+      "drugging",
+      "drugged me",
+      "poison",
+      "poisoned",
+      "spiked drink",
+      "behosh",
+      "बेहोश",
+      "नशीला",
+      "మత్తుమందు"
     ],
     "negTriggers": [],
     "minScore": 4,
@@ -12723,7 +12733,12 @@ export const BASE_STATUTES = [
       "unlawful assembly",
       "gunda gardi",
       "गैरकानूनी सभा",
-      "भीड़"
+      "भीड़",
+      "6 people",
+      "5 people",
+      "group of",
+      "gang",
+      "zill"
     ],
     "negTriggers": [],
     "minScore": 4,
