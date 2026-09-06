@@ -378,7 +378,7 @@ export async function extractEntities(narrative) {
  * Standard Indian Police Complaint Formatter across 8 Indian Languages.
  * Structure follows BNSS 2023 Section 173. Language is kept simple and accessible.
  */
-function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, selectedLang) {
+function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, selectedLang, opts = {}) {
     const lang = normalizeLanguageCode(selectedLang) || 'en';
     const todayDate = new Date().toLocaleDateString('en-IN');
 
@@ -422,6 +422,12 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
     if (!summaryFacts || summaryFacts === 'unknown' || /^[{[].*[}\]]$/.test(summaryFacts)) {
         summaryFacts = cleanStr(complainantInfo?.narrative, '');
     }
+    // Dynamic English gist (on-device translation or gloss bundle) for the English
+    // half when the citizen narrated in another language; native half keeps original.
+    const englishFacts = (opts.englishSummary && String(opts.englishSummary).trim()) ? String(opts.englishSummary).trim() : summaryFacts;
+    const gistNote = (opts.gistSource && opts.gistSource !== 'original' && englishFacts !== summaryFacts)
+        ? `\n   (English gist via on-device ${opts.gistSource}; original preserved in the other half and verified at review.)`
+        : '';
 
     // ---- Build localized section list — title in selected language ----
     const sectionsList = (Array.isArray(retrieved) && retrieved.length)
@@ -457,10 +463,10 @@ My name is ${cName}${cParent ? `, son/daughter/spouse of ${cParent}` : ''}. I am
    • Date: ${incidentDate}
    • Place: ${incidentLoc}
 
-4. WHAT HAPPENED:
-   On ${incidentDate}, at ${incidentLoc}, the following happened to me:
+ 4. WHAT HAPPENED:
+    On ${incidentDate}, at ${incidentLoc}, the following happened to me:
 
-   ${summaryFacts}
+    ${englishFacts}${gistNote}
 
 5. LAW SECTIONS THAT MAY APPLY:
    (These are suggested based on what I described — the police will verify)
@@ -771,11 +777,12 @@ ${sectionsBlock}
     };
 }
 
-export async function draftComplaint(complainantInfo, entities, retrieved, langLabel) {
+export async function draftComplaint(complainantInfo, entities, retrieved, langLabel, opts = {}) {
     // Deterministic template drafting (prototype). LLM never invents section numbers;
-    // sections come only from retrieval.js. LLM is used only for optional fact extraction.
+    // sections come only from retrieval.js. LLM is used only for optional fact extraction
+    // and the English gist (opts.englishSummary / opts.gistSource).
     const selectedLanguage = normalizeLanguageCode(langLabel) || 'en';
-    return buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, selectedLanguage);
+    return buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, selectedLanguage, opts);
 }
 
 // Honest engine status + optional perf measurement (no fake 10-12 tok/s claims).

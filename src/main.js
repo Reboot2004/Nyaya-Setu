@@ -730,9 +730,18 @@ $('runBtn').onclick = async () => {
             : `<li>${t('noMatch')}</li>`;
         $('secCard').classList.remove('hidden');
 
-        // ---- Step 5: Complaint Drafting ----
+        // ---- Step 5: Complaint Drafting (+ dynamic English gist, on-device) ----
         setStep(5);
-        lastComplaint = await draftComplaint(complainantInfo, entities, retrieved, selectedLanguage);
+        let gist = { text: '', source: 'original' };
+        if (selectedLanguage !== 'en') {
+            try {
+                if ($('langHint')) $('langHint').textContent = 'Translating English gist on-device…';
+                const { translateGist } = await import('./translate.js');
+                gist = await translateGist(entities.summary || narrative, selectedLanguage, 'en');
+            } catch { gist = { text: '', source: 'original' }; }
+        }
+        lastComplaint = await draftComplaint(complainantInfo, entities, retrieved, selectedLanguage,
+            gist.text ? { englishSummary: gist.text, gistSource: gist.source } : {});
         activeView = 'native';
 
         // ---- Step 6: Output ----
