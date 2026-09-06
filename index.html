@@ -539,10 +539,11 @@
 
         <!-- Laws Explorer & Corpus Provenance Card -->
         <section class="card" id="explorerCard">
-            <h2 id="explorerTitle">📜 Official Laws Explorer (BNS 2023 / BNSS 2023)</h2>
+            <h2 id="explorerTitle">📜 Laws Explorer — grouped by topic (BNS / BNSS / BSA 2023)</h2>
             <p id="explorerSubtitle" style="font-size:0.8rem;color:#64748b;margin-bottom:10px;">Browse the prototype corpus and inspect its version. It is not a complete or live legal database.</p>
 
             <div class="row" style="margin-top:0;margin-bottom:12px;">
+                <select id="catFilter" style="padding:8px 10px;border:1px solid #2563eb;border-radius:6px;background:#eff6ff;font-size:0.85rem;min-width:170px;font-weight:600;color:#1d4ed8;"></select>
                 <input type="text" id="statuteSearch" placeholder="Search section number, crime keyword, or Hindi/Indic phrase..." style="flex:1;min-width:220px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.85rem;">
                 <button id="syncBtn" class="secondary" type="button">ℹ️ Corpus version & sources</button>
                 <button id="resetStatutesBtn" class="secondary" type="button" style="font-size:0.75rem;padding:8px 12px;">Reset local prototype corpus</button>

@@ -8,6 +8,7 @@ import { toCPGRAMSSchema, downloadCPGRAMSJson } from './cpgrams.js';
 import { initOfflineIndex, clearIDBCorpus } from './offline_store.js';
 import { detectEmergency, EMERGENCY_CONTACTS } from './emergency.js';
 import { PS_DIRECTORY, getDistricts, getStationsForDistrict, getKioskPS, setKioskPS } from '../data/ps_directory.js';
+import { CITIZEN_CATEGORIES, citizenCategoryFor } from '../data/categories.js';
 
 const $ = (id) => document.getElementById(id);
 const badge = $('engineBadge');
@@ -109,20 +110,40 @@ function applyLanguageSelection(langCode) {
     if ($('langSelect')) $('langSelect').value = lang;
     if ($('initialLangSelect')) $('initialLangSelect').value = lang;
     applyUiLanguage();
+    refreshCatFilter();
+    renderLawsExplorer($('statuteSearch')?.value || '');
     if (recognition) {
         const map = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN', ta: 'ta-IN', bn: 'bn-IN', mr: 'mr-IN', kn: 'kn-IN', ml: 'ml-IN' };
         recognition.lang = map[lang] || 'en-IN';
     }
 }
 
-// ---- Render Laws Explorer ----
-function renderLawsExplorer(filterText = '') {
+// ---- Render Laws Explorer (grouped by plain-language citizen buckets) ----
+function currentCatFilter() {
+    return $('catFilter')?.value || '';
+}
+function refreshCatFilter() {
+    const sel = $('catFilter');
+    if (!sel) return;
+    const lang = getSelectedLanguage();
+    const keep = sel.value || '';
+    sel.innerHTML = `<option value="">${lang === 'hi' ? 'सभी विषय' : lang === 'te' ? 'అన్ని అంశాలు' : 'All topics'}</option>` +
+        CITIZEN_CATEGORIES.map((c) => `<option value="${c.id}">${c.name[lang] || c.name.en}</option>`).join('');
+    sel.value = keep;
+}
+function renderLawsExplorer(filterText = '', catId = currentCatFilter()) {
     const list = getLoadedStatutes();
+    const lang = getSelectedLanguage();
     const q = filterText.toLowerCase().trim();
     const filtered = list.filter((s) => {
+        if (catId) {
+            const { id } = citizenCategoryFor(s, 'en');
+            if (id !== catId) return false;
+        }
         if (!q) return true;
         const triggersText = Array.isArray(s.triggers) ? s.triggers.join(' ') : '';
-        const hay = `${s.code || ''} ${s.section || ''} ${s.title || ''} ${s.text || ''} ${triggersText} ${s.category || ''}`.toLowerCase();
+        const cat = citizenCategoryFor(s, lang);
+        const hay = `${s.code || ''} ${s.section || ''} ${s.title || ''} ${s.text || ''} ${triggersText} ${s.category || ''} ${cat.label} ${cat.desc}`.toLowerCase();
         return hay.includes(q);
     });
 
@@ -134,18 +155,20 @@ function renderLawsExplorer(filterText = '') {
         return;
     }
 
-    container.innerHTML = filtered.map((s) => `
+    container.innerHTML = filtered.slice(0, 200).map((s) => {
+        const cat = citizenCategoryFor(s, getSelectedLanguage());
+        return `
         <div style="border-bottom:1px solid #e2e8f0;padding:8px 0;font-size:0.84rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:6px;">
                 <strong style="color:#0f172a;">${s.code} Section ${s.section}</strong>
-                <span class="badge" style="font-size:0.65rem;border-color:#94a3b8;color:#475569;">${(s.category || '').toUpperCase()}</span>
+                <span class="badge" title="${cat.desc.replace(/"/g, '&quot;')}" style="font-size:0.65rem;border-color:#2563eb;color:#1d4ed8;white-space:nowrap;">${cat.label}</span>
             </div>
             <div style="font-weight:600;color:#1e293b;margin-bottom:2px;">${s.title}</div>
             <p style="color:#334155;margin-bottom:4px;line-height:1.35;">${s.text}</p>
             ${s.punishment ? `<div style="font-size:0.75rem;color:#b91c1c;font-weight:600;">⚖️ Punishment: ${s.punishment}</div>` : ''}
             <div style="font-size:0.7rem;color:#64748b;margin-top:2px;">🏛️ Source: ${s.source || 'AIKosh / India Code'}</div>
         </div>
-    `).join('');
+    `; }).join('') + (filtered.length > 200 ? `<p style="font-size:0.75rem;color:#64748b;padding:8px;">Showing 200 of ${filtered.length} — refine with topic or search.</p>` : '');
 }
 
 function isActionableComplaint(text, entities, retrieved) {
@@ -475,6 +498,12 @@ if ($('statuteSearch')) {
         renderLawsExplorer(e.target.value);
     });
 }
+if ($('catFilter')) {
+    refreshCatFilter();
+    $('catFilter').addEventListener('change', () => {
+        renderLawsExplorer($('statuteSearch')?.value || '');
+    });
+}
 
 if ($('syncBtn')) {
     $('syncBtn').onclick = async () => {
@@ -694,7 +723,10 @@ $('runBtn').onclick = async () => {
         const semNote = retrievedAll.some((r) => r.origin === 'both' || r.origin === 'semantic') ? ' · semantic rank on' : '';
         const listForUi = (retrieved.length ? retrieved : retrievedAll.slice(0, 2));
         $('secList').innerHTML = listForUi.length
-            ? listForUi.map(({ statute, confidence }) => `<li><strong>${escHtml(statute.code)} §${escHtml(statute.section)}</strong> — ${escHtml(statute.title)} <span style="font-size:0.75rem;color:#475569">(${escHtml(confidence)})</span>${!isPlaceholderPun(statute.punishment) ? ` · <span style="color:#b91c1c">${escHtml(statute.punishment)}</span>` : ''}</li>`).join('') + (bhashiniInfo.normalizedConcepts.length ? `<li style="list-style:none;font-size:0.75rem;color:#475569;margin-top:6px;">Matched: ${bhashiniInfo.normalizedConcepts.map(escHtml).join(', ')}</li>` : '')
+            ? listForUi.map(({ statute, confidence }) => {
+                const cat = citizenCategoryFor(statute, selectedLanguage);
+                return `<li><strong>${escHtml(statute.code)} §${escHtml(statute.section)}</strong> — ${escHtml(statute.title)} <span style="font-size:0.75rem;color:#475569">(${escHtml(confidence)} · ${escHtml(cat.label)})</span>${!isPlaceholderPun(statute.punishment) ? ` · <span style="color:#b91c1c">${escHtml(statute.punishment)}</span>` : ''}</li>`;
+            }).join('') + (bhashiniInfo.normalizedConcepts.length ? `<li style="list-style:none;font-size:0.75rem;color:#475569;margin-top:6px;">Matched: ${bhashiniInfo.normalizedConcepts.map(escHtml).join(', ')}</li>` : '')
             : `<li>${t('noMatch')}</li>`;
         $('secCard').classList.remove('hidden');
 

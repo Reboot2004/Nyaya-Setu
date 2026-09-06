@@ -21,6 +21,7 @@ const ASSETS = [
     './src/emergency.js',
     './data/statutes.js',
     './data/statute_vectors.json',
+    './data/categories.js',
     './data/bhashini_lexicon.js',
     './data/ps_directory.js',
     './data/provenance.json'
