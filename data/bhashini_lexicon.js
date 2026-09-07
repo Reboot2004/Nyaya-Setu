@@ -29,7 +29,7 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
         targetSections: ['351'],
         terms: {
             hi: ['धमकी', 'धमकाया', 'जान से मारने की धमकी', 'धमकी दी', 'डराया', 'भगा दिया', 'चमकाया', 'धमकाना'],
-            en: ['dhamki', 'threatened', 'death threat', 'warned to kill', 'intimidation', 'scared me', 'threat', 'warning'],
+            en: ['dhamki', 'threatened', 'death threat', 'warned to kill', 'intimidation', 'scared me', 'threat', 'warning', 'forced to confess', 'forced confession', 'threatened arrest'],
             te: ['బెదిరింపు', 'చంపేస్తామని బెదిరించారు', 'భయపెట్టారు', 'బెదిరించాడు', 'bediristunnaru', 'champestham'],
             ta: ['மிரட்டல்', 'கொலை மிரட்டல்', 'பயமுறுத்தினார்கள்', 'எச்சரித்தார்'],
             mr: ['धमकी', 'जीवे मारण्याची धमकी', 'घाबरवले', 'धमकावले'],

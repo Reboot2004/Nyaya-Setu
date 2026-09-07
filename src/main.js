@@ -276,7 +276,8 @@ if (isWebGPUSupported()) {
 try {
     initOfflineIndex(() => getLoadedStatutes(), STATUTE_METADATA).then((r) => {
         if (r?.success && $('langHint')) {
-            $('langHint').textContent = `Offline index ready (${r.source}, ${r.count} slots, ~55 curated). Voice transcription still needs network.`;
+            const m = STATUTE_METADATA;
+            $('langHint').textContent = `Offline index ready (${r.source}, ${m.totalSections} slots: ${m.curatedSections} curated + official titles). Voice transcription still needs network.`;
         }
     }).catch(() => { /* ignore */ });
 } catch { /* ignore */ }

@@ -73,8 +73,9 @@ export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en
     const sections = retrieved.map(({ statute, source, confidence }) => {
         const sourceUrl = statute.officialUrl || 'https://www.indiacode.nic.in/';
         const conf = confidence ? ` · confidence: ${esc(confidence)}` : '';
-        const curated = statute.triggers && statute.triggers.length > 5 && !String(statute.title).startsWith('BNS Section') && !String(statute.title).startsWith('BNSS Section') ? '' : ' · placeholder entry — verify';
-        return `<li><strong>${esc(statute.code)} Section ${esc(statute.section)}</strong> — ${esc(titleFor(statute, lang))}${conf}${curated}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${esc(source || 'India Code')}</a></span></li>`;
+        const v = statute.verified || 'placeholder';
+        const tag = v === 'curated' || v === 'official' ? '' : (v === 'official-title' ? ' · official title only — full text pending verification' : ' · placeholder entry — verify');
+        return `<li><strong>${esc(statute.code)} Section ${esc(statute.section)}</strong> — ${esc(titleFor(statute, lang))}${conf}${tag}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${esc(source || 'India Code')}</a></span></li>`;
     }).join('');
     const englishText = esc(complaint?.english || complaint?.native || complaint?.hindi || '');
     const nativeText = esc(complaint?.native || complaint?.hindi || complaint?.english || '');
@@ -90,7 +91,7 @@ export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en
   @media print{body{margin:12mm 14mm}.no-print{display:none}}</style></head><body>
   <h1>${labels.title}</h1>
   <div class="meta">${labels.meta} | ${labels.dateLabel}: ${new Date().toLocaleDateString('en-IN')}</div>
-  <div class="version">Nyaya-Setu v0.5 prototype (~55 curated / 892 slots incl. 3 BSA) · Verify at indiacode.nic.in · Not legal advice</div>
+  <div class="version">Nyaya-Setu v0.6 · 1059 slots, official titles throughout (56 curated) · Verify at indiacode.nic.in · Not legal advice</div>
     <pre>${englishText}\n\n---\n\n${nativeText}</pre>
   <h2>${labels.sectionsTitle}</h2><ul>${sections}</ul>
   <p class="disc">${labels.disclaimer}</p>

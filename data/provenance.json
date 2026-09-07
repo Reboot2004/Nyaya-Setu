@@ -1,12 +1,12 @@
 {
-  "corpusVersion": "0.5-prototype-partial",
+  "corpusVersion": "0.6-official-titles",
   "corpusKind": "prototype-lexical",
-  "totalSlots": 892,
-  "curatedSections": 55,
+  "totalSlots": 1059,
+  "curatedSections": 56,
   "effectiveDate": "2024-07-01",
-  "generatedAt": "2026-09-06",
-  "sha256": "780fab1472b2ac52006869b58a0e3ed43d909d860cd4e336bd1556d4109a2422",
-  "sha256_short": "780fab1472b2ac52",
+  "generatedAt": "2026-09-07",
+  "sha256": "8bd4a1c4e328b4e34ff99c5de0c7885da0d7cff1706893e0f063b35c9b5d1c9a",
+  "sha256_short": "8bd4a1c4e328b4e3",
   "sources": [
     "https://www.indiacode.nic.in/",
     "https://www.aikosh.in/",
@@ -28,5 +28,18 @@
     ],
     "file": "data/samanantar_sample.json",
     "note": "Vetted complaint-register phrases curated into data/bhashini_lexicon.js; raw sample not shipped in app logic"
+  },
+  "officialSections": 1003,
+  "vectorIndex": {
+    "file": "data/statute_vectors.json",
+    "model": "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+    "dim": 384,
+    "sha256": "38166d27794a956d575d8a86307fcdc349bebce2a48c83ef4ac447ea44af98ca"
+  },
+  "officialBasis": {
+    "BNS": "https://indialawacts.in/bns.php (358 titles + arrangement summaries; Gazette: indiacode.nic.in)",
+    "BNSS": "https://indialawacts.in/bnss.php (531 titles + arrangement summaries; Gazette: indiacode.nic.in)",
+    "BSA": "https://indialawacts.in/bsa.php (170 titles + arrangement summaries; Gazette: indiacode.nic.in)",
+    "note": "Titles + short summaries mirror the official bare-act arrangement. Full clause text NOT ingested. BNS chapter labels in entries are legacy internal tags (BNS chapters were renumbered vs IPC); section numbers + titles verified."
   }
 }

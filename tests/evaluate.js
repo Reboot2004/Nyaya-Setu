@@ -107,7 +107,7 @@ class EvaluationFramework {
         return { recall, precision, f1: 2 * (recall * precision) / (recall + precision + 0.0001) };
     }
     async evaluate() {
-        console.log('\n=== Nyaya-Setu Evaluation (REAL pipeline, prototype-0.5) ===\n');
+        console.log('\n=== Nyaya-Setu Evaluation (REAL pipeline, prototype-0.6) ===\n');
         console.log(`Running ${this.testCases.length} test cases...\n`);
         for (const tc of this.testCases) {
             this.metrics.total++;
@@ -144,7 +144,7 @@ class EvaluationFramework {
         console.log(`  Entity Extraction Recall: ${avg(this.metrics.entityRecall)}%`);
         console.log(`  Statute Retrieval Recall: ${avg(this.metrics.sectionRecall)}%`);
         console.log(`  Filtering Accuracy: ${avg(this.metrics.filteringAccuracy)}%`);
-        console.log(`\nCorpus: prototype-0.5 (~55 curated / 892 slots incl. BSA) | Retrieval: fused MiniLM+lexical+dialect-lexicon${fusedAvailable ? '' : ' (lexical-only fallback)'} | Extractor: rule-based`);
+        console.log(`\nCorpus: 0.6-official-titles (1059 slots, 56 curated, 0 placeholders) | Retrieval: fused MiniLM+lexical+dialect-lexicon${fusedAvailable ? '' : ' (lexical-only fallback)'} | Extractor: rule-based`);
         console.log('Note: LLM WebGPU path not exercised in Node; rule engine is the offline fallback.\n');
     }
 }

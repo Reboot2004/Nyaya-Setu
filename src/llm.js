@@ -187,17 +187,23 @@ export function extractEntitiesRuleBased(narrative) {
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+used\s+abusive\b/,
         // "<name> did kabza / grabbed the land" (encroachment phrasing)
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+did\s+kabza\b/i,
+        // Telugu-script subject-verb: "రాము నన్ను కొట్టాడు" (Ramu hit me)
+        /([\u0C00-\u0C7F]+(?:\s+[\u0C00-\u0C7F]+){0,2})\s+(?:నన్ను\s+)?(?:కొట్టాడు|కొట్టారు|బెదిరించాడు|బెదిరించారు|చంపుతానని|చంపేస్తానని)/,
+        // Tamil-script subject-verb: "ராமு என்னை அடித்தார்" (Ramu hit me)
+        /([\u0B80-\u0BFF]+(?:\s+[\u0B80-\u0BFF]+){0,2})\s+(?:என்னை\s+)?(?:அடித்தார்|அடித்தான்|மிரட்டினார்|கொல்வேன்)/,
         // "...slapped / abused me" with a few words in between (months/days excluded below)
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b[^.!?]{0,40}?\b(?:slapped|abused|assaulted|threatened|attacked|molested|kottadu|kottaru|maara|peeta)\b/
     ];
     const BAD_SUBJECT = /^(the|a|an|on|in|at|and|or|of|to|for|with|from|against|language|did|yesterday|today|my|me|i|they|them|he|she|it|we|you|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|मैं|मुझे|हम)$/i;
     const LOWCASE_NOUNS = /^(people|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper)$/i;
+    const INDIC_PRONOUN = /^(నన్ను|నాకు|నేను|మేము|అతను|ఆమె|వారు|என்னை|நான்|எனக்கு|அவர்|நாங்கள்)$/i;
     for (const pat of accusedMatches) {
         const m = text.match(pat);
         if (!m || !m[1] || m[1].length <= 1 || BAD_SUBJECT.test(m[1].trim())) continue;
         // English names start uppercase ("against me and slapped" is not a name);
         // known lowercase role-nouns (people, policeman, ...) pass through.
-        const cand = m[1].trim();
+        let cand = m[1].trim().replace(/\s+(నన్ను|నాకు|నేను|என்னை|நான்|எனக்கு)$/, '').trim();
+        if (!cand || INDIC_PRONOUN.test(cand)) continue;
         if (/^[a-z]/.test(cand) && !LOWCASE_NOUNS.test(cand.split(/\s+/).pop())) continue;
         aggressor = cand;
         break;
@@ -255,7 +261,7 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 6. Offence Category Classification (all 8 lexicon languages, not just EN/HI)
     const low = text.toLowerCase();
-    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|kottadu|kottaru|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി/i.test(low)) category = 'assault';
+    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|kottadu|kottaru|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|గాయమై|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി/i.test(low)) category = 'assault';
     else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मार|गाली|गाली-गलौज|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|social media/i.test(low)) category = 'intimidation';
     else if (/fraud|cheat|dhokha|chori|stole|stolen|theft|robbery|extortion|snatch|snatched|forg|fake|kabza|encroach|trespass|land grab|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|దొంగతనం|మోసం|డబ్బులు|திருட்டு|மோசடி|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ವಂಚನೆ|മോഷണം|വഞ്ചന/i.test(low)) category = 'property_fraud';
     else if (/woman|chhed|modesty|molest|stalk|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी/i.test(low)) category = 'women_safety';

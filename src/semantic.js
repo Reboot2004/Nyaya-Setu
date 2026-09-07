@@ -94,8 +94,7 @@ export async function retrieveSemanticRaw(narrative, topK = 25) {
 }
 
 function isCuratedStatute(s) {
-    const t = String(s?.title || '');
-    return !(t.startsWith('BNS Section') || t.startsWith('BNSS Section'));
+    return s?.verified === 'curated';
 }
 
 // Fused rank: 0.55 semantic + 0.45 lexical(+dialect lexicon), curated bonus.
@@ -125,9 +124,15 @@ export async function retrieveFused(narrative, lexicalResults, topK = 5, weights
     for (const entry of pool.values()) {
         const statute = byId.get(entry.id);
         if (!statute) continue;
-        const semNorm = entry.cos === null ? 0 : (entry.cos * 0.5 + 0.5);
-        const lexNorm = entry.lex ? (entry.lex.score || 0) / lexMax : 0;
-        let combined = weights.sem * semNorm + weights.lex * lexNorm;
+        // lexical norm: best of relative (fair when the whole query is weak) and
+        // absolute-anchored (score 14 ~= certain hit), so lone weak-but-only signals
+        // keep their confidence instead of collapsing to low.
+        const lexN = entry.lex ? Math.max((entry.lex.score || 0) / lexMax, Math.min(1, (entry.lex.score || 0) / 14)) : null;
+        const semN = entry.cos === null ? null : (entry.cos * 0.5 + 0.5);
+        let combined;
+        if (lexN !== null && semN !== null) combined = weights.sem * semN + weights.lex * lexN;
+        else if (lexN !== null) combined = lexN;
+        else combined = weights.sem * semN;
         const curated = isCuratedStatute(statute);
         if (curated) combined += 0.04;
         const origin = entry.lex && entry.cos !== null ? 'both' : entry.lex ? 'lexical' : 'semantic';

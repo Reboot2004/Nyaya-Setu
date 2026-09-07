@@ -1,0 +1,10 @@
+import { STATUTE_METADATA, BASE_STATUTES, STATUTE_TITLE_MAP, getLoadedStatutes } from '../data/statutes.js';
+console.log(JSON.stringify({ ...STATUTE_METADATA, officialSources: '[...]' }, null, 1));
+console.log('titleMapKeys:', Object.keys(STATUTE_TITLE_MAP).length);
+const b119 = BASE_STATUTES.find((s) => s.id === 'BNS-119');
+console.log('BNS-119:', JSON.stringify(b119));
+const bsa26 = BASE_STATUTES.find((s) => s.id === 'BSA-26');
+console.log('BSA-26:', JSON.stringify({ ...bsa26, triggers: bsa26.triggers.slice(0, 3) }));
+const counts = {};
+for (const s of BASE_STATUTES) counts[s.verified] = (counts[s.verified] || 0) + 1;
+console.log('verified:', JSON.stringify(counts));

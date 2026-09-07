@@ -1,0 +1,14 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { pipeline } from '@huggingface/transformers';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const V = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'statute_vectors.json'), 'utf-8'));
+console.log('index ids:', Object.keys(V.vectors).length, 'has BNS-115:', !!V.vectors['BNS-115'], 'dim:', V.dim);
+const ex = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', { dtype: 'q8', device: 'cpu' });
+const norm = (a) => { let s = 0; for (const v of a) s += v * v; const n = Math.sqrt(s) || 1; return a.map((v) => v / n); };
+const q = norm(Array.from((await ex('Last Tuesday around 2 PM, Mohan Singh beat me badly with a lathi outside the market. He hit my head and I bled a lot.', { pooling: 'mean', normalize: false })).data));
+const cos = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+const all = Object.entries(V.vectors).map(([id, v]) => [id, cos(q, v)]).sort((a, b) => b[1] - a[1]);
+console.log('top8:', all.slice(0, 8).map(([i, c]) => `${i}=${c.toFixed(3)}`).join(' | '));
+console.log('BNS-115 rank:', all.findIndex(([i]) => i === 'BNS-115'), 'BNS-117:', all.findIndex(([i]) => i === 'BNS-117'));

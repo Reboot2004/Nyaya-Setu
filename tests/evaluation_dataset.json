@@ -681,11 +681,10 @@
                 "location": "unknown",
                 "category": "needs_human_review"
             },
-            "expected_sections": [
-                "BNS-198"
-            ],
+            "expected_sections": [],
             "should_accept": true,
-            "confidence": "medium"
+            "confidence": "medium",
+            "note": "PC Act 1988 offence - no BNS section exists; general-format draft plus legal-aid referral is the honest behavior"
         },
         {
             "id": "TEST-041",
@@ -718,6 +717,40 @@
             "expected_sections": [],
             "should_accept": false,
             "rejection_reason": "prompt_injection_blocked"
+        },
+        {
+            "id": "TEST-043",
+            "language": "te",
+            "narrative": "రాము నన్ను కొట్టాడు, నాకు గాయమైంది.",
+            "expected_entities": {
+                "summary": "Telugu-script assault by named person",
+                "aggressor": "రాము",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "assault"
+            },
+            "expected_sections": [
+                "BNS-115"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-044",
+            "language": "ta",
+            "narrative": "ராமு என்னை அடித்தார், ரத்தம் வந்தது.",
+            "expected_entities": {
+                "summary": "Tamil-script assault by named person",
+                "aggressor": "ராமு",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "assault"
+            },
+            "expected_sections": [
+                "BNS-115"
+            ],
+            "should_accept": true,
+            "confidence": "high"
         }
     ],
     "evaluation_metrics": {
