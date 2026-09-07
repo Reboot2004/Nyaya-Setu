@@ -1,7 +1,7 @@
 // Nyaya-Setu Service Worker — offline-first PWA caching (prototype).
-// Local-only: app shell + 2.4MB MiniLM statute-vector index cached. Llama-3.2-1B,
-// Guard-3-1B and MiniLM weights are runtime-cached (Cache API) on first load.
-const CACHE = 'nyaya-setu-v7';
+// Local-only: app shell + 2.9MB MiniLM statute-vector index cached. Llama-3.2-1B,
+// Guard-3-1B and MiniLM/Whisper weights are runtime-cached (Cache API) on first load.
+const CACHE = 'nyaya-setu-v8';
 const ASSETS = [
     './',
     './index.html',

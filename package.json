@@ -13,10 +13,10 @@
         "calibrate": "node scripts/calibrate_fusion.mjs"
     },
     "dependencies": {
-        "@huggingface/transformers": "^4.2.0",
-        "@mlc-ai/web-llm": "^0.2.79"
+        "@huggingface/transformers": "4.2.0",
+        "@mlc-ai/web-llm": "0.2.79"
     },
     "devDependencies": {
-        "vite": "^6.3.5"
+        "vite": "6.3.5"
     }
 }

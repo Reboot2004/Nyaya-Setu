@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nyaya-Setu — offline-first Indic legal co-pilot. Drafts reviewable police complaints with BNS/BNSS citations, fully on-device.">
+    <meta name="theme-color" content="#0f172a">
     <title>Nyaya-Setu · Indic Legal Co-Pilot (BNS 2023)</title>
     <link rel="manifest" href="./manifest.webmanifest">
     <style>
@@ -333,7 +335,7 @@
 
 <body>
     <!-- Language FIRST gate (blocks app until chosen — rural users may not read English) -->
-    <section class="gate" id="langGate">
+    <section class="gate" id="langGate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
         <div class="gate-card">
             <h2 id="gateTitle">अपनी भाषा चुनें · మీ భాషను ఎంచుకోండి · Choose Your Language</h2>
             <p id="gateSubtitle">पहले भाषा चुनें — पूरा ऐप उसी भाषा में चलेगा। The whole app follows this choice. Works fully offline; mic / GPS only if you tap them. Draft only — not an FIR, not legal advice.</p>
@@ -357,7 +359,7 @@
     </section>
 
     <!-- Fact Review & Verification Modal -->
-    <section class="gate hidden" id="factReviewModal">
+    <section class="gate hidden" id="factReviewModal" role="dialog" aria-modal="true" aria-labelledby="factReviewTitle">
         <div class="gate-card" style="max-width:600px; max-height:80vh; overflow-y:auto;">
             <h2 id="factReviewTitle" style="margin-bottom:6px;">Verify Extracted Facts</h2>
             <p style="font-size:.85rem; color:#475569; margin-bottom:14px;">Review the information extracted from your narrative. Correct or confirm each field before proceeding to statute retrieval. Empty or unknown fields are highlighted.</p>
@@ -381,9 +383,9 @@
     </section>
 
     <!-- Emergency blocking interstitial (offline) -->
-    <section class="gate hidden" id="emergencyModal">
+    <section class="gate hidden" id="emergencyModal" role="alertdialog" aria-modal="true" aria-labelledby="emergencyTitle">
         <div class="gate-card" style="border-color:#fca5a5;">
-            <h2 style="color:#b91c1c;">⚠️ Get to safety first — possible emergency</h2>
+            <h2 id="emergencyTitle" style="color:#b91c1c;">⚠️ Get to safety first — possible emergency</h2>
             <p style="font-size:.88rem;color:#1c1917;">Your text suggests imminent danger. Call now before drafting:</p>
             <ul style="margin:0 0 12px 18px;font-size:.9rem;line-height:1.7;">
                 <li><strong>112</strong> — Emergency (police/fire/medical)</li>
@@ -444,37 +446,37 @@
                 </div>
                 <div class="field-grid">
                     <div class="field-group">
-                        <label id="lblFullName">Your Full Name</label>
-                        <input type="text" id="cName" placeholder="e.g. Ramesh Kumar">
+                        <label for="cName" id="lblFullName">Your Full Name</label>
+                        <input type="text" id="cName" autocomplete="name" placeholder="e.g. Ramesh Kumar">
                     </div>
                     <div class="field-group">
-                        <label id="lblParent">Father's / Spouse's Name</label>
-                        <input type="text" id="cParent" placeholder="e.g. Late Shri Sunder Lal">
+                        <label for="cParent" id="lblParent">Father's / Spouse's Name</label>
+                        <input type="text" id="cParent" autocomplete="additional-name" placeholder="e.g. Late Shri Sunder Lal">
                     </div>
                     <div class="field-group">
-                        <label id="lblPhone">Phone Number</label>
-                        <input type="text" id="cPhone" placeholder="e.g. 9876543210">
+                        <label for="cPhone" id="lblPhone">Phone Number</label>
+                        <input type="text" id="cPhone" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" placeholder="e.g. 9876543210">
                     </div>
                     <div class="field-group">
-                        <label id="lblAddress">Village / Town / Address</label>
-                        <input type="text" id="cAddr" placeholder="e.g. Village Shivpuri, Dist. Warangal">
+                        <label for="cAddr" id="lblAddress">Village / Town / Address</label>
+                        <input type="text" id="cAddr" autocomplete="street-address" placeholder="e.g. Village Shivpuri, Dist. Warangal">
                     </div>
                     <div class="field-group">
-                        <label id="lblPoliceStation">Police Station / District Name</label>
+                        <label for="cStation" id="lblPoliceStation">Police Station / District Name</label>
                         <input type="text" id="cStation" placeholder="e.g. PS Hanamkonda / Warangal">
                     </div>
                     <div class="field-group">
-                        <label id="lblAccused">Accused Person(s) Name / Description</label>
+                        <label for="cAccused" id="lblAccused">Accused Person(s) Name / Description</label>
                         <input type="text" id="cAccused" placeholder="e.g. Ramu (Panchayat member) & 2 unknown men">
                     </div>
                     <div class="field-group" style="grid-column: 1 / -1;">
-                        <label id="lblIncidentLoc">Exact Place of Incident</label>
+                        <label for="cLoc" id="lblIncidentLoc">Exact Place of Incident</label>
                         <input type="text" id="cLoc" placeholder="e.g. Outside Village Panchayat Office">
                     </div>
                 </div>
             </details>
 
-            <textarea id="narrative" placeholder="Speak or type what happened - in your own words, any language. Example: 'On 25th August, near the village square, Ramu and two others blocked my path, physically assaulted me with a stick, and threatened to kill me if I demanded my pending wages...'"></textarea>
+            <textarea id="narrative" aria-label="Describe your grievance" placeholder="Speak or type what happened - in your own words, any language. Example: 'On 25th August, near the village square, Ramu and two others blocked my path, physically assaulted me with a stick, and threatened to kill me if I demanded my pending wages...'"></textarea>
 
             <div class="row">
                 <button id="recBtn">🎙️ Record Voice</button>
@@ -533,7 +535,7 @@
         <!-- Output Draft -->
         <section class="card hidden" id="outCard">
             <h2 id="outputTitle">Reviewable Police-Complaint Draft</h2>
-            <pre class="output" id="complaintOut"></pre>
+            <pre class="output" id="complaintOut" aria-live="polite" aria-label="Generated complaint draft"></pre>
             <div class="row">
                 <button id="pdfBtn">📄 Open / Print PDF Complaint</button>
                 <button id="englishBtn" class="secondary">🌐 View English Draft</button>
