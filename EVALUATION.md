@@ -85,11 +85,11 @@ typos-5pct), timing every stage into `data/field_study_simulated.csv` — the sa
 schema the dev panel exports, so simulated rows and future real field rows compare
 directly. Rows are labeled `origin: simulated`.
 
-Latest run (dev machine, Ryzen 5 3550H, 9.9GB RAM): **68 runs, median pipeline
-0.05s** vs the 2.5-day / ₹1000 manual baseline; 68/68 accepted; avg 4.3/5 entity
-fields unknown per draft (names/dates/locations absent without explicit cues —
-this is what the mandatory review gate exists to fill). Machine-side time only;
-human usability sessions are still required before claiming real time/cost impact.
+Latest run (dev machine, Ryzen 5 3550H, 9.9GB RAM): **252 runs across 12 personas
++ 12 adversarial asserts, 252/252 gate asserts pass**, median pipeline 0.09s,
+expected-section hit 219/224, lexical p50 66ms / fused p50 21ms. Adversarial
+(injection ×4, gibberish, civil dispute, too-short, emoji, advice-question,
+greeting, self-harm, over-max-length): 12/12 correctly rejected without crashing.
 
 ## Interpreting Results
 

@@ -3,7 +3,7 @@
  * Calls REAL pipeline functions (not mocks):
  * - extractEntitiesRuleBased() from src/llm.js
  * - retrieveSections() from src/retrieval.js (lexical + dialect-phrase lexicon)
- * - isActionableComplaint() mirrored from src/main.js
+ * - isActionableComplaint() from src/main_is_actionable.js (shared with the app)
  *
  * Usage: node tests/evaluate.js
  */
@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';
 import { retrieveSections } from '../src/retrieval.js';
 import { extractEntitiesRuleBased } from '../src/llm.js';
 import { screenInput } from '../src/safety.js';
+import { isActionableComplaint } from '../src/main_is_actionable.js';
 
 let fusedAvailable = false;
 try {
@@ -38,23 +39,6 @@ async function retrieveFinalEval(narrative, topK = 5) {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATASET_PATH = path.join(__dirname, 'evaluation_dataset.json');
 const dataset = JSON.parse(fs.readFileSync(DATASET_PATH, 'utf-8'));
-
-// Mirrors src/main.js:isActionableComplaint (keep in sync)
-function isActionableComplaint(text, entities, retrieved) {
-    const value = (text || '').trim();
-    if (!value || value.length < 15) return false;
-    const low = value.toLowerCase();
-    const words = value.split(/\s+/).filter(Boolean);
-    if (words.length < 4) return false;
-    const junkPatterns = [/\bi am doing good\b/, /\bhow are you\b/, /\bgood morning\b/, /\bjust testing\b/, /\brandom\b/, /\bhello\b.*\bthank you\b/];
-    if (junkPatterns.some((p) => p.test(low))) return false;
-    const issueKeywords = ['threat', 'threatened', 'assault', 'hit', 'abuse', 'harass', 'fraud', 'cheat', 'stole', 'extortion', 'wage', 'salary', 'payment', 'dhamki', 'maar', 'marpit', 'gaali', 'paisa', 'rok liya', 'dhokha', 'धमकी', 'मारपीट', 'गाली', 'वेतन', 'पैसे', 'हमला', 'मजदूरी', 'तनख्वाह', 'जान से मार', 'rishwat', 'ghoos', 'దాడి', 'బెదిరింపు', 'డబ్బు', 'హింస', 'சம்பளம்', 'হুমকি', 'মারধর', 'धमकी', 'मारहाण', 'ಬೆದರಿಕೆ', 'ಹಲ್ಲೆ', 'ഭീഷണി', 'മർദ്ദനം', 'chori', 'forgery', 'forg', 'beating', 'money', 'property', 'land', 'kabza', 'struck', 'drugged', 'poison', 'kidnap', 'ransom', 'abduct', 'stalking', 'bribe', 'dowry', 'rape', 'murder', 'robbery', 'theft', 'snatch', 'marhan', 'chori', 'chhed', 'அடி', 'ரத்தம்', 'மிரட்டல்', 'திருட்டு', 'மோசடி', 'ஈவ்டீசிங்', 'பின்தொடர்', 'ಹೊಡೆ', 'ರಕ್ತ', 'ಬೆದರಿಕೆ', 'ಕಳ್ಳತನ', 'ವಂಚನೆ', 'కొట్ట', 'దాడి', 'బెదిరి', 'దొంగ', 'మోసం', 'మర్ద', 'തല്ല', 'ഭീഷണ', 'മോഷ', 'വഞ്ച', 'চুরি', 'ছেড়', 'मारहाण', 'छेड'];
-    const hasIssueSignal = issueKeywords.some((k) => low.includes(k.toLowerCase()));
-    const hasStrongStatute = Array.isArray(retrieved) && retrieved.some((r) => r.confidence === 'high' || r.confidence === 'medium');
-    const isQuestion = /\?\s*$/.test(value) || /^(क्या|kya |should i\b|do i need\b|can i\b)/i.test(low);
-    if (isQuestion && !hasStrongStatute && !hasIssueSignal) return false;
-    return hasIssueSignal || hasStrongStatute;
-}
 
 // Category families: dataset uses fine labels, extractor uses coarse taxonomy
 const CATEGORY_FAMILY = {

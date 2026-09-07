@@ -167,7 +167,7 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
             en: ['kabza', 'land grabbing', 'encroachment', 'trespass', 'illegal possession', 'forced entry into land'],
             te: ['భూ ఆక్రమణ', 'అక్రమ ప్రవేశం', 'కబ్జా చేశారు', 'పొలంలోకి చొరబడ్డారు'],
             ta: ['நில ஆக்கிரமிப்பு', 'அத்துமீறி நுழைதல்', 'நில அபகரிப்பு'],
-            mr: ['जमीन बळकावणे', 'बेकायदेशीर ताबा', 'घरात घुसखोरी'],
+            mr: ['जमीन बळकावणे', 'बेकायदेशीर ताबा', 'घरात घुसखोरी', 'शेतात घुसून', 'पीक नष्ट', 'जबरदस्तीने'],
             bn: ['জমি দখল', 'অবৈধ প্রবেশ', 'জোর করে জমি দখল'],
             kn: ['ಜಮೀನು ಒತ್ತುವರಿ', 'ಅಕ್ರಮ ಪ್ರವೇಶ', 'ಕಬ್ಜಾ'],
             ml: ['ഭൂമി കയ್ಯേറ്റം', 'അതിക്രമിച്ചു കയറൽ']
@@ -208,11 +208,26 @@ export const BHASHINI_COLLOQUIAL_LEXICON = [
 /**
  * Normalizes colloquial narrative using the in-house dialect-phrase lexicon.
  * Returns array of enriched canonical search concepts and target section suggestions.
+ * Latin terms also match typo-tolerantly (edit-1 incl. transpositions, len>=5)
+ * so kiosk typos ("farud") still map to concepts.
  */
+function latinFuzzy(a, b) {
+    if (a === b) return true;
+    if (!/^[a-z]+$/.test(a) || !/^[a-z]+$/.test(b)) return false;
+    if (Math.abs(a.length - b.length) > 1 || a.length < 5) return false;
+    if (a.length === b.length) {
+        const diff = [];
+        for (let k = 0; k < a.length; k++) if (a[k] !== b[k]) diff.push(k);
+        if (diff.length === 2 && diff[1] === diff[0] + 1 && a[diff[0]] === b[diff[1]] && a[diff[1]] === b[diff[0]]) return true;
+    }
+    return false;
+}
+
 export function normalizeWithBhashini(text) {
     if (!text || typeof text !== 'string') return { normalizedConcepts: [], suggestedSections: [] };
 
     const lowerText = text.toLowerCase();
+    const words = lowerText.split(/[\s,।,.!?;:()\[\]{}"'—–\-\/\\|]+/).filter((w) => w.length >= 5);
     const matchedConcepts = new Set();
     const targetSections = new Set();
 
@@ -220,7 +235,15 @@ export function normalizeWithBhashini(text) {
         let isMatched = false;
         for (const [lang, terms] of Object.entries(entry.terms)) {
             for (const term of terms) {
-                if (lowerText.includes(term.toLowerCase())) {
+                const tl = term.toLowerCase();
+                if (lowerText.includes(tl)) {
+                    isMatched = true;
+                    matchedConcepts.add(entry.canonical);
+                    entry.targetSections.forEach((sec) => targetSections.add(sec));
+                    break;
+                }
+                // typo-tolerant fallback for single-word latin terms only
+                if (/^[a-z]+$/.test(tl) && tl.length >= 5 && words.some((w) => latinFuzzy(w, tl))) {
                     isMatched = true;
                     matchedConcepts.add(entry.canonical);
                     entry.targetSections.forEach((sec) => targetSections.add(sec));

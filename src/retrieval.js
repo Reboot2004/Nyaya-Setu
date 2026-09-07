@@ -17,11 +17,18 @@ const KN_STOP = new Set(['ನನ್ನ', 'ಮತ್ತು', 'ದಲ್ಲಿ', '
 const ML_STOP = new Set(['എന്റെ', 'ഒപ്പം', 'ൽ', 'ഈ', 'ആ']);
 const ALL_STOP = new Set([...EN_STOP, ...HINDI_STOP, ...TE_STOP, ...TA_STOP, ...BN_STOP, ...MR_STOP, ...KN_STOP, ...ML_STOP]);
 
-// edit-distance-1 fuzzy match for latin tokens >=5 chars (typo tolerance: threatene→threatened). Cheap enough for tabs.
+// edit-distance-1 fuzzy match for latin tokens >=5 chars (typo tolerance:
+// threatene→threatened, farud→fraud incl. adjacent transpositions). Cheap on tabs.
 function fuzzyHit(a, b) {
     if (a === b) return true;
     if (!/^[a-z]+$/.test(a) || !/^[a-z]+$/.test(b)) return false;
     if (Math.abs(a.length - b.length) > 1 || a.length < 5) return false;
+    // adjacent transposition (Damerau): farud↔fraud
+    if (a.length === b.length) {
+        let diff = [];
+        for (let k = 0; k < a.length; k++) if (a[k] !== b[k]) diff.push(k);
+        if (diff.length === 2 && diff[1] === diff[0] + 1 && a[diff[0]] === b[diff[1]] && a[diff[1]] === b[diff[0]]) return true;
+    }
     let i = 0, j = 0, edits = 0;
     while (i < a.length && j < b.length) {
         if (a[i] === b[j]) { i++; j++; continue; }
@@ -52,8 +59,7 @@ function docFreq(triggerLower) {
     return dfCache.get(triggerLower) || 1;
 }
 function isCuratedStatute(s) {
-    const t = String(s?.title || '');
-    return !(t.startsWith('BNS Section') || t.startsWith('BNSS Section'));
+    return s?.verified === 'curated';
 }
 
 function tokenize(text) {
