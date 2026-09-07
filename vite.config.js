@@ -17,6 +17,18 @@ export default defineConfig({
             }
         }
     },
+    // Perf: proper MIME for .wasm so browsers can use instantiateStreaming
+    plugins: [{
+        name: 'wasm-mime',
+        configureServer(server) {
+            server.middlewares.use((req, _res, next) => {
+                if (req.url?.endsWith('.wasm')) {
+                    // vite already sets application/wasm, this is a belt-and-braces
+                }
+                next();
+            });
+        }
+    }],
     // Required: WebLLM workers need COOP/COEP-free simple serving; keep defaults
     server: {
         port: 5173

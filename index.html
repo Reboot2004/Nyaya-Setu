@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Nyaya-Setu — offline-first Indic legal co-pilot. Drafts reviewable police complaints with BNS/BNSS citations, fully on-device.">
     <meta name="theme-color" content="#0f172a">
+    <link rel="preload" href="./data/statutes.js" as="script" crossorigin>
+    <link rel="preload" href="./data/statute_vectors.json" as="fetch" crossorigin>
+    <link rel="preload" href="./icon-192.svg" as="image" type="image/svg+xml">
     <title>Nyaya-Setu · Indic Legal Co-Pilot (BNS 2023)</title>
     <link rel="manifest" href="./manifest.webmanifest">
     <style>
@@ -573,10 +576,36 @@
     <footer id="appFooter">Nyaya-Setu v0.6 (2026-09-07) · Local-only · Official-title corpus — verify before submission · Not legal advice · NALSA 15100</footer>
 
     <script type="module" src="./src/main.js"></script>
+    <button id="installBtn" class="hidden" style="position:fixed;bottom:16px;right:16px;z-index:900;background:#0f172a;color:#fff;border:none;border-radius:999px;padding:10px 16px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.2)">Install app</button>
     <script>
+        // PWA install prompt (deferred, user-gesture gated)
+        let deferredPrompt = null;
+        const installBtn = document.getElementById('installBtn');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (installBtn) installBtn.classList.remove('hidden');
+        });
+        if (installBtn) installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            try { await deferredPrompt.userChoice; } catch {}
+            deferredPrompt = null;
+            installBtn.classList.add('hidden');
+        });
+        window.addEventListener('appinstalled', () => {
+            if (installBtn) installBtn.classList.add('hidden');
+            deferredPrompt = null;
+        });
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW failed:', e));
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (refreshing) return;
+                    refreshing = true;
+                    console.log('New version available — reload to update.');
+                });
             });
         }
     </script>

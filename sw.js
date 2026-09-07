@@ -1,10 +1,11 @@
 // Nyaya-Setu Service Worker — offline-first PWA caching (prototype).
 // Local-only: app shell + 2.9MB MiniLM statute-vector index cached. Llama-3.2-1B,
 // Guard-3-1B and MiniLM/Whisper weights are runtime-cached (Cache API) on first load.
-const CACHE = 'nyaya-setu-v8';
+const CACHE = 'nyaya-setu-v9';
 const ASSETS = [
     './',
     './index.html',
+    './offline.html',
     './manifest.webmanifest',
     './icon-192.svg',
     './icon-512.svg',
@@ -49,6 +50,13 @@ self.addEventListener('fetch', (e) => {
     const url = new URL(e.request.url);
     // Same-origin: cache-first, then network + runtime cache
     if (url.origin === self.location.origin) {
+        // Navigation requests get offline.html fallback
+        if (e.request.mode === 'navigate') {
+            e.respondWith(
+                fetch(e.request).catch(() => caches.match('./offline.html').then((r) => r || caches.match('./index.html')))
+            );
+            return;
+        }
         e.respondWith(
             caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
                 if (res.ok) {
