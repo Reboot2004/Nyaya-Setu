@@ -6,7 +6,11 @@
     "scripts": {
         "dev": "vite --host",
         "build": "vite build",
-        "preview": "vite preview --host"
+        "preview": "vite preview --host",
+        "eval": "node tests/evaluate.js",
+        "study": "node scripts/simulate_field_study.mjs",
+        "vectors": "node scripts/build_vectors.mjs",
+        "calibrate": "node scripts/calibrate_fusion.mjs"
     },
     "dependencies": {
         "@huggingface/transformers": "^4.2.0",

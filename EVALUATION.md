@@ -77,6 +77,20 @@ Real calls to `extractEntitiesRuleBased()` + fused `retrieveFused()` (MiniLM sem
 
 Run: `node tests/evaluate.js`. WebGPU LLM path not exercised in Node.
 
+## Simulated field study (AUTOMATION — not human sessions)
+
+`npm run study` (`scripts/simulate_field_study.mjs`) drives the real pipeline as
+5 scripted personas × input perturbations (as-typed, lowercased, truncated-20w,
+typos-5pct), timing every stage into `data/field_study_simulated.csv` — the same
+schema the dev panel exports, so simulated rows and future real field rows compare
+directly. Rows are labeled `origin: simulated`.
+
+Latest run (dev machine, Ryzen 5 3550H, 9.9GB RAM): **68 runs, median pipeline
+0.05s** vs the 2.5-day / ₹1000 manual baseline; 68/68 accepted; avg 4.3/5 entity
+fields unknown per draft (names/dates/locations absent without explicit cues —
+this is what the mandatory review gate exists to fill). Machine-side time only;
+human usability sessions are still required before claiming real time/cost impact.
+
 ## Interpreting Results
 
 ### Entity Extraction Recall
