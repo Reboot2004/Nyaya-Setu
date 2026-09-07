@@ -22,9 +22,11 @@ export async function startOfflineMemo() {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         throw new Error('Audio recording not supported in this browser.');
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     memoChunks = [];
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     memoRecorder = new MediaRecorder(stream);
+    // keep a handle to the stream for reliable cleanup on tab/mobile browsers
+    memoRecorder.stream = stream;
     memoRecorder.ondataavailable = (e) => { if (e.data?.size) memoChunks.push(e.data); };
     memoRecorder.start();
     return true;
@@ -33,10 +35,12 @@ export async function startOfflineMemo() {
 export function stopOfflineMemo() {
     return new Promise((resolve) => {
         if (!memoRecorder) return resolve(null);
+        const stream = memoRecorder.stream || null;
         memoRecorder.onstop = () => {
             const blob = new Blob(memoChunks, { type: memoRecorder.mimeType || 'audio/webm' });
-            try { memoRecorder.stream?.getTracks()?.forEach((t) => t.stop()); } catch { /* ignore */ }
+            try { stream?.getTracks()?.forEach((t) => t.stop()); } catch { /* ignore */ }
             memoRecorder = null;
+            memoChunks = [];
             resolve(blob);
         };
         try { memoRecorder.stop(); } catch { resolve(null); }

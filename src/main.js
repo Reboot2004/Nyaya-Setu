@@ -23,39 +23,13 @@ function t(key, fallback = '') {
     return UI_TEXT[lang]?.[key] || UI_TEXT.en[key] || fallback;
 }
 
-// Display-sanitizer: mirrors llm.js cleanStr so review/draft never show JSON or quoted Unknown.
-function cleanVal(v, fallback = 'unknown') {
-    let cur = v;
-    let guard = 0;
-    if (typeof cur === 'string') {
-        const t = cur.trim();
-        if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
-            try { cur = JSON.parse(t); } catch { /* not JSON — continue as string */ }
-        }
-    }
-    while (cur !== null && typeof cur === 'object' && guard++ < 4) {
-        if (Array.isArray(cur)) { cur = cur[0]; continue; }
-        const keys = Object.keys(cur);
-        if (!keys.length) { cur = fallback; break; }
-        cur = cur.name ?? cur.description ?? cur.date ?? cur.place ?? cur.value ?? cur.text ?? fallback;
-        if (typeof cur === 'string') {
-            const t = cur.trim();
-            if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
-                try { cur = JSON.parse(t); continue; } catch { /* keep string */ }
-            }
-        }
-    }
-    if (cur === null || cur === undefined) return fallback;
-    let s = String(cur).trim().replace(/^["'`\s]+|["'`\s]+$/g, '').trim();
-    if (!s || /^(unknown|not\s*given|not\s*specified|n\/a|na|none|null|undefined|-+)$/i.test(s)) return 'unknown';
-    return s;
-}
-function isKnownVal(v) {
-    return cleanVal(v, 'unknown') !== 'unknown';
-}
-function escHtml(s) {
-    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+// Display-sanitizer + escaper: single sources (shared_sanitize.js / shared_escape.js)
+// so review/draft never show JSON or quoted Unknown, and never double-escapes.
+import { cleanStr as cleanVal, isKnown as isKnownVal } from './shared_sanitize.js';
+import { escHtml } from './shared_escape.js';
+
+// Retained for legacy imports (e.g. external scripts doing import('./main.js').cleanVal)
+export { cleanStr as cleanVal, isKnown as isKnownVal } from './shared_sanitize.js';
 
 export function applyUiLanguage() {
     const lang = ($('langSelect')?.value || 'en').toLowerCase();
@@ -176,6 +150,9 @@ function renderLawsExplorer(filterText = '', catId = currentCatFilter()) {
 
 import { isActionableComplaint } from './main_is_actionable.js';
 
+// Retained for legacy external imports (npm scripts doing import('./main.js').cleanVal)
+// Note: Vite build only sees the src/ import above; this re-export is for Node-eval callers.
+
 async function bootstrapLanguageGate() {
     // Language-first for rural users: browser locale preselects the gate dropdown,
     // gate blocks the app until Start, then the whole UI follows. Fully offline.
@@ -204,18 +181,30 @@ function useBrowserLocation() {
         return;
     }
 
+    if ($('geoBtn')) {
+        $('geoBtn').disabled = true;
+        $('geoBtn').textContent = '⏳ Locating…';
+    }
+    if ($('langHint')) $('langHint').textContent = 'Requesting location (stays on this device, never sent)…';
+
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             const lat = pos.coords.latitude.toFixed(4);
             const lon = pos.coords.longitude.toFixed(4);
-            const locText = `Location: ${lat}, ${lon} (Verified Indian GPS coordinates)`;
+            const locText = `Location: ${lat}, ${lon} (on-device only)`;
             if ($('cLoc')) $('cLoc').value = locText;
-            const existing = $('narrative').value.trim();
-            $('narrative').value = existing ? `${existing}\n\n[${locText}]` : `[${locText}]`;
-            $('langHint').textContent = t('msgGeoCaptured');
+            if ($('geoBtn')) {
+                $('geoBtn').disabled = false;
+                $('geoBtn').textContent = t('geoBtn');
+            }
+            if ($('langHint')) $('langHint').textContent = 'Location captured — kept on this device only.';
         },
         () => {
-            alert(t('msgGeoDenied'));
+            alert(t('msgGeoDenied') + '\nYour location was not sent anywhere. You can type it instead.');
+            if ($('geoBtn')) {
+                $('geoBtn').disabled = false;
+                $('geoBtn').textContent = t('geoBtn');
+            }
         },
         { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -673,8 +662,16 @@ $('runBtn').onclick = async () => {
     }
 
     // Safety: instant rule screen + local quantized Guard-3-1B (no cloud, best-effort)
+    // Disallowed content (weapons/bomb instructions) is hard-blocked at the gate
+    // and NEVER reaches the complaint draft pipeline.
     const safety = screenInput(narrative);
     if (!safety.ok) {
+        const disallowed = safety.reasons.includes('disallowed-content');
+        if (disallowed) {
+            alert('This request cannot be helped as a police complaint. If someone is in danger, call 112 immediately. For free legal aid, contact NALSA 15100. You may start a new complaint with a factual grievance instead.');
+            if ($('langHint')) $('langHint').textContent = 'Blocked: disallowed content — drafting is for police complaints only. Call 112 in danger.';
+            return;
+        }
         alert(`Input blocked for safety (${safety.reasons.join(', ')}). Please rephrase factually.`);
         $('langHint').textContent = `Blocked: ${safety.reasons.join(', ')}`;
         return;
@@ -682,32 +679,9 @@ $('runBtn').onclick = async () => {
     if (safety.piiHint && $('langHint')) {
         $('langHint').textContent = 'Note: avoid Aadhaar/bank numbers in the narrative.';
     }
-    try {
-        if ($('langHint')) $('langHint').textContent = 'Local safety check…';
-        const g = await guardCheck(narrative, 12000);
-        if (!g.ok) {
-            alert(`Blocked by local safety (${g.source}: ${g.reasons.join(', ')}). Please rephrase factually.`);
-            if ($('langHint')) $('langHint').textContent = `Blocked: ${g.reasons.join(', ')}`;
-            return;
-        }
-    } catch { /* guard best-effort; rule screen already passed */ }
-
-    // Blocking emergency interstitial (offline, runnable everywhere)
-    const emg = detectEmergency(narrative);
-    if (emg.emergency) {
-        const contacts = EMERGENCY_CONTACTS.map((c) => `${c.name}: ${c.number}`).join('\n');
-        alert(`⚠️ Possible emergency detected.\n\nCall immediately:\n${contacts}\n\nYou can still create a draft after this, but get to safety / call 112 first.`);
-        const modal = $('emergencyModal');
-        if (modal) {
-            $('emergencyMatched') && ($('emergencyMatched').textContent = `Trigger: ${emg.matched}`);
-            modal.classList.remove('hidden');
-            const proceed = await new Promise((resolve) => {
-                $('emergencyContinueBtn').onclick = () => { modal.classList.add('hidden'); resolve(true); };
-                $('emergencyBackBtn').onclick = () => { modal.classList.add('hidden'); resolve(false); };
-            });
-            if (!proceed) { $('runBtn').disabled = false; return; }
-        }
-    }
+    // Defer local Guard + emergency checks until live draft is needed (see below —
+    // they run after the "is this even a complaint?" gate so injection probes
+    // don't waste GPU time).
 
     $('runBtn').disabled = true;
     const pipeT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -749,9 +723,37 @@ $('runBtn').onclick = async () => {
 
         const retrievedPreview = retrieveSections(narrative, 2);
         if (!isActionableComplaint(narrative, entities, retrievedPreview)) {
-            alert(t('msgInsufficientComplaint'));
+            alert(t('msgInsufficientComplaint') + '\n\nIf police refuse a FIR, ask for a written acknowledgement and approach the Superintendent of Police (SP). For free advice, call NALSA 15100. In danger, call 112 first.');
             $('langHint').textContent = t('msgInsufficientComplaint');
             return;
+        }
+
+        // Heavy checks deferred: local Guard + emergency interstitial only for live drafts.
+        try {
+            if ($('langHint')) $('langHint').textContent = 'Local safety check…';
+            const g = await guardCheck(narrative, 12000);
+            if (!g.ok) {
+                alert(`Blocked by local safety (${g.source}: ${g.reasons.join(', ')}). Please rephrase factually.`);
+                if ($('langHint')) $('langHint').textContent = `Blocked: ${g.reasons.join(', ')}`;
+                return;
+            }
+        } catch { /* guard best-effort; rule screen already passed */ }
+        {
+            const emg = detectEmergency(narrative);
+            if (emg.emergency) {
+                const contacts = EMERGENCY_CONTACTS.map((c) => `${c.name}: ${c.number}`).join('\n');
+                alert(`⚠️ Possible emergency detected.\n\nCall immediately:\n${contacts}\n\nYou can still create a draft after this, but get to safety / call 112 first.`);
+                const modal = $('emergencyModal');
+                if (modal) {
+                    $('emergencyMatched') && ($('emergencyMatched').textContent = `Trigger: ${emg.matched}`);
+                    modal.classList.remove('hidden');
+                    const proceed = await new Promise((resolve) => {
+                        $('emergencyContinueBtn').onclick = () => { modal.classList.add('hidden'); resolve(true); };
+                        $('emergencyBackBtn').onclick = () => { modal.classList.add('hidden'); resolve(false); };
+                    });
+                    if (!proceed) { $('runBtn').disabled = false; return; }
+                }
+            }
         }
 
         // ---- Step 3: Human Fact Verification Modal ----

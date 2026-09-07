@@ -1,5 +1,7 @@
 ﻿// Complaint PDF generation (client-side, print-based) + audio rights briefing (Web Speech API)
 // Uses browser speech synthesis when available; it may not be fully offline in every browser.
+import { escHtml as esc } from './shared_escape.js';
+import { titleFor } from '../data/statute_i18n.js';
 
 const PDF_TEXT = {
     en: {
@@ -60,23 +62,25 @@ const PDF_TEXT = {
     }
 };
 
-function esc(s) {
-    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-import { titleFor } from '../data/statute_i18n.js';
-
+// Complaint PDF generation (client-side, print-based) + audio rights briefing (Web Speech API)
+// Uses browser speech synthesis when available; it may not be fully offline in every browser.
 export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en') {
     const lang = (uiLanguage || 'en').toLowerCase();
     // Section titles in the citizen's language where really translated (hi/te curated),
     // else honest English — never a fake prefix.
-    const sections = retrieved.map(({ statute, source, confidence }) => {
-        const sourceUrl = statute.officialUrl || 'https://www.indiacode.nic.in/';
-        const conf = confidence ? ` · confidence: ${esc(confidence)}` : '';
-        const v = statute.verified || 'placeholder';
-        const tag = v === 'curated' || v === 'official' ? '' : (v === 'official-title' ? ' · official title only — full text pending verification' : ' · placeholder entry — verify');
-        return `<li><strong>${esc(statute.code)} Section ${esc(statute.section)}</strong> — ${esc(titleFor(statute, lang))}${conf}${tag}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${esc(source || 'India Code')}</a></span></li>`;
-    }).join('');
+  // Non-curated entries carry an honest tag so the explorer never looks "official".
+  // Curated/official titles are shown clean.
+  const vTag = (s) => {
+      const v = s.verified || '';
+      if (v === 'curated') return '';
+      if (v === 'official' || v === 'official-title') return ' · official title — room for legal-aid refinement';
+      return ' · placeholder entry — verify';
+  };
+  const sections = retrieved.map(({ statute, source, confidence }) => {
+      const sourceUrl = statute.officialUrl || 'https://www.indiacode.nic.in/';
+      const conf = confidence ? ` · confidence: ${esc(confidence)}` : '';
+      return `<li><strong>${esc(statute.code)} Section ${esc(statute.section)}</strong> — ${esc(titleFor(statute, lang))}${conf}${vTag(statute)}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${esc(source || 'India Code')}</a></span></li>`;
+  }).join('');
     const englishText = esc(complaint?.english || complaint?.native || complaint?.hindi || '');
     const nativeText = esc(complaint?.native || complaint?.hindi || complaint?.english || '');
     const labels = PDF_TEXT[lang] || PDF_TEXT.en;
