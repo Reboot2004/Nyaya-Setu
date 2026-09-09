@@ -481,6 +481,13 @@
 
             <textarea id="narrative" aria-label="Describe your grievance" placeholder="Speak or type what happened - in your own words, any language. Example: 'On 25th August, near the village square, Ramu and two others blocked my path, physically assaulted me with a stick, and threatened to kill me if I demanded my pending wages...'"></textarea>
 
+            <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px;" id="sampleRow" aria-label="Try a sample grievance">
+                <span style="font-size:.75rem;color:#64748b;font-weight:600;">Try a sample:</span>
+                <button class="secondary" type="button" data-sample="en-hit" style="font-size:.75rem;padding:6px 10px;">EN: Hit & threatened</button>
+                <button class="secondary" type="button" data-sample="hi-wage" style="font-size:.75rem;padding:6px 10px;">HI: मजदूरी रोकी</button>
+                <button class="secondary" type="button" data-sample="te-land" style="font-size:.75rem;padding:6px 10px;">TE: భూ ఆక్రమణ</button>
+            </div>
+
             <div class="row">
                 <button id="recBtn">🎙️ Record Voice</button>
                 <button id="offlineVoiceBtn" class="secondary" type="button" title="Records offline, then transcribes fully on-device (slow on tabs, no network needed after first download)">🎙️ Offline Voice</button>
@@ -533,6 +540,7 @@
             <h2 id="sectionsTitle">Suggested statutory provisions (verify before submission)</h2>
             <ul class="sections" id="secList"></ul>
             <p style="font-size:.78rem;color:#92400e;margin-top:10px;line-height:1.45;">These are retrieval suggestions from the prototype corpus, not a legal determination. Check the quoted facts and provisions with a legal-aid service or official source before submission.</p>
+            <p style="font-size:.75rem;color:#64748b;margin-top:6px;">Need help now? <a href="tel:112">Call 112</a> (emergency) · <a href="tel:15100">NALSA 15100</a> (free legal aid)</p>
         </section>
 
         <!-- Output Draft -->
@@ -541,6 +549,7 @@
             <pre class="output" id="complaintOut" aria-live="polite" aria-label="Generated complaint draft"></pre>
             <div class="row">
                 <button id="pdfBtn">📄 Open / Print PDF Complaint</button>
+                <button id="whatsBtn" class="secondary">💬 Share via WhatsApp</button>
                 <button id="englishBtn" class="secondary">🌐 View English Draft</button>
                 <button id="audioBtn" class="secondary">🔊 Play Rights Briefing</button>
                 <button id="readDraftBtn" class="secondary">🔊 Read Draft Aloud</button>
@@ -554,6 +563,7 @@
                 <span id="aiOptinNote" style="font-size:0.72rem;color:#64748b;"></span>
             </div>
             <p style="font-size:0.75rem;color:#64748b;margin-top:6px;">Local-only: Llama-3.2-1B facts + English gist, Guard-3-1B safety (quantized q4, cached). Drafting deterministic from retrieved sections. Typing fully offline.</p>
+            <div id="draftHistory" class="hidden" style="margin-top:10px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"></div>
         </section>
 
         <!-- Laws Explorer & Corpus Provenance Card -->
@@ -573,9 +583,13 @@
         </section>
     </main>
 
-    <footer id="appFooter">Nyaya-Setu v0.6 (2026-09-07) · Local-only · Official-title corpus — verify before submission · Not legal advice · NALSA 15100</footer>
+    <footer id="appFooter">Nyaya-Setu v0.6 (2026-09-07) · Local-only · Official-title corpus — verify before submission · Not legal advice · <a href="tel:15100">NALSA 15100</a> · <a href="tel:112">112</a></footer>
 
     <script type="module" src="./src/main.js"></script>
+    <div id="judgePanel" class="hidden" style="position:fixed;bottom:0;left:0;right:0;background:#0f172a;color:#cbd5e1;font-size:.72rem;padding:6px 12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;z-index:800;border-top:1px solid #334155;">
+        <span id="judgeTiming">—</span><span id="judgeRet">—</span><span id="judgeSections">—</span><span id="judgeCorpus" style="color:#93c5fd">1059 slots · 56 curated · fused MiniLM+lexical</span>
+        <button id="judgeCopyBtn" class="secondary" style="font-size:.65rem;padding:3px 8px;margin-left:auto;">Copy for judges</button>
+    </div>
     <button id="installBtn" class="hidden" style="position:fixed;bottom:16px;right:16px;z-index:900;background:#0f172a;color:#fff;border:none;border-radius:999px;padding:10px 16px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.2)">Install app</button>
     <script>
         // PWA install prompt (deferred, user-gesture gated)

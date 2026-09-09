@@ -544,6 +544,25 @@ if ($('catFilter')) {
     });
 }
 
+// Demo samples — one tap fills a realistic grievance, switches language, and hints.
+const DEMO_SAMPLES = {
+    'en-hit': { lang: 'en', text: 'On 25th August, near the village square, Ramu and two others blocked my path, hit me with a stick, and threatened to kill me if I demanded my pending wages.' },
+    'hi-wage': { lang: 'hi', text: 'मालिक ने तीन महीने की मजदूरी नहीं दी, 15000 रुपये रोक लिए हैं।' },
+    'te-land': { lang: 'te', text: 'నా భూమిని కబ్జా చేశారు, పొలంలోకి చొరబడ్డారు।' },
+};
+if ($('sampleRow')) {
+    $('sampleRow').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-sample]');
+        if (!btn) return;
+        const s = DEMO_SAMPLES[btn.dataset.sample];
+        if (!s) return;
+        applyLanguageSelection(s.lang);
+        if ($('narrative')) $('narrative').value = s.text;
+        if ($('langHint')) $('langHint').textContent = `Sample loaded (${s.lang}) — edit it to match your case, then Review.`;
+        $('narrative')?.focus();
+    });
+}
+
 if ($('syncBtn')) {
     $('syncBtn').onclick = async () => {
         // Local-only: show offline corpus provenance (no network sync exists by design).
@@ -806,12 +825,27 @@ $('runBtn').onclick = async () => {
         $('outCard').classList.remove('hidden');
 
         document.querySelectorAll('.step').forEach((el) => { el.classList.remove('active'); el.classList.add('done'); });
-        // Time/cost study log (dev instrument): pipeline seconds vs manual baseline.
+        // Judge panel (always visible after a draft): pipeline timing + retrieval provenance.
         try {
             const totalSec = (((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - pipeT0) / 1000;
+            const jp = $('judgePanel'), jt = $('judgeTiming'), jr = $('judgeRet'), js = $('judgeSections');
+            if (jp) jp.classList.remove('hidden');
+            if (jt) jt.textContent = `Pipeline: ${totalSec.toFixed(2)}s`;
+            if (jr) jr.textContent = `Retrieval: ${pipeRetMs !== null ? pipeRetMs.toFixed(0) + 'ms' : 'n/a'}${semanticReady ? ' (fused)' : ' (lexical)'}`;
+            if (js) js.textContent = `Sections: ${lastRetrieved.map((r) => `${r.statute.code}-${r.statute.section}(${r.confidence})`).join(', ') || 'general format'}`;
+            if ($('judgeCopyBtn')) $('judgeCopyBtn').onclick = async () => {
+                const payload = `Nyaya-Setu — pipeline ${totalSec.toFixed(2)}s, retrieval ${pipeRetMs?.toFixed(0) ?? 'n/a'}ms${semanticReady ? ' (fused)' : ''}, sections: ${lastRetrieved.map((r) => `${r.statute.code}-${r.statute.section}`).join(', ') || 'none'}, corpus v0.6 (1059 slots)`;
+                try { await navigator.clipboard.writeText(payload); $('judgeCopyBtn').textContent = 'Copied ✓'; setTimeout(() => $('judgeCopyBtn').textContent = 'Copy for judges', 1200); } catch { alert(payload); }
+            };
+        } catch {}
+        // Time/cost study log (dev instrument): pipeline seconds vs manual baseline.
+        // (Timer already used above for the judge panel — reuse it.)
+        try {
+            const totalSec2 = (((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - pipeT0) / 1000;
             const m = await import('./devmetrics.js');
-            m.logStudyDraft({ lang: selectedLanguage, narrativeChars: narrative.length, totalSec, retrievalMs: pipeRetMs, sections: lastRetrieved.length });
+            m.logStudyDraft({ lang: selectedLanguage, narrativeChars: narrative.length, totalSec: totalSec2, retrievalMs: pipeRetMs, sections: lastRetrieved.length });
         } catch { /* study logging never breaks drafting */ }
+        try { saveDraftHistory(); } catch {}
     } catch (err) {
         console.error(err);
         alert(`${t('msgPipelineError')} ` + (err?.message || err));
@@ -866,6 +900,45 @@ if ($('cpgramsBtn')) {
         downloadCPGRAMSJson(schema);
     };
 }
+if ($('whatsBtn')) {
+    $('whatsBtn').onclick = () => {
+        if (!lastComplaint) return;
+        const text = ($('complaintOut')?.textContent || '').trim().slice(0, 3500);
+        if (!text) return;
+        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank', 'noopener');
+    };
+}
+
+// Draft history (local-only, on this device) — survives reloads for kiosk follow-ups.
+const DRAFTS_KEY = 'nyaya_setu_drafts_v1';
+function saveDraftHistory() {
+    if (!lastComplaint) return;
+    try {
+        const list = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]');
+        list.unshift({ ts: new Date().toISOString(), lang: getSelectedLanguage(), preview: ($('complaintOut')?.textContent || '').slice(0, 120), html: complaintToHtml(lastComplaint, {}, lastRetrieved, getSelectedLanguage()) });
+        localStorage.setItem(DRAFTS_KEY, JSON.stringify(list.slice(0, 12)));
+        renderDraftHistory();
+    } catch { /* quota */ }
+}
+function renderDraftHistory() {
+    const el = $('draftHistory');
+    if (!el) return;
+    try {
+        const list = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]');
+        if (!list.length) { el.classList.add('hidden'); return; }
+        el.classList.remove('hidden');
+        el.innerHTML = `<div style="font-size:.78rem;font-weight:600;color:#334155;margin-bottom:6px;">Recent drafts on this device (${list.length})</div>` +
+            list.map((d, i) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #e2e8f0;font-size:.78rem;"><span>${new Date(d.ts).toLocaleString('en-IN')} · ${d.lang.toUpperCase()} — ${escHtml(d.preview.slice(0, 80))}…</span><button class="secondary" data-restore="${i}" style="font-size:.72rem;padding:4px 8px;">Restore</button></div>`).join('');
+        el.querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', () => {
+            const idx = Number(b.dataset.restore);
+            const entry = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]')[idx];
+            if (!entry) return;
+            downloadComplaint(entry.html);
+        }));
+    } catch { /* ignore */ }
+}
+try { renderDraftHistory(); } catch {}
 
 // Opt-in cloud fallback toggle (privacy-first, off by default)
 // Local-only build: no cloud path exists. No grievance text ever leaves device.
