@@ -7,7 +7,6 @@ import { guardWithLocalModel as guardCheck, unloadGuard } from './guard.js';
 import { toCPGRAMSSchema, downloadCPGRAMSJson } from './cpgrams.js';
 import { initOfflineIndex, clearIDBCorpus } from './offline_store.js';
 import { detectEmergency, EMERGENCY_CONTACTS } from './emergency.js';
-import { PS_DIRECTORY, getDistricts, getStationsForDistrict, getKioskPS, setKioskPS } from '../data/ps_directory.js';
 import { CITIZEN_CATEGORIES, citizenCategoryFor } from '../data/categories.js';
 import { titleFor, statuteTextFor } from '../data/statute_i18n.js';
 
@@ -40,12 +39,8 @@ export function applyUiLanguage() {
     if ($('lblFullName')) $('lblFullName').textContent = t('lblFullName');
     if ($('lblParent')) $('lblParent').textContent = t('lblParent');
     if ($('lblPhone')) $('lblPhone').textContent = t('lblPhone');
-    if ($('lblAddress')) $('lblAddress').textContent = t('lblAddress');
-    if ($('lblPoliceStation')) $('lblPoliceStation').textContent = t('lblPoliceStation');
     if ($('lblAccused')) $('lblAccused').textContent = t('lblAccused');
-    if ($('lblIncidentLoc')) $('lblIncidentLoc').textContent = t('lblIncidentLoc');
     if ($('langLabel')) $('langLabel').textContent = t('langLabel');
-    if ($('geoBtn')) $('geoBtn').textContent = t('geoBtn');
     if ($('narrative')) $('narrative').placeholder = t('narrativePlaceholder');
     if ($('runBtn')) $('runBtn').textContent = t('runBtn');
     if ($('loadTitle')) $('loadTitle').textContent = t('loadTitle');
@@ -173,41 +168,6 @@ function refreshComplaintView() {
     $('complaintOut').textContent = visible;
     $('outputTitle').textContent = activeView === 'english' ? t('outputTitleEnglish') : t('outputTitle');
     $('englishBtn').textContent = activeView === 'english' ? t('englishBtnBack') : t('englishBtn');
-}
-
-function useBrowserLocation() {
-    if (!navigator.geolocation) {
-        alert(t('msgGeoNotSupported'));
-        return;
-    }
-
-    if ($('geoBtn')) {
-        $('geoBtn').disabled = true;
-        $('geoBtn').textContent = '⏳ Locating…';
-    }
-    if ($('langHint')) $('langHint').textContent = 'Requesting location (stays on this device, never sent)…';
-
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const lat = pos.coords.latitude.toFixed(4);
-            const lon = pos.coords.longitude.toFixed(4);
-            const locText = `Location: ${lat}, ${lon} (on-device only)`;
-            if ($('cLoc')) $('cLoc').value = locText;
-            if ($('geoBtn')) {
-                $('geoBtn').disabled = false;
-                $('geoBtn').textContent = t('geoBtn');
-            }
-            if ($('langHint')) $('langHint').textContent = 'Location captured — kept on this device only.';
-        },
-        () => {
-            alert(t('msgGeoDenied') + '\nYour location was not sent anywhere. You can type it instead.');
-            if ($('geoBtn')) {
-                $('geoBtn').disabled = false;
-                $('geoBtn').textContent = t('geoBtn');
-            }
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
 }
 
 // ---- Engine mode detection — automatic download where WebGPU exists ----
@@ -724,18 +684,12 @@ $('runBtn').onclick = async () => {
         if ($('cAccused') && !$('cAccused').value.trim() && isKnownVal(entities.aggressor)) {
             $('cAccused').value = cleanVal(entities.aggressor);
         }
-        if ($('cLoc') && !$('cLoc').value.trim() && isKnownVal(entities.location)) {
-            $('cLoc').value = cleanVal(entities.location);
-        }
 
         const complainantInfo = {
             name: $('cName')?.value || '',
             parent: $('cParent')?.value || '',
             phone: $('cPhone')?.value || '',
-            address: $('cAddr')?.value || '',
-            station: $('cStation')?.value || '',
             accused: $('cAccused')?.value || '',
-            location: $('cLoc')?.value || '',
             date: isKnownVal(entities.date) ? cleanVal(entities.date) : '',
             narrative: narrative
         };
@@ -867,8 +821,6 @@ $('langSelect').addEventListener('change', () => {
     $('langHint').textContent = `${t('msgLangSet')} ${getSelectedLanguage().toUpperCase()}`;
 });
 
-$('geoBtn').addEventListener('click', useBrowserLocation);
-
 $('englishBtn').onclick = () => {
     if (!lastComplaint) return;
     activeView = activeView === 'english' ? 'native' : 'english';
@@ -889,10 +841,7 @@ if ($('cpgramsBtn')) {
             name: $('cName')?.value || '',
             parent: $('cParent')?.value || '',
             phone: $('cPhone')?.value || '',
-            address: $('cAddr')?.value || '',
-            station: $('cStation')?.value || '',
             accused: $('cAccused')?.value || '',
-            location: $('cLoc')?.value || '',
             narrative: $('narrative')?.value || ''
         };
         // entities not stored globally; rebuild minimal from form + narrative
@@ -973,46 +922,4 @@ if ($('aiOptin')) {
         refreshAiNote();
     });
 }
-
-// Offline PS directory: district -> station select + kiosk preset (no GPS/IP).
-// Nothing pre-selected: cStation stays EMPTY until the user picks, types, or taps
-// "Use kiosk PS". Stale demo defaults (e.g. Saifabad) must never leak into drafts.
-function refreshPsSelects() {
-    const dSel = $('psDistrict'), sSel = $('psStation');
-    if (!dSel || !sSel) return;
-    const districts = getDistricts();
-    dSel.innerHTML = `<option value="">Select district…</option>` + districts.map((d) => `<option value="${d}">${d}</option>`).join('');
-    const fillStations = () => {
-        const list = getStationsForDistrict(dSel.value);
-        sSel.innerHTML = `<option value="">Select PS…</option>` + list.map((r) => `<option value="${r.ps}">${r.ps} (${r.phone})</option>`).join('');
-    };
-    dSel.onchange = () => {
-        fillStations();
-        if ($('cStation')) $('cStation').value = ''; // district change clears stale PS
-    };
-    sSel.onchange = () => {
-        if ($('cStation')) $('cStation').value = sSel.value || '';
-    };
-    fillStations();
-    const kiosk = getKioskPS();
-    if (kiosk && $('kioskHint')) $('kioskHint').textContent = `Kiosk default: ${kiosk}`;
-    const kBtn = $('kioskSaveBtn');
-    if (kBtn) kBtn.onclick = () => {
-        const v = $('cStation')?.value || sSel.value || '';
-        setKioskPS(v);
-        if ($('kioskHint')) $('kioskHint').textContent = v ? `Kiosk default: ${v}` : '';
-        alert(v ? `Kiosk PS saved: ${v}` : 'Kiosk PS cleared.');
-    };
-    const kUse = $('kioskUseBtn');
-    if (kUse) kUse.onclick = () => {
-        const v = getKioskPS();
-        if (v && $('cStation')) $('cStation').value = v;
-        else alert('No kiosk PS saved yet.');
-    };
-    const kClear = $('kioskClearBtn');
-    if (kClear) kClear.onclick = () => {
-        if ($('cStation')) $('cStation').value = '';
-        dSel.value = ''; fillStations();
-    };
-}
-try { refreshPsSelects(); } catch { /* ignore */ }
+try { init(); } catch (e) { console.error('Init failed:', e); alert('Init failed: ' + e.message); }
