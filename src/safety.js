@@ -12,7 +12,8 @@ const INJECTION_PATTERNS = [
 ];
 const DISALLOWED_PATTERNS = [
     /how to (make|build).*(bomb|weapon|explosive)/i,
-    /kill (myself|him|her|them)/i,
+    /kill myself/i,
+    /i (want to|will|shall) (kill myself|die|end my life)/i,
     /suicide/i,
 ];
 const MAX_LEN = 2000;

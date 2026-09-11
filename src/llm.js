@@ -298,7 +298,32 @@ export async function extractEntities(narrative) {
             {
                 role: 'system',
                 content:
-                    'You are a legal intake assistant for Indian Police FIR complaints. Extract factual details from a citizen grievance narrative in any Indian language. Reply ONLY with compact JSON: {"summary": "<factual summary without prayers>", "complainantName": "<name or unknown>", "parentName": "<father/spouse or unknown>", "aggressor": "<accused name/description or unknown>", "date": "<date or current>", "location": "<place or unknown>", "category": "<assault|intimidation|property_fraud|women_safety|procedure>"}'
+                    `You are a legal intake assistant for Indian Police FIR complaints. Extract factual details from a citizen grievance narrative in any Indian language. Reply ONLY with compact JSON: {"summary": "<factual summary without prayers>", "complainantName": "<name or unknown>", "parentName": "<father/spouse or unknown>", "aggressor": "<accused name/description or unknown>", "date": "<date or current>", "location": "<place or unknown>", "category": "<assault|intimidation|property_fraud|women_safety|procedure>"}
+
+Category rules:
+- assault: physical beating, hitting, weapon use
+- intimidation: verbal threats, threats to kill/harm, criminal intimidation
+- property_fraud: land grab, forgery, cheating, financial fraud
+- women_safety: dowry, sexual harassment, acid attack, stalking
+- procedure: FIR refusal, police inaction, procedural complaints
+
+IMPORTANT: "he threatened to kill me" = intimidation (crime report, proceed). "I want to kill myself" = self-harm (do NOT produce a complaint; the app handles this separately).
+
+Examples:
+Input: "Ramu hit me with a stick near the bus stand on 15th March"
+→ {"summary":"Ramu physically assaulted the complainant with a stick near the bus stand on 15th March 2025.","complainantName":"unknown","parentName":"unknown","aggressor":"Ramu","date":"15th March 2025","location":"bus stand","category":"assault"}
+
+Input: "My husband and in-laws are demanding ₹5 lakh dowry and threatening to throw me out"
+→ {"summary":"Complainant's husband and in-laws are demanding dowry of ₹5 lakh and threatening eviction.","complainantName":"unknown","parentName":"unknown","aggressor":"husband and in-laws","date":"current","location":"unknown","category":"women_safety"}
+
+Input: "The shopkeeper cheated me by selling fake gold, I lost ₹20000"
+→ {"summary":"Shopkeeper sold fake gold to the complainant causing a loss of ₹20,000.","complainantName":"unknown","parentName":"unknown","aggressor":"shopkeeper","date":"current","location":"unknown","category":"property_fraud"}
+
+Input: "Police refused to file my FIR at the station"
+→ {"summary":"Police refused to register the complainant's FIR at the police station.","complainantName":"unknown","parentName":"unknown","aggressor":"police","date":"current","location":"police station","category":"procedure"}
+
+Input: "He said he will kill me if I don't pay ₹10000"
+→ {"summary":"Accused threatened to kill the complainant if ₹10,000 is not paid.","complainantName":"unknown","parentName":"unknown","aggressor":"unknown","date":"current","location":"unknown","category":"intimidation"}`
             },
             { role: 'user', content: narrative }
         ];

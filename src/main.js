@@ -714,8 +714,6 @@ $('runBtn').onclick = async () => {
         {
             const emg = detectEmergency(narrative);
             if (emg.emergency) {
-                const contacts = EMERGENCY_CONTACTS.map((c) => `${c.name}: ${c.number}`).join('\n');
-                alert(`⚠️ Possible emergency detected.\n\nCall immediately:\n${contacts}\n\nYou can still create a draft after this, but get to safety / call 112 first.`);
                 const modal = $('emergencyModal');
                 if (modal) {
                     $('emergencyMatched') && ($('emergencyMatched').textContent = `Trigger: ${emg.matched}`);
