@@ -3,7 +3,7 @@
 // Official sources: https://www.indiacode.nic.in/ | https://www.aikosh.in/
 import { getLoadedStatutes, STATUTE_METADATA, saveDynamicStatutes, resetToDefaultStatutes, BASE_STATUTES } from '../data/statutes.js';
 import { normalizeWithBhashini } from '../data/bhashini_lexicon.js';
-import { bhashiniNormalize, detectSourceLang, hasBhashiniCredentials, getCachedTranslation, setCachedTranslation, getLastNarrativeHash } from './bhashini.js';
+import { translateToEnglish, detectSourceLang, getCachedTranslation, setCachedTranslation, getLastHash } from './bhashini.js';
 
 const HINDI_STOP = new Set(['है', 'था', 'थी', 'हैं', 'के', 'की', 'का', 'को', 'ने', 'से', 'में', 'पर', 'और', 'या', 'लेकिन', 'मैं', 'मेरा', 'मेरी', 'मुझे', 'उसने', 'वह', 'वे', 'यह', 'इस', 'उस', 'जो', 'तो', 'भी', 'ही', 'अब', 'कि', 'एक']);
 const EN_STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'my', 'me', 'i', 'was', 'is', 'he', 'she', 'they', 'his', 'her', 'at', 'by', 'for', 'with', 'from', 'it', 'this', 'that', 'mera', 'meri', 'mere', 'ko', 'ne', 'ka', 'ki', 'ke', 'aur', 'par', 'se',
@@ -158,25 +158,25 @@ export async function retrieveSections(narrative, topK = 4) {
     const bhashini = normalizeWithBhashini(narrative || '');
     const suggestedSet = new Set(bhashini.suggestedSections || []);
 
-    // Optional Bhashini NMT: translate to English for better title matching.
+    // Optional translation: translate to English for better title matching.
     let translatedTokens = null;
-    if (hasBhashiniCredentials() && narrative && narrative.trim().length > 10) {
+    if (narrative && narrative.trim().length > 10) {
         try {
             const narrHash = narrative.trim().slice(0, 100);
             const cached = getCachedTranslation();
-            if (cached.translated && getLastNarrativeHash() === narrHash) {
+            if (cached.translated && getLastHash() === narrHash) {
                 translatedTokens = tokenize(cached.translated);
             } else {
                 const srcLang = detectSourceLang(narrative);
                 if (srcLang !== 'en') {
-                    const { translated } = await bhashiniNormalize(narrative, srcLang);
+                    const { translated } = await translateToEnglish(narrative, srcLang);
                     if (translated) {
                         translatedTokens = tokenize(translated);
                         setCachedTranslation(translated, srcLang, narrHash);
                     }
                 }
             }
-        } catch { /* Bhashini unavailable — fall through to lexical-only */ }
+        } catch { /* translation unavailable — fall through to lexical-only */ }
     }
 
     const scored = statutesList
@@ -185,26 +185,29 @@ export async function retrieveSections(narrative, topK = 4) {
             let finalScore = score;
             let finalTriggerHits = triggerHits;
 
-            // Bhashini NMT boost: translated tokens that match statute triggers get extra score.
-            if (translatedTokens) {
-                for (const tok of translatedTokens) {
-                    const haystack = `${s.title} ${(s.triggers || []).join(' ')}`.toLowerCase();
-                    if (haystack.includes(tok) && !tokens.includes(tok)) {
-                        finalScore += 2;
-                        finalTriggerHits += 1;
-                    }
-                }
-            }
-
             const bhashiniBoost = suggestedSet.has(String(s.section));
             if (bhashiniBoost) {
                 finalScore += 4;
                 finalTriggerHits += 1;
             }
             const effectiveMinScore = s.minScore || 4;
+            // Confidence is based on base score only (not translation boost).
+            const confidence = finalScore > 8 ? 'high' : finalScore > 5 ? 'medium' : 'low';
+
+            // Translation boost: small bonus for ranking only, does NOT affect confidence.
+            let translationBoost = 0;
+            if (translatedTokens) {
+                for (const tok of translatedTokens) {
+                    const haystack = `${s.title} ${(s.triggers || []).join(' ')}`.toLowerCase();
+                    if (haystack.includes(tok) && !tokens.includes(tok)) {
+                        translationBoost += 1;
+                    }
+                }
+            }
+
             return {
                 statute: s,
-                score: finalScore,
+                score: finalScore + translationBoost,
                 triggerHits: finalTriggerHits,
                 negHits,
                 matchedTerms,
@@ -212,7 +215,7 @@ export async function retrieveSections(narrative, topK = 4) {
                 bhashiniConcepts: bhashini.normalizedConcepts || [],
                 curated: isCuratedStatute(s),
                 source: s.source || STATUTE_METADATA.officialSources[0],
-                confidence: finalScore > 8 ? 'high' : finalScore > 5 ? 'medium' : 'low',
+                confidence,
                 meetsThreshold: finalScore >= effectiveMinScore && finalTriggerHits >= 1
             };
         })

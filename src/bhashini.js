@@ -1,102 +1,53 @@
-// Nyaya-Setu Bhashini API client (optional online enhancement).
-// Translates Indic narrative to English for better statutory-title matching.
-// Falls back to in-house dialect lexicon when offline or no credentials.
-//
-// Setup: register at https://bhashini.gov.in/ulca/user/register
-//        then set BHASHINI_USER_ID and BHASHINI_API_KEY below or via
-//        localStorage keys 'nyaya_bhashini_uid' / 'nyaya_bhashini_key'.
+// Nyaya-Setu translation module — Google Translate unofficial endpoint.
+// Zero cost, no API key, no signup. Falls back to in-house lexicon when offline.
+// NOTE: uses Google Translate's web endpoint (not official API). May break if
+// Google changes their interface. In-house dialect lexicon is the offline fallback.
 
-const PIPELINE_ID = '64392f96daac500b55c543cd'; // MeitY translation pipeline
-const CONFIG_URL = 'https://meity-auth.ulcacontrib.org/ulca/apis/v0/model/getModelsPipeline';
+const GT_URL = 'https://translate.googleapis.com/translate_a/single';
 
-// Credentials: edit these or set via localStorage before first use.
-let _userId = '';
-let _apiKey = '';
+// ISO-639 codes matching our app's language selector
+const LANG_MAP = {
+    en: 'en', hi: 'hi', te: 'te', ta: 'ta',
+    bn: 'bn', mr: 'mr', kn: 'kn', ml: 'ml'
+};
 
-function getCredentials() {
-    if (_userId && _apiKey) return { userId: _userId, apiKey: _apiKey };
-    try {
-        _userId = localStorage.getItem('nyaya_bhashini_uid') || '';
-        _apiKey = localStorage.getItem('nyaya_bhashini_key') || '';
-    } catch { /* ignore */ }
-    return { userId: _userId, apiKey: _apiKey };
-}
+/**
+ * Translate text using Google Translate's unofficial endpoint.
+ * @param {string} text - Source text
+ * @param {string} sourceLang - ISO-639 code (e.g. 'hi', 'te')
+ * @param {string} targetLang - ISO-639 code (e.g. 'en')
+ * @returns {Promise<string>} Translated text
+ */
+export async function translateText(text, sourceLang, targetLang) {
+    if (!text || !text.trim()) return '';
+    if (sourceLang === targetLang) return text;
 
-export function setBhashiniCredentials(uid, key) {
-    _userId = uid;
-    _apiKey = key;
-    try {
-        localStorage.setItem('nyaya_bhashini_uid', uid);
-        localStorage.setItem('nyaya_bhashini_key', key);
-    } catch { /* ignore */ }
-}
+    const sl = LANG_MAP[sourceLang] || sourceLang;
+    const tl = LANG_MAP[targetLang] || targetLang;
 
-export function hasBhashiniCredentials() {
-    const { userId, apiKey } = getCredentials();
-    return !!(userId && apiKey);
-}
-
-// Step 1: Pipeline Config — discover inference endpoint + auth headers.
-let _cachedEndpoint = null;
-let _cachedHeaders = null;
-
-async function discoverPipeline(sourceLang, targetLang) {
-    if (_cachedEndpoint && _cachedHeaders) return { endpoint: _cachedEndpoint, headers: _cachedHeaders };
-
-    const { userId, apiKey } = getCredentials();
-    if (!userId || !apiKey) throw new Error('no-bhashini-credentials');
-
-    const resp = await fetch(CONFIG_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', userID: userId, ulcaApiKey: apiKey },
-        body: JSON.stringify({
-            pipelineTasks: [{ taskType: 'translation', config: { language: { sourceLanguage, targetLanguage } } }],
-            pipelineRequestConfig: { pipelineId: PIPELINE_ID }
-        })
+    const params = new URLSearchParams({
+        client: 'gtx',
+        sl: sl,
+        tl: tl,
+        dt: 't',
+        q: text.trim()
     });
-    if (!resp.ok) throw new Error(`bhashini-config-${resp.status}`);
+
+    const resp = await fetch(`${GT_URL}?${params.toString()}`);
+    if (!resp.ok) throw new Error(`translate-${resp.status}`);
 
     const data = await resp.json();
-    const ep = data?.pipelineInferenceAPIEndPoint;
-    if (!ep?.callbackUrl) throw new Error('bhashini-no-endpoint');
-
-    const endpoint = ep.callbackUrl;
-    const authKey = ep.inferenceApiKey?.name || 'Authorization';
-    const authVal = ep.inferenceApiKey?.value || '';
-    const headers = { 'Content-Type': 'application/json', [authKey]: authVal };
-
-    // Cache for subsequent calls (same session).
-    _cachedEndpoint = endpoint;
-    _cachedHeaders = headers;
-    return { endpoint, headers };
-}
-
-// Step 2: Pipeline Compute — translate text.
-async function translateText(text, sourceLang, targetLang) {
-    const { endpoint, headers } = await discoverPipeline(sourceLang, targetLang);
-
-    const resp = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-            pipelineTasks: [{ taskType: 'translation', config: { language: { sourceLanguage: sourceLang, targetLanguage: targetLang } } }],
-            inputData: { input: [{ source: text }] }
-        })
-    });
-    if (!resp.ok) throw new Error(`bhashini-compute-${resp.status}`);
-
-    const data = await resp.json();
-    const output = data?.pipelineResponse?.[0]?.output?.[0]?.target;
-    if (!output) throw new Error('bhashini-no-output');
-    return output;
+    // Response format: [[["translated","original",null,null,10]],null,"hi"]
+    const sentences = data?.[0];
+    if (!Array.isArray(sentences)) throw new Error('translate-bad-response');
+    return sentences.map((s) => s?.[0] || '').join('');
 }
 
 /**
- * Normalize narrative via Bhashini NMT: translate to English for better retrieval.
- * Returns { translated, sourceLang } or throws on failure (caller should fall back).
- * Supported source languages: hi, te, ta, bn, mr, kn, ml, ur.
+ * Translate narrative to English for better statutory-title matching.
+ * Returns { translated, sourceLang }.
  */
-export async function bhashiniNormalize(narrative, sourceLang = 'hi') {
+export async function translateToEnglish(narrative, sourceLang = 'hi') {
     if (!narrative || !narrative.trim()) return { translated: '', sourceLang };
     if (sourceLang === 'en') return { translated: narrative, sourceLang: 'en' };
 
@@ -105,32 +56,24 @@ export async function bhashiniNormalize(narrative, sourceLang = 'hi') {
 }
 
 /**
- * Detect likely source language from narrative text (simple heuristic).
- * Returns ISO-639 code.
+ * Detect likely source language from narrative text (simple script heuristic).
  */
 export function detectSourceLang(text) {
     if (!text) return 'hi';
-    // Devanagari script → Hindi (could be Marathi, but Hindi is most common)
-    if (/[\u0900-\u097F]/.test(text)) return 'hi';
-    // Telugu script
-    if (/[\u0C00-\u0C7F]/.test(text)) return 'te';
-    // Tamil script
-    if (/[\u0B80-\u0BFF]/.test(text)) return 'ta';
-    // Bengali script
-    if (/[\u0980-\u09FF]/.test(text)) return 'bn';
-    // Kannada script
-    if (/[\u0C80-\u0CFF]/.test(text)) return 'kn';
-    // Malayalam script
-    if (/[\u0D00-\u0D7F]/.test(text)) return 'ml';
-    // Latin script → English
-    if (/[a-zA-Z]/.test(text)) return 'en';
+    if (/[\u0900-\u097F]/.test(text)) return 'hi';  // Devanagari → Hindi
+    if (/[\u0C00-\u0C7F]/.test(text)) return 'te';  // Telugu
+    if (/[\u0B80-\u0BFF]/.test(text)) return 'ta';  // Tamil
+    if (/[\u0980-\u09FF]/.test(text)) return 'bn';  // Bengali
+    if (/[\u0C80-\u0CFF]/.test(text)) return 'kn';  // Kannada
+    if (/[\u0D00-\u0D7F]/.test(text)) return 'ml';  // Malayalam
+    if (/[a-zA-Z]/.test(text)) return 'en';          // Latin → English
     return 'hi';
 }
 
 /**
- * Cached translation result (per session, avoids re-translating the same narrative).
+ * Cached translation result (per session, avoids re-translating).
  */
-let _lastNarrativeHash = '';
+let _lastHash = '';
 let _lastTranslated = '';
 let _lastSourceLang = '';
 
@@ -138,12 +81,12 @@ export function getCachedTranslation() {
     return { translated: _lastTranslated, sourceLang: _lastSourceLang };
 }
 
-export function setCachedTranslation(translated, sourceLang, narrativeHash) {
+export function setCachedTranslation(translated, sourceLang, hash) {
     _lastTranslated = translated;
     _lastSourceLang = sourceLang;
-    _lastNarrativeHash = narrativeHash;
+    _lastHash = hash;
 }
 
-export function getLastNarrativeHash() {
-    return _lastNarrativeHash;
+export function getLastHash() {
+    return _lastHash;
 }
