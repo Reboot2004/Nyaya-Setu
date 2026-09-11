@@ -12,6 +12,22 @@ import { titleFor, statuteTextFor } from '../data/statute_i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const badge = $('engineBadge');
+
+// Dev card: only visible with ?dev=1 in URL
+if ($('devCard') && !window.location.search.includes('dev=1')) {
+    $('devCard').remove();
+}
+
+// Character count on narrative
+if ($('narrative') && $('charCount')) {
+    const updateCharCount = () => {
+        const len = ($('narrative').value || '').length;
+        $('charCount').textContent = `${len} / 2000`;
+        $('charCount').style.color = len > 2000 ? '#dc2626' : len > 1800 ? '#d97706' : '#94a3b8';
+    };
+    $('narrative').addEventListener('input', updateCharCount);
+    updateCharCount();
+}
 let lastComplaint = null;
 let lastRetrieved = [];
 let activeView = 'native';
@@ -663,6 +679,7 @@ $('runBtn').onclick = async () => {
     // don't waste GPU time).
 
     $('runBtn').disabled = true;
+    $('runBtn').textContent = '⏳ Processing…';
     const pipeT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     let pipeRetMs = null;
 
@@ -698,6 +715,8 @@ $('runBtn').onclick = async () => {
         if (!isActionableComplaint(narrative, entities, retrievedPreview)) {
             alert(t('msgInsufficientComplaint') + '\n\nIf police refuse a FIR, ask for a written acknowledgement and approach the Superintendent of Police (SP). For free advice, call NALSA 15100. In danger, call 112 first.');
             $('langHint').textContent = t('msgInsufficientComplaint');
+            $('runBtn').disabled = false;
+            $('runBtn').textContent = t('runBtn');
             return;
         }
 
@@ -708,6 +727,8 @@ $('runBtn').onclick = async () => {
             if (!g.ok) {
                 alert(`Blocked by local safety (${g.source}: ${g.reasons.join(', ')}). Please rephrase factually.`);
                 if ($('langHint')) $('langHint').textContent = `Blocked: ${g.reasons.join(', ')}`;
+                $('runBtn').disabled = false;
+                $('runBtn').textContent = t('runBtn');
                 return;
             }
         } catch { /* guard best-effort; rule screen already passed */ }
@@ -722,7 +743,7 @@ $('runBtn').onclick = async () => {
                         $('emergencyContinueBtn').onclick = () => { modal.classList.add('hidden'); resolve(true); };
                         $('emergencyBackBtn').onclick = () => { modal.classList.add('hidden'); resolve(false); };
                     });
-                    if (!proceed) { $('runBtn').disabled = false; return; }
+                    if (!proceed) { $('runBtn').disabled = false; $('runBtn').textContent = t('runBtn'); return; }
                 }
             }
         }
@@ -732,6 +753,7 @@ $('runBtn').onclick = async () => {
         const userVerified = await showExtractedFactsReview(entities, retrievedPreview);
         if (!userVerified) {
             $('runBtn').disabled = false;
+            $('runBtn').textContent = t('runBtn');
             return;
         }
 
@@ -803,6 +825,7 @@ $('runBtn').onclick = async () => {
         alert(`${t('msgPipelineError')} ` + (err?.message || err));
     } finally {
         $('runBtn').disabled = false;
+        $('runBtn').textContent = t('runBtn');
     }
 };
 
@@ -825,8 +848,14 @@ $('englishBtn').onclick = () => {
     refreshComplaintView();
 };
 
-$('audioBtn').onclick = () => speakRightsBriefing(getSelectedLanguage());
-if ($('readDraftBtn')) $('readDraftBtn').onclick = () => speakDraft($('complaintOut')?.textContent || '', getSelectedLanguage());
+$('audioBtn').onclick = () => {
+    const text = $('complaintOut')?.textContent || '';
+    if (text.trim()) {
+        speakDraft(text, getSelectedLanguage());
+    } else {
+        speakRightsBriefing(getSelectedLanguage());
+    }
+};
 $('stopAudioBtn').onclick = stopAudio;
 // warm up voice list (some Android browsers load voices async)
 try { window.speechSynthesis?.getVoices?.(); window.speechSynthesis && (window.speechSynthesis.onvoiceschanged = () => {}); } catch { /* ignore */ }
@@ -854,6 +883,27 @@ if ($('whatsBtn')) {
         if (!text) return;
         const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank', 'noopener');
+    };
+}
+if ($('copyBtn')) {
+    $('copyBtn').onclick = async () => {
+        const text = ($('complaintOut')?.textContent || '').trim();
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+            $('copyBtn').textContent = '✓ Copied';
+            setTimeout(() => { $('copyBtn').textContent = '📋 Copy Draft'; }, 1500);
+        } catch {
+            // Fallback: select + execCommand
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            $('copyBtn').textContent = '✓ Copied';
+            setTimeout(() => { $('copyBtn').textContent = '📋 Copy Draft'; }, 1500);
+        }
     };
 }
 
@@ -892,14 +942,7 @@ try { renderDraftHistory(); } catch {}
 
 // On-device AI toggle (local-only; rule engine fallback for tabs)
 if ($('aiOptin')) {
-    const aiNote = $('aiOptinNote');
-    const refreshAiNote = () => {
-        const on = $('aiOptin').checked;
-        const gpu = isWebGPUSupported();
-        if (aiNote) aiNote.textContent = !gpu ? 'WebGPU not detected — rule engine will be used.' : on ? 'AI auto-download ON: small open model (Llama-3.2-1B, 0.5B fallback) + Guard-3-1B, cached offline.' : 'AI OFF: instant rule engine.';
-    };
     $('aiOptin').checked = isAIAssistEnabled() && isWebGPUSupported();
-    refreshAiNote();
     $('aiOptin').addEventListener('change', (e) => {
         const on = !!e.target.checked;
         if (on && !isWebGPUSupported()) {
@@ -917,7 +960,6 @@ if ($('aiOptin')) {
             }
             if (!on) { try { resetEngine(); } catch { /* ignore */ } try { unloadGuard(); } catch { /* ignore */ } }
         }
-        refreshAiNote();
     });
 }
 try { init(); } catch (e) { console.error('Init failed:', e); alert('Init failed: ' + e.message); }
