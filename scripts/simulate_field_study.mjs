@@ -182,8 +182,8 @@ for (const persona of PERSONAS) {
             const entities = extractEntitiesRuleBased(narrative);
             const tEntities1 = performance.now();
             const tLex0 = performance.now();
-            const gatePreview = retrieveSections(narrative, 2);
-            const lexFull = retrieveSections(narrative, 25);
+            const gatePreview = await retrieveSections(narrative, 2);
+            const lexFull = await retrieveSections(narrative, 25);
             const tLex1 = performance.now();
             const accepted = safety.ok && isActionableComplaint(narrative, entities, gatePreview);
             let retrieved = gatePreview;
@@ -253,7 +253,7 @@ for (const adv of ADVERSARIAL) {
     try {
         const safety = screenInput(adv.text);
         const entities = extractEntitiesRuleBased(adv.text);
-        accepted = safety.ok && isActionableComplaint(adv.text, entities, retrieveSections(adv.text, 2));
+        accepted = safety.ok && isActionableComplaint(adv.text, entities, await retrieveSections(adv.text, 2));
     } catch (err) {
         crashed = String(err?.message || err);
         accepted = false;

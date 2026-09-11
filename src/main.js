@@ -232,7 +232,7 @@ if ($('benchBtn')) {
         try {
             if (out) out.textContent = 'Measuring…';
             const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-            retrieveSections('benchmark sample: assault threat theft', 4);
+            await retrieveSections('benchmark sample: assault threat theft', 4);
             const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
             let retMs = (now - t0).toFixed(1);
             if (semanticReady) {
@@ -315,7 +315,7 @@ if (isAIAssistEnabled()) {
 // Fused rank with timeout: semantic (MiniLM) + lexical(+dialect lexicon); falls back
 // to pure lexical when the embedding engine isn't loaded yet or is slow.
 async function retrieveFinal(narrative, topK = 5, timeoutMs = 8000) {
-    const lex = retrieveSections(narrative, 25);
+    const lex = await retrieveSections(narrative, 25);
     if (!semanticReady) return lex.slice(0, topK);
     try {
         const { retrieveFused } = await import('./semantic.js');
@@ -711,7 +711,7 @@ $('runBtn').onclick = async () => {
             narrative: narrative
         };
 
-        const retrievedPreview = retrieveSections(narrative, 2);
+        const retrievedPreview = await retrieveSections(narrative, 2);
         if (!isActionableComplaint(narrative, entities, retrievedPreview)) {
             alert(t('msgInsufficientComplaint') + '\n\nIf police refuse a FIR, ask for a written acknowledgement and approach the Superintendent of Police (SP). For free advice, call NALSA 15100. In danger, call 112 first.');
             $('langHint').textContent = t('msgInsufficientComplaint');

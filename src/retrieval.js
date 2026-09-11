@@ -1,8 +1,9 @@
 // Statute retrieval with relevance scoring + in-house dialect-phrase normalization.
-// Lexical-trigger scoring (prototype). No vector embeddings yet — see STATUTE_METADATA.retrievalMethod.
+// Optional: Bhashini NMT translation for better English-title matching (online, credential-gated).
 // Official sources: https://www.indiacode.nic.in/ | https://www.aikosh.in/
 import { getLoadedStatutes, STATUTE_METADATA, saveDynamicStatutes, resetToDefaultStatutes, BASE_STATUTES } from '../data/statutes.js';
 import { normalizeWithBhashini } from '../data/bhashini_lexicon.js';
+import { bhashiniNormalize, detectSourceLang, hasBhashiniCredentials, getCachedTranslation, setCachedTranslation, getLastNarrativeHash } from './bhashini.js';
 
 const HINDI_STOP = new Set(['है', 'था', 'थी', 'हैं', 'के', 'की', 'का', 'को', 'ने', 'से', 'में', 'पर', 'और', 'या', 'लेकिन', 'मैं', 'मेरा', 'मेरी', 'मुझे', 'उसने', 'वह', 'वे', 'यह', 'इस', 'उस', 'जो', 'तो', 'भी', 'ही', 'अब', 'कि', 'एक']);
 const EN_STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'my', 'me', 'i', 'was', 'is', 'he', 'she', 'they', 'his', 'her', 'at', 'by', 'for', 'with', 'from', 'it', 'this', 'that', 'mera', 'meri', 'mere', 'ko', 'ne', 'ka', 'ki', 'ke', 'aur', 'par', 'se',
@@ -148,21 +149,53 @@ function scoreStatute(statute, tokens, lowerText) {
 
 /**
  * Retrieve matching BNS/BNSS sections for a given narrative.
- * Uses minScore per statute + dialect-phrase colloquial boost to prevent weak matches
- * while catching vernacular phrasing (mar-peet, dhamki, gali-galoch, etc.).
+ * Uses minScore per statute + dialect-phrase colloquial boost + optional Bhashini NMT.
  */
-export function retrieveSections(narrative, topK = 4) {
+export async function retrieveSections(narrative, topK = 4) {
     const statutesList = getLoadedStatutes();
     const tokens = tokenize(narrative);
     const lowerText = (narrative || '').toLowerCase();
     const bhashini = normalizeWithBhashini(narrative || '');
     const suggestedSet = new Set(bhashini.suggestedSections || []);
 
+    // Optional Bhashini NMT: translate to English for better title matching.
+    let translatedTokens = null;
+    if (hasBhashiniCredentials() && narrative && narrative.trim().length > 10) {
+        try {
+            const narrHash = narrative.trim().slice(0, 100);
+            const cached = getCachedTranslation();
+            if (cached.translated && getLastNarrativeHash() === narrHash) {
+                translatedTokens = tokenize(cached.translated);
+            } else {
+                const srcLang = detectSourceLang(narrative);
+                if (srcLang !== 'en') {
+                    const { translated } = await bhashiniNormalize(narrative, srcLang);
+                    if (translated) {
+                        translatedTokens = tokenize(translated);
+                        setCachedTranslation(translated, srcLang, narrHash);
+                    }
+                }
+            }
+        } catch { /* Bhashini unavailable — fall through to lexical-only */ }
+    }
+
     const scored = statutesList
         .map((s) => {
             const { score, triggerHits, negHits, matchedTerms } = scoreStatute(s, tokens, lowerText);
             let finalScore = score;
             let finalTriggerHits = triggerHits;
+
+            // Bhashini NMT boost: translated tokens that match statute triggers get extra score.
+            if (translatedTokens) {
+                for (const tok of translatedTokens) {
+                    const haystack = `${s.title} ${(s.triggers || []).join(' ')}`.toLowerCase();
+                    if (haystack.includes(tok) && !tokens.includes(tok)) {
+                        finalScore += 2;
+                        finalTriggerHits += 1;
+                    }
+                }
+            }
+
             const bhashiniBoost = suggestedSet.has(String(s.section));
             if (bhashiniBoost) {
                 finalScore += 4;
@@ -184,7 +217,6 @@ export function retrieveSections(narrative, topK = 4) {
             };
         })
         .filter((r) => r.meetsThreshold)
-        // curated sections first, then score; dedupe same section number across BNS/BNSS
         .sort((a, b) => ((b.curated ? 1 : 0) - (a.curated ? 1 : 0)) || (b.score - a.score));
     const seen = new Set();
     const deduped = [];

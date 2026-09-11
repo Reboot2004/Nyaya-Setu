@@ -25,7 +25,7 @@ try {
 }
 
 async function retrieveFinalEval(narrative, topK = 5) {
-    const lex = retrieveSections(narrative, 25);
+    const lex = await retrieveSections(narrative, 25);
     if (!fusedAvailable) return lex.slice(0, topK);
     try {
         const { retrieveFused } = await import('../src/semantic.js');
@@ -101,7 +101,7 @@ class EvaluationFramework {
             // preview (top 2) -> fused final rank (top 5) -> gate on LEXICAL preview)
             const safety = screenInput(tc.narrative);
             const actualEntities = extractEntitiesRuleBased(tc.narrative);
-            const gatePreview = retrieveSections(tc.narrative, 2);
+            const gatePreview = await retrieveSections(tc.narrative, 2);
             const retrieved = await retrieveFinalEval(tc.narrative, 5);
             const filterResult = safety.ok && isActionableComplaint(tc.narrative, actualEntities, gatePreview);
             if (!safety.ok) console.log(`  Safety blocked: ${safety.reasons.join(', ')}`);
