@@ -962,4 +962,5 @@ if ($('aiOptin')) {
         }
     });
 }
-try { init(); } catch (e) { console.error('Init failed:', e); alert('Init failed: ' + e.message); }
+// All initialization runs at module load above (engine badge, offline index, etc.)
+// No separate init() needed — removed broken call that was introduced in commit 1c8b3c6.
