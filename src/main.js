@@ -711,7 +711,7 @@ $('runBtn').onclick = async () => {
             narrative: narrative
         };
 
-        const retrievedPreview = await retrieveSections(narrative, 2);
+        const retrievedPreview = await retrieveSections(narrative, 3);
         if (!isActionableComplaint(narrative, entities, retrievedPreview)) {
             alert(t('msgInsufficientComplaint') + '\n\nIf police refuse a FIR, ask for a written acknowledgement and approach the Superintendent of Police (SP). For free advice, call NALSA 15100. In danger, call 112 first.');
             $('langHint').textContent = t('msgInsufficientComplaint');

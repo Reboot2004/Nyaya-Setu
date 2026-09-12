@@ -13,12 +13,14 @@ const LANG_MAP = {
 
 /**
  * Translate text using Google Translate's unofficial endpoint.
+ * Includes retry with exponential backoff for 429 rate limits.
  * @param {string} text - Source text
  * @param {string} sourceLang - ISO-639 code (e.g. 'hi', 'te')
  * @param {string} targetLang - ISO-639 code (e.g. 'en')
+ * @param {number} retries - Max retries (default 2)
  * @returns {Promise<string>} Translated text
  */
-export async function translateText(text, sourceLang, targetLang) {
+export async function translateText(text, sourceLang, targetLang, retries = 2) {
     if (!text || !text.trim()) return '';
     if (sourceLang === targetLang) return text;
 
@@ -33,14 +35,24 @@ export async function translateText(text, sourceLang, targetLang) {
         q: text.trim()
     });
 
-    const resp = await fetch(`${GT_URL}?${params.toString()}`);
-    if (!resp.ok) throw new Error(`translate-${resp.status}`);
-
-    const data = await resp.json();
-    // Response format: [[["translated","original",null,null,10]],null,"hi"]
-    const sentences = data?.[0];
-    if (!Array.isArray(sentences)) throw new Error('translate-bad-response');
-    return sentences.map((s) => s?.[0] || '').join('');
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const resp = await fetch(`${GT_URL}?${params.toString()}`);
+            if (resp.status === 429 && attempt < retries) {
+                // Rate limited — wait with exponential backoff (500ms, 1500ms)
+                await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+                continue;
+            }
+            if (!resp.ok) throw new Error(`translate-${resp.status}`);
+            const data = await resp.json();
+            const sentences = data?.[0];
+            if (!Array.isArray(sentences)) throw new Error('translate-bad-response');
+            return sentences.map((s) => s?.[0] || '').join('');
+        } catch (e) {
+            if (attempt >= retries) throw e;
+        }
+    }
+    throw new Error('translate-max-retries');
 }
 
 /**

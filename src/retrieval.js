@@ -72,6 +72,42 @@ function tokenize(text) {
         .filter((t) => t.length > 1 && !ALL_STOP.has(t));
 }
 
+// Negation patterns: if these appear near a trigger word, reduce score.
+// Covers EN, HI, TE, TA, BN, MR, KN, ML.
+const NEGATION_PATTERNS = [
+    /\b(nobody|no one|noone|not|never|neither|nor|hardly|barely|scarcely)\b/i,
+    /कोई\s+नहीं|नहीं|मतलब\s+नहीं|बिल्कुल\s+नहीं/,
+    /ఎవరూ\s+లేరు|లేదు|కాదు/,
+    /யாரும்\s+இல்லை|இல்லை|அல்ல/,
+    /কেউ\s+নেই|নেই|না/,
+    /कोणी\s+नाही|नाही/,
+    /ಯಾರೂ\s+ಇಲ್ಲ|ಇಲ್ಲ|ಅಲ್ಲ/,
+    /ആരും\s+ഇല്ല|ഇല്ല|അല്ല/,
+];
+
+/**
+ * Check if narrative is negated (e.g. "Nobody hit me", "I was not beaten").
+ * Returns true if negation pattern appears within 5 words of any trigger.
+ */
+function isNegated(narrative, tokens) {
+    const lower = (narrative || '').toLowerCase();
+    const words = lower.split(/\s+/);
+    for (const pat of NEGATION_PATTERNS) {
+        if (!pat.test(lower)) continue;
+        // Find negation word position
+        const negMatch = lower.match(pat);
+        if (!negMatch) continue;
+        const negIdx = words.findIndex((w) => pat.test(w));
+        if (negIdx === -1) continue;
+        // Check if any trigger token is within 5 words of negation
+        for (const tok of tokens) {
+            const tokIdx = words.findIndex((w) => w.includes(tok) || tok.includes(w));
+            if (tokIdx !== -1 && Math.abs(tokIdx - negIdx) <= 5) return true;
+        }
+    }
+    return false;
+}
+
 /**
  * Score a statute against the narrative.
  * Returns: { score, triggerHits, negHits }
@@ -179,11 +215,20 @@ export async function retrieveSections(narrative, topK = 4) {
         } catch { /* translation unavailable — fall through to lexical-only */ }
     }
 
+    const negated = isNegated(narrative, tokens);
+
     const scored = statutesList
         .map((s) => {
             const { score, triggerHits, negHits, matchedTerms } = scoreStatute(s, tokens, lowerText);
             let finalScore = score;
             let finalTriggerHits = triggerHits;
+
+            // Negation penalty: if narrative is negated ("Nobody hit me"), halve scores
+            // so negated complaints don't auto-match assault statutes.
+            if (negated && finalScore > 0) {
+                finalScore = Math.ceil(finalScore * 0.5);
+                finalTriggerHits = Math.max(0, finalTriggerHits - 1);
+            }
 
             const bhashiniBoost = suggestedSet.has(String(s.section));
             if (bhashiniBoost) {

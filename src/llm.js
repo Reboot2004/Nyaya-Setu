@@ -178,6 +178,9 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 3. Extract Accused / Aggressor
     const accusedMatches = [
+        // Multi-name: "Ramu and Shyam beat me", "Ramu aur Shyam ne mara"
+        /\b([A-Z][a-zA-Z]+(?:\s+and\s+[A-Z][a-zA-Z]+)+)\s+(?:beat|hit|slapped|abused|assaulted|attacked|threatened|both|neighbours|neighbors)\b/i,
+        /\b([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[A-Za-z\u0900-\u0D7F]+)+)\s+ने\s+(?:मेरा|मुझे|हमला|पीटा|मारा|धमकी)/i,
         /([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+उसके\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)\s+ने\s+(?:मेरा\s+रास्ता|मुझे|हमला|पीटा|मारा|धमकी)/i,
         /(?:आरोपी|accused|attacked by|threatened by|beaten by)\s*[:=-]?\s*([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)/i,
         /(?:सामने|द्वारा|खिलाफ)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+)?)\s+ने/i,

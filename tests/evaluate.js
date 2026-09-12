@@ -101,7 +101,7 @@ class EvaluationFramework {
             // preview (top 2) -> fused final rank (top 5) -> gate on LEXICAL preview)
             const safety = screenInput(tc.narrative);
             const actualEntities = extractEntitiesRuleBased(tc.narrative);
-            const gatePreview = await retrieveSections(tc.narrative, 2);
+            const gatePreview = await retrieveSections(tc.narrative, 3);
             const retrieved = await retrieveFinalEval(tc.narrative, 5);
             const filterResult = safety.ok && isActionableComplaint(tc.narrative, actualEntities, gatePreview);
             if (!safety.ok) console.log(`  Safety blocked: ${safety.reasons.join(', ')}`);
