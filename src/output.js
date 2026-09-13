@@ -5,60 +5,52 @@ import { titleFor } from '../data/statute_i18n.js';
 
 const PDF_TEXT = {
     en: {
-        title: 'FORMAL COMPLAINT',
-        meta: 'Computer-assisted draft · Prototype statutory corpus · Verify before submission',
+        title: 'COMPLAINT',
+        meta: 'Generated via Nyaya-Setu | BNSS 2023, Section 173',
         dateLabel: 'Date',
-        sectionsTitle: 'Suggested statutory provisions (human verification required)',
-        disclaimer: 'Disclaimer: This is a computer-assisted complaint draft, not legal advice or an FIR. Verify facts and provisions before submission. Free legal aid: NALSA helpline 15100.'
+        disclaimer: 'This is a computer-assisted complaint draft for FIR filing support. Verify facts and provisions before submission. Free legal aid: NALSA helpline 15100.'
     },
     hi: {
-        title: 'औपचारिक शिकायत पत्र',
-        meta: 'कंप्यूटर-सहायित ड्राफ्ट · प्रोटोटाइप कॉर्पस · जमा करने से पहले सत्यापित करें',
+        title: 'शिकायत पत्र',
+        meta: 'Nyaya-Setu द्वारा तैयार | BNSS 2023, धारा 173',
         dateLabel: 'दिनांक',
-        sectionsTitle: 'लागू वैधानिक प्रावधान (IndiaAI AIKosh कॉरपस)',
-        disclaimer: 'अस्वीकरण: यह कंप्यूटर-सहायित मसौदा है, अधिवक्ता की कानूनी सलाह नहीं। जमा करने से पहले तथ्यों की जांच करें। निःशुल्क कानूनी सहायता: NALSA हेल्पलाइन 15100।'
+        disclaimer: 'यह FIR दर्ज करने हेतु कंप्यूटर-सहायित मसौदा है। जमा करने से पहले तथ्यों की जांच करें। निःशुल्क कानूनी सहायता: NALSA हेल्पलाइन 15100।'
     },
     te: {
-        title: 'అధికారిక ఫిర్యాదు పత్రం',
-        meta: 'కంప్యూటర్-సహాయిత డ్రాఫ్ట్ · ప్రోటోటైప్ కార్పస్ · సమర్పించే ముందు ధృవీకరించండి',
+        title: 'ఫిర్యాదు',
+        meta: 'Nyaya-Setu ద్వారా తయారు చేయబడింది | BNSS 2023, సెక్షన్ 173',
         dateLabel: 'తేదీ',
-        sectionsTitle: 'వర్తించే చట్ట విభాగాలు (AIKosh డేటాసెట్)',
-        disclaimer: 'గమనిక: ఇది కంప్యూటర్ సహాయంతో తయారైన డ్రాఫ్ట్ మాత్రమే; న్యాయవాది సలహా కాదు. సమర్పించే ముందు వాస్తవాలు తనిఖీ చేయండి. ఉచిత న్యాయ సహాయం: NALSA హెల్ప్‌లైన్ 15100.'
+        disclaimer: 'ఇది FIR నమోదు కోసం కంప్యూటర్ సహాయంతో తయారైన డ్రాఫ్ట్. సమర్పించే ముందు వాస్తవాలు తనిఖీ చేయండి. ఉచిత న్యాయ సహాయం: NALSA హెల్ప్‌లైన్ 15100.'
     },
     ta: {
-        title: 'அதிகாரப்பூர்வ புகார்',
-        meta: 'Nyaya-Setu மூலம் தயாரிக்கப்பட்டது - AIKosh corpus',
+        title: 'புகார்',
+        meta: 'Nyaya-Setu மூலம் தயாரிக்கப்பட்டது | BNSS 2023, பிரிவு 173',
         dateLabel: 'தேதி',
-        sectionsTitle: 'பொருந்தும் சட்டப் பிரிவுகள்',
-        disclaimer: 'பொறுப்புத்துறப்பு: இது கணினி உதவியுடன் உருவாக்கப்பட்ட வரைவு; வழக்கறிஞரின் சட்ட ஆலோசனை அல்ல. இலவச சட்ட உதவி: NALSA உதவி எண் 15100.'
+        disclaimer: 'இது FIR பதிவு செய்ய உதவும் கணினி உதவியுடன் உருவாக்கப்பட்ட வரைவு. இலவச சட்ட உதவி: NALSA உதவி எண் 15100.'
     },
     bn: {
-        title: 'আনুষ্ঠানিক অভিযোগপত্র',
-        meta: 'Nyaya-Setu দ্বারা প্রস্তুত - AIKosh corpus',
+        title: 'অভিযোগপত্র',
+        meta: 'Nyaya-Setu দ্বারা প্রস্তুত | BNSS ২০২৩, ধারা ১৭৩',
         dateLabel: 'তারিখ',
-        sectionsTitle: 'প্রযোজ্য আইনগত ধারা',
-        disclaimer: 'দাবিত্যাগ: এটি কম্পিউটার-সহায়িত খসড়া, আইনজীবীর আইনি পরামর্শ নয়। বিনামূল্যে আইনি সহায়তা: NALSA হেল্পলাইন 15100।'
+        disclaimer: 'এটি FIR রুজুর জন্য কম্পিউটার-সহায়িত খসড়া। বিনামূল্যে আইনি সহায়তা: NALSA হেল্পলাইন 15100।'
     },
     mr: {
-        title: 'औपचारिक तक्रारपत्र',
-        meta: 'Nyaya-Setu द्वारे तयार - AIKosh corpus',
+        title: 'तक्रारपत्र',
+        meta: 'Nyaya-Setu द्वारे तयार | BNSS २०२३, कलम १७३',
         dateLabel: 'दिनांक',
-        sectionsTitle: 'लागू कायदेशीर तरतुदी',
-        disclaimer: 'सूचना: हा संगणक-सहाय्यित मसुदा आहे; वकिलाचा कायदेशीर सल्ला नाही. मोफत कायदेशीर मदत: NALSA हेल्पलाइन 15100.'
+        disclaimer: 'हा FIR नोंदीसाठी संगणक-सहाय्यित मसुदा आहे. मोफत कायदेशीर मदत: NALSA हेल्पलाइन 15100.'
     },
     kn: {
-        title: 'ಅಧಿಕೃತ ದೂರು ಪತ್ರ',
-        meta: 'Nyaya-Setu ಮೂಲಕ ರಚಿಸಲಾಗಿದೆ - AIKosh corpus',
+        title: 'ದೂರು',
+        meta: 'Nyaya-Setu ಮೂಲಕ ರಚಿಸಲಾಗಿದೆ | BNSS 2023, ಕಲಂ 173',
         dateLabel: 'ದಿನಾಂಕ',
-        sectionsTitle: 'ಅನ್ವಯಿಸುವ ಕಾನೂನು ವಿಧಿಗಳು',
-        disclaimer: 'ಸೂಚನೆ: ಇದು ಕಂಪ್ಯೂಟರ್ ಸಹಾಯದ ಕರಡು ಮಾತ್ರ; ವಕೀಲರ ಕಾನೂನು ಸಲಹೆ ಅಲ್ಲ. ಉಚಿತ ಕಾನೂನು ಸಹಾಯ: NALSA ಹೆಲ್ಪ್‌ಲೈನ್ 15100.'
+        disclaimer: 'ಇದು FIR ದಾಖಲಿಸಲು ಸಹಾಯಕವಾದ ಕಂಪ್ಯೂಟರ್ ಸಹಾಯದ ಕರಡು. ಉಚಿತ ಕಾನೂನು ಸಹಾಯ: NALSA ಹೆಲ್ಪ್‌ಲೈನ್ 15100.'
     },
     ml: {
-        title: 'ഔപചാരിക പരാതിപത്രം',
-        meta: 'Nyaya-Setu വഴി തയ്യാറാക്കിയത് - AIKosh corpus',
+        title: 'പരാതി',
+        meta: 'Nyaya-Setu വഴി തയ്യാറാക്കിയത് | BNSS 2023, സെക്ഷൻ 173',
         dateLabel: 'തീയതി',
-        sectionsTitle: 'പ്രയോഗിക്കുന്ന നിയമ വകുപ്പുകൾ',
-        disclaimer: 'അറിയിപ്പ്: ഇത് കമ്പ്യ्यूटर സഹായത്തോടെ തയ്യാറാക്കിയ ഡ്രാഫ്റ്റാണ്. സൗജന്യ നിയമ സഹായം: NALSA ഹെൽപ്‌ലൈൻ 15100.'
+        disclaimer: 'ഇത് FIR രജിസ്റ്റർ ചെയ്യുന്നതിനുള്ള കമ്പ്യൂട്ടർ സഹായത്തോടെ തയ്യാറാക്കിയ ഡ്രാഫ്റ്റാണ്. സൗജന്യ നിയമ സഹായം: NALSA ഹെൽപ്‌ലൈൻ 15100.'
     }
 };
 
@@ -66,38 +58,43 @@ const PDF_TEXT = {
 // Uses browser speech synthesis when available; it may not be fully offline in every browser.
 export function complaintToHtml(complaint, entities, retrieved, uiLanguage = 'en') {
     const lang = (uiLanguage || 'en').toLowerCase();
-    // Section titles in the citizen's language where really translated (hi/te curated),
-    // else honest English — never a fake prefix.
-  // Non-curated entries carry an honest tag so the explorer never looks "official".
-  // Curated/official titles are shown clean.
-  const vTag = (s) => {
-      const v = s.verified || '';
-      if (v === 'curated') return '';
-      if (v === 'official' || v === 'official-title') return ' · official title — room for legal-aid refinement';
-      return ' · placeholder entry — verify';
-  };
-  const sections = retrieved.map(({ statute, source, confidence }) => {
-      const sourceUrl = statute.officialUrl || 'https://www.indiacode.nic.in/';
-      const conf = confidence ? ` · confidence: ${esc(confidence)}` : '';
-      return `<li><strong>${esc(statute.code)} Section ${esc(statute.section)}</strong> — ${esc(titleFor(statute, lang))}${conf}${vTag(statute)}<br><span style="font-size:8pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${esc(source || 'India Code')}</a></span></li>`;
-  }).join('');
-    const englishText = esc(complaint?.english || complaint?.native || complaint?.hindi || '');
-    const nativeText = esc(complaint?.native || complaint?.hindi || complaint?.english || '');
     const labels = PDF_TEXT[lang] || PDF_TEXT.en;
-    return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><title>Police-Complaint Draft — Nyaya-Setu</title>
+
+    // The complaint text is already formatted by buildProfessionalPoliceComplaint
+    // — just render it cleanly with sections from retrieval.
+    const nativeText = complaint?.native || complaint?.english || '';
+    const englishText = complaint?.english || '';
+
+    // Section list for the sidebar / below the complaint
+    const sectionWord = lang === 'hi' ? 'धारा' : lang === 'te' ? 'సెక్షన్' : lang === 'ta' ? 'பிரிவு' : lang === 'bn' ? 'ধারা' : lang === 'mr' ? 'कलम' : lang === 'kn' ? 'ಕಲಂ' : lang === 'ml' ? 'സെക്ഷൻ' : 'Section';
+    const sections = retrieved.map(({ statute, source, confidence }) => {
+        const sourceUrl = statute.officialUrl || 'https://www.indiacode.nic.in/';
+        const conf = confidence === 'high' ? ' — strong match' : confidence === 'medium' ? '' : ' — may apply';
+        return `<li><strong>${esc(statute.code)} ${sectionWord} ${esc(statute.section)}</strong> — ${esc(titleFor(statute, lang))}${conf}<br><span style="font-size:7.5pt;color:#64748b">Source: <a href="${sourceUrl}" style="color:#0284c7;">${esc(source || 'India Code')}</a></span></li>`;
+    }).join('');
+
+    // Show native text if it differs from English (i.e., citizen wrote in another language)
+    const showBilingual = lang !== 'en' && englishText && englishText !== nativeText;
+    const mainText = showBilingual
+        ? `<pre style="margin:0">${esc(nativeText)}</pre>\n<hr style="border:none;border-top:1px solid #ddd;margin:12px 0"><div style="font-size:9pt;color:#555"><strong>English:</strong></div><pre style="margin:0;font-size:9pt;color:#555">${esc(englishText)}</pre>`
+        : `<pre style="margin:0">${esc(nativeText || englishText)}</pre>`;
+
+    return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><title>Complaint — Nyaya-Setu</title>
   <style>body{font-family:Georgia,'Noto Sans Devanagari','Noto Sans Telugu','Noto Sans Tamil','Noto Sans Bengali','Nirmala UI',Mangal,serif;max-width:170mm;margin:20mm auto;line-height:1.6;color:#111}
-  h1{font-size:14pt;text-align:center;border-bottom:2px solid #111;padding-bottom:6px}
-  .meta{font-size:9pt;color:#444;text-align:center;margin-bottom:18px}
-  .version{font-size:7pt;color:#999;text-align:center;margin-bottom:12px}
-  h2{font-size:11pt;margin-top:16px;page-break-after:avoid}ul{page-break-inside:avoid}.disc{font-size:8pt;color:#666;border-top:1px solid #ccc;margin-top:24px;padding-top:8px;font-style:italic}
-  pre{white-space:pre-wrap;word-wrap:break-word}
+  h1{font-size:15pt;text-align:center;border-bottom:2px solid #111;padding-bottom:6px;letter-spacing:0.5px}
+  .meta{font-size:9pt;color:#555;text-align:center;margin-bottom:14px}
+  pre{white-space:pre-wrap;word-wrap:break-word;font-size:10pt;line-height:1.5}
+  h2{font-size:11pt;margin-top:18px;page-break-after:avoid}
+  ul{page-break-inside:avoid;padding-left:18px}
+  li{margin-bottom:6px;font-size:9.5pt}
+  .disc{font-size:7.5pt;color:#888;border-top:1px solid #ccc;margin-top:20px;padding-top:8px;font-style:italic}
   a{color:#0284c7;text-decoration:none}
+  hr{border:none;border-top:1px solid #eee}
   @media print{body{margin:12mm 14mm}.no-print{display:none}}</style></head><body>
   <h1>${labels.title}</h1>
   <div class="meta">${labels.meta} | ${labels.dateLabel}: ${new Date().toLocaleDateString('en-IN')}</div>
-  <div class="version">Nyaya-Setu v0.6 · 1059 slots, official titles throughout (56 curated) · Verify at indiacode.nic.in · Not legal advice</div>
-    <pre>${englishText}\n\n---\n\n${nativeText}</pre>
-  <h2>${labels.sectionsTitle}</h2><ul>${sections}</ul>
+  ${mainText}
+  ${sections ? `<h2>${sectionWord}s</h2><ul>${sections}</ul>` : ''}
   <p class="disc">${labels.disclaimer}</p>
   <script>window.onload=()=>window.print()</script></body></html>`;
 }

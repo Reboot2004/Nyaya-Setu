@@ -394,18 +394,17 @@ Input: "He said he will kill me if I don't pay ₹10000"
 
 /**
  * Standard Indian Police Complaint Formatter across 8 Indian Languages.
- * Structure follows BNSS 2023 Section 173. Language is kept simple and accessible.
+ * Focused FIR-support document: Date, Complainant, Accused, Incident,
+ * Offence stats, Relevant sections, Request. No fluff.
+ * Structure follows BNSS 2023 Section 173.
  */
 function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, selectedLang, opts = {}) {
     const lang = normalizeLanguageCode(selectedLang) || 'en';
     const todayDate = new Date().toLocaleDateString('en-IN');
 
-    // ---- Helper: real hi/te title where curated, else honest English title ----
-    // sectionsList already prints "CODE <word> <section> —" so this returns the bare title.
     const localTitle = (statute) => titleFor(statute, lang) || (statute && statute.title) || '';
 
     // ---- Resolve all fields, avoid "unknown"/JSON in final draft ----
-    // Incident date defaults to TODAY when not given (user requirement).
     const cNameRaw = isKnown(complainantInfo?.name) ? cleanStr(complainantInfo.name) : (isKnown(entities?.complainantName) ? cleanStr(entities.complainantName) : '');
     const cName = cNameRaw
         || ({ hi: 'शिकायतकर्ता', te: 'ఫిర్యాదుదారు', ta: 'புகார்தாரர்', bn: 'অভিযোগকারী', mr: 'तक्रारदार', kn: 'ದೂರುದಾರ', ml: 'പരാതിക്കാരൻ' }[lang] || 'The Complainant');
@@ -415,380 +414,130 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
 
     const cPhone = isKnown(complainantInfo?.phone) ? cleanStr(complainantInfo.phone) : '';
 
-    const cAddress = isKnown(complainantInfo?.address) ? cleanStr(complainantInfo.address)
-        : ({ hi: 'थाना क्षेत्र के भीतर', te: 'పోలీస్ స్టేషన్ పరిధిలో', ta: 'காவல் நிலைய பகுதியில்', bn: 'থানা এলাকায়', mr: 'ठाण्याच्या हद्दीत', kn: 'ಠಾಣೆ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ', ml: 'സ്റ്റേഷൻ പരിധിക്കുള്ളിൽ' }[lang] || 'Within the police station area');
+    const cAddress = isKnown(complainantInfo?.address) ? cleanStr(complainantInfo.address) : '';
 
-    // PS: dynamic or blank — never a stale/wrong default.
-    const psName = isKnown(complainantInfo?.station) ? cleanStr(complainantInfo.station)
-        : '________ (fill at station — Zero FIR can be filed at any station)';
+    const psName = isKnown(complainantInfo?.station) ? cleanStr(complainantInfo.station) : '';
 
     const incidentLoc = isKnown(complainantInfo?.location) ? cleanStr(complainantInfo.location)
-        : (isKnown(entities?.location) ? cleanStr(entities.location)
-        : ({ hi: 'घटनास्थल (विवरण अनुसार)', te: 'సంఘటనా స్థలం', ta: 'சம்பவ இடம்', bn: 'ঘটনাস্থল', mr: 'घटनास्थळ', kn: 'ಘಟನಾ ಸ್ಥಳ', ml: 'സ്ഥലം' }[lang] || 'As described in the complaint'));
+        : (isKnown(entities?.location) ? cleanStr(entities.location) : '');
 
     const aggressor = isKnown(complainantInfo?.accused) ? cleanStr(complainantInfo.accused)
-        : (isKnown(entities?.aggressor) ? cleanStr(entities.aggressor)
-        : ({ hi: 'आरोपी व्यक्ति (विवरण अनुसार)', te: 'నిందితుడు', ta: 'குற்றம் சாட்டப்பட்டவர்', bn: 'অভিযুক্ত ব্যক্তি', mr: 'आरोपी', kn: 'ಆರೋಪಿ', ml: 'പ്രതി' }[lang] || 'The accused person(s) as described below'));
+        : (isKnown(entities?.aggressor) ? cleanStr(entities.aggressor) : '');
 
     const incidentDate = isKnown(complainantInfo?.date) ? cleanStr(complainantInfo.date)
         : (isKnown(entities?.date) ? cleanStr(entities.date) : todayDate);
 
-    let summaryFacts = cleanStr(entities?.summary, '') || cleanStr(complainantInfo?.narrative, '');
-    if (!summaryFacts || summaryFacts === 'unknown' || /^[{[].*[}\]]$/.test(summaryFacts)) {
-        summaryFacts = cleanStr(complainantInfo?.narrative, '');
+    // Narrative: user's own words
+    let narrative = cleanStr(complainantInfo?.narrative, '') || '';
+    if (!narrative || narrative === 'unknown' || /^[{[].*[}\]]$/.test(narrative)) {
+        narrative = cleanStr(entities?.summary, '') || '';
     }
-    // Dynamic English gist (on-device translation or gloss bundle) for the English
-    // half when the citizen narrated in another language; native half keeps original.
-    const englishFacts = (opts.englishSummary && String(opts.englishSummary).trim()) ? String(opts.englishSummary).trim() : summaryFacts;
-    const gistNote = (opts.gistSource && opts.gistSource !== 'original' && englishFacts !== summaryFacts)
-        ? `\n   (English gist via on-device ${opts.gistSource}; original preserved in the other half and verified at review.)`
-        : '';
+    if (!narrative || narrative === 'unknown') narrative = '';
 
-    // ---- Build localized section list — real translation where curated, else honest English ----
+    // English summary if citizen narrated in another language
+    const englishSummary = (opts.englishSummary && String(opts.englishSummary).trim()) ? String(opts.englishSummary).trim() : '';
+
+    // ---- Offence category label (concise stats for the complaint) ----
+    const cat = normalizeCategory(entities?.category, '');
+    const CAT_LABELS = {
+        en: { assault: 'Physical assault / Hurt', intimidation: 'Criminal intimidation / Threat', property_fraud: 'Cheating / Fraud / Property offence', women_safety: 'Offence against woman / Dowry harassment', procedure: 'Procedural complaint (FIR refusal)' },
+        hi: { assault: 'शारीरिक हमला / चोट', intimidation: 'आपराधिक धमकी / धमकी देना', property_fraud: 'धोखाधड़ी / संपत्ति अपराध', women_safety: 'महिला विरुद्ध अपराध / दहेज उत्पीड़न', procedure: 'प्रक्रियात्मक शिकायत (FIR से इनकार)' },
+        te: { assault: 'శారీరక దాడి / గాయం', intimidation: 'నేరపూరిత బెదిరింపు', property_fraud: 'మోసం / ఆస్తి నేరం', women_safety: 'మహిళపై నేరం / కట్నం వేధింపు', procedure: 'ప్రక్రియాత్మక ఫిర్యాదు (FIR నిరాకరణ)' },
+        ta: { assault: 'உடல் தாக்குதல் / காயம்', intimidation: 'குற்றமிழைக்கும் மிரட்டல்', property_fraud: 'மோசடி / சொத்து குற்றம்', women_safety: 'பெண்ணுக்கு எதிரான குற்றம் / தகாத தொல்லை', procedure: 'நடைமுறை புகார் (FIR மறுப்பு)' },
+        bn: { assault: 'শারীরিক আক্রমণ / আঘাত', intimidation: 'ফৌজদারি হুমকি', property_fraud: 'প্রতারণা / সম্পত্তি অপরাধ', women_safety: 'নারী বিরুদ্ধে অপরাধ / যৌতুক হয়রানি', procedure: 'আইনি প্রক্রিয়া সংক্রান্ত অভিযোগ (FIR অস্বীকার)' },
+        mr: { assault: 'शारीरिक हल्ला / जखम', intimidation: 'गैरविहित धमकी', property_fraud: 'फसवणूक / मालमत्ता गुन्हा', women_safety: 'महिला विरुद्ध गुन्हा / दहेज छळ', procedure: 'प्रक्रियात्मक तक्रार (FIR नाकारणी)' },
+        kn: { assault: 'ದೈಹಿಕ ಹಲ್ಲೆ / ಗಾಯ', intimidation: 'ಅಪರಾಧಿಕ ಬೆದರಿಕೆ', property_fraud: 'ವಂಚನೆ / ಆಸ್ತಿ ಅಪರಾಧ', women_safety: 'ಮಹಿಳೆಯ ವಿರುದ್ಧ ಅಪರಾಧ / ವರದಕ್ಷಿಣೆ ಕಿರುಕುಳ', procedure: 'ಪ್ರಕ್ರಿಯಾತ್ಮಕ ದೂರು (FIR ನಿರಾಕರಣೆ)' },
+        ml: { assault: 'ശാരീരിക ആക്രമണം / പരിക്ക്', intimidation: 'കുറ്റകരമായ ഭീഷണി', property_fraud: 'വഞ്ചന / സ്വത്ത് കുറ്റം', women_safety: 'സ്ത്രീക്കെതിരായ കുറ്റം / വധു പീഡനം', procedure: 'നടപടിക്രമ പരാതി (FIR നിരാകരണം)' }
+    };
+    const catLabel = (CAT_LABELS[lang] || CAT_LABELS.en)[cat] || '';
+
+    // ---- Section list ----
     const sectionWord = lang === 'hi' ? 'धारा' : lang === 'te' ? 'సెక్షన్' : lang === 'ta' ? 'பிரிவு' : lang === 'bn' ? 'ধারা' : lang === 'mr' ? 'कलम' : lang === 'kn' ? 'ಕಲಂ' : lang === 'ml' ? 'സെക്ഷൻ' : 'Section';
-    const sectionsList = (Array.isArray(retrieved) && retrieved.length)
-        ? retrieved.map(({ statute }) => {
+    const sectionsLines = (Array.isArray(retrieved) && retrieved.length)
+        ? retrieved.map(({ statute, confidence }) => {
             const title = localTitle(statute);
-            return `${statute.code} ${sectionWord} ${statute.section} — ${title}`;
-          }).join('\n   • ')
-        : '';
-
-    // 1. ENGLISH DRAFT
-    const sectionsBlock = sectionsList
-        ? `   • ${sectionsList}`
-        : '   (No specific section matched — general complaint to be processed under BNSS 173)';
-
-    const englishDraft =
-`To,
-The Officer In-Charge,
-Police Station: ${psName}
-
-Subject: Written complaint requesting registration of FIR under BNSS 2023, Section 173.
-
-My name is ${cName}${cParent ? `, son/daughter/spouse of ${cParent}` : ''}. I am writing to report an incident that happened to me and I am asking the police to register my complaint (FIR) and investigate it.
-
-1. MY DETAILS:
-   • Name: ${cName}${cParent ? ` (S/o, D/o, W/o: ${cParent})` : ''}
-   • Address: ${cAddress}
-   • Phone: ${cPhone || 'Will provide at station'}
-
-2. PERSON(S) I AM COMPLAINING AGAINST:
-   • Name / Description: ${aggressor}
-
-3. WHEN AND WHERE IT HAPPENED:
-   • Date: ${incidentDate}
-   • Place: ${incidentLoc}
-
- 4. WHAT HAPPENED:
-    On ${incidentDate}, at ${incidentLoc}, the following happened to me:
-
-    ${englishFacts}${gistNote}
-
-5. LAW SECTIONS THAT MAY APPLY:
-   (These are suggested based on what I described — the police will verify)
-${sectionsBlock}
-
-6. WHAT I AM ASKING THE POLICE TO DO:
-   (1) Please register my FIR immediately. Under BNSS 2023, Section 173, the police are required to register my complaint — even as a Zero FIR if needed.
-   (2) Please investigate the incident and take action against the accused.
-   (3) Please give me a free copy of the FIR as required by Section 173(2) BNSS.
-
-I confirm that everything I have written above is true to the best of my knowledge.
-
-Date: ${todayDate}
-Place: ${incidentLoc}
-
-Signature / Thumb impression: _____________________________
-Name: ${cName}
-Phone: ${cPhone || '________________'}`;
-
-
-
-    // 2. HINDI DRAFT (शुद्ध हिंदी)
-    const hindiDraft =
-`सेवा में,
-थाना प्रभारी महोदय,
-थाना: ${psName}
-
-विषय: शिकायत दर्ज करने एवं जांच हेतु लिखित आवेदन — भारतीय नागरिक सुरक्षा संहिता (BNSS) 2023 की धारा 173 के अंतर्गत।
-
-मेरा नाम ${cName} है${cParent ? `, पिता/पति का नाम ${cParent} है` : ''}। मैं यह शिकायत इसलिए लिख रहा/रही हूँ क्योंकि मेरे साथ एक घटना घटी है और मैं चाहता/चाहती हूँ कि पुलिस मेरी FIR दर्ज करे तथा उचित जांच करे।
-
-1. मेरा विवरण:
-   • नाम: ${cName}${cParent ? ` (आत्मज/पत्नी: ${cParent})` : ''}
-   • पता: ${cAddress}
-   • मोबाइल: ${cPhone || 'थाने में दिया जाएगा'}
-
-2. जिसके विरुद्ध शिकायत है:
-   • नाम / विवरण: ${aggressor}
-
-3. घटना कब और कहाँ हुई:
-   • दिनांक: ${incidentDate}
-   • स्थान: ${incidentLoc}
-
-4. क्या हुआ:
-   दिनांक ${incidentDate} को ${incidentLoc} पर निम्नलिखित घटना मेरे साथ हुई:
-
-   ${summaryFacts}
-
-5. लागू हो सकने वाली धाराएं:
-   (ये धाराएं मेरे विवरण के आधार पर सुझाई गई हैं — पुलिस जांच के बाद इन्हें लागू करेगी)
-${sectionsBlock}
-
-6. मेरी प्रार्थना:
-   (1) कृपया मेरी FIR तुरंत दर्ज करें। BNSS 2023 की धारा 173 के तहत पुलिस मेरी शिकायत दर्ज करने के लिए बाध्य है — जरूरत हो तो जीरो FIR भी दर्ज की जा सकती है।
-   (2) कृपया मामले की जांच करें और आरोपी के विरुद्ध कार्रवाई करें।
-   (3) कृपया धारा 173(2) BNSS के अनुसार मुझे FIR की एक निशुल्क प्रति दें।
-
-मैं प्रमाणित करता/करती हूँ कि ऊपर लिखी सभी बातें मेरी जानकारी के अनुसार सत्य हैं।
-
-दिनांक: ${todayDate}
-स्थान: ${incidentLoc}
-
-हस्ताक्षर / अंगूठे का निशान: _____________________________
-नाम: ${cName}
-मोबाइल: ${cPhone || '________________'}`;
-
-
-
-    // 3. TELUGU DRAFT
-    const teluguDraft = 
-`గౌరవనీయులైన స్టేషన్ హౌస్ ఆఫీసర్ గారికి,
-పోలీస్ స్టేషన్: ${psName}
-
-విషయం: భారతీయ నాగరిక్ సురక్ష సంహిత (BNSS) 2023 లోని సెక్షన్ 173 ప్రకారం ఎఫ్.ఐ.ఆర్ (FIR) నమోదు మరియు సత్వర విచారణ కొరకు లిఖితపూర్వక ఫిర్యాదు.
-
-1. ఫిర్యాదుదారుని వివరాలు:
-   • పూర్తి పేరు: ${cName}${cParent ? ` (తండ్రి/భర్త: ${cParent})` : ''}
-   • నివాస చిరునామా: ${cAddress}
-   • ఫోన్ నంబర్: ${cPhone || 'స్టేషన్‌లో అందించబడుతుంది'}
-
-2. నిందితుని వివరాలు:
-   • పేరు / వివరణ: ${aggressor}
-
-3. సంఘటన జరిగిన తేదీ మరియు స్థలం:
-   • తేదీ: ${incidentDate}
-   • సంఘటనా స్థలం: ${incidentLoc}
-
-4. సంఘటన వాస్తవాలు:
-   (ఎ) ${incidentDate} తేదీన, ${incidentLoc} వద్ద పైన పేర్కొన్న నిందితుడు నాపై దౌర్జన్యపూరితమైన నేరానికి పాల్పడ్డాడు.
-   (బి) ${summaryFacts}
-   (సి) ఈ సంఘటన వలన నాకు తీవ్రమైన నష్టం మరియు ఆందోళన కలిగింది.
-
-5. వర్తించే చట్ట విభాగాలు:
-${sectionsBlock}
-
-6. చట్టబద్ధమైన అభ్యర్థన:
-   (1) BNSS సెక్షన్ 173 ప్రకారం వెంటనే FIR నమోదు చేయాలని;
-   (2) నిందితులపై చట్టరీత్యా కఠిన చర్యలు తీసుకోవాలని;
-   (3) సెక్షన్ 173(2) BNSS ప్రకారం ఉచిత FIR కాపీని అందించాలని కోరుతున్నాను.
-
-ధృవీకరణ:
-పైన పేర్కొన్న వివరాలన్నీ నా వ్యక్తిగత పరిజ్ఞానం ప్రకారం పూర్తిగా నిజమైనవని ధృవీకరిస్తున్నాను.
-
-తేదీ: ${todayDate}
-స్థలం: ${incidentLoc}
-
-సంతకం: _____________________________ (${cName})`;
-
-    // 4. TAMIL DRAFT
-    const tamilDraft = 
-`பெறுநர்,
-காவல் நிலைய ஆய்வாளர் அவர்கள்,
-காவல் நிலையம்: ${psName}
-
-பொருள்: பாரதிய நாகரிக் சுரக்ஷா சன்ஹிதா (BNSS) 2023 பிரிவு 173-ன் கீழ் எஃப்.ஐ.ஆர் பதிவு செய்ய எழுத்துப்பூர்வ புகார்.
-
-1. புகார்தாரர் விவரங்கள்:
-   • முழுப் பெயர்: ${cName}${cParent ? ` (தந்தை/கணவர்: ${cParent})` : ''}
-   • முகவரி: ${cAddress}
-   • தொலைபேசி: ${cPhone || 'காவல் நிலையத்தில் வழங்கப்படும்'}
-
-2. குற்றம் சாட்டப்பட்டவர் விவரம்:
-   • பெயர் / விவரம்: ${aggressor}
-
-3. சம்பவம் நடந்த தேதி மற்றும் இடம்:
-   • தேதி: ${incidentDate}
-   • இடம்: ${incidentLoc}
-
-4. சம்பவத்தின் விவரம்:
-   (அ) ${incidentDate} அன்று ${incidentLoc} பகுதியில் மேற்கண்ட நபர் என் மீது அத்துமீறி குற்றம் புரிந்தார்.
-   (ஆ) ${summaryFacts}
-
-5. பொருந்தக்கூடிய சட்டப் பிரிவுகள்:
-${sectionsBlock}
-
-6. சட்டப்பூர்வ கோரிக்கை:
-   (1) BNSS பிரிவு 173-ன் கீழ் உடனடியாக எஃப்.ஐ.ஆர் பதிவு செய்யப்பட வேண்டும்;
-   (2) உரிய விசாரணை நடத்தி சட்டப்படி நடவடிக்கை எடுக்கப்பட வேண்டும்;
-   (3) BNSS பிரிவு 173(2)-ன் கீழ் பதிவு செய்யப்பட்ட எஃப்.ஐ.ஆர் நகலை இலவசமாக வழங்க வேண்டும்.
-
-தேதி: ${todayDate}
-இடம்: ${incidentLoc}
-
-கையொப்பம்: _____________________________ (${cName})`;
-
-    // 5. BENGALI DRAFT
-    const bengaliDraft = 
-`বরাবরে,
-ভারপ্রাপ্ত আধিকারিক মহাশয়,
-থানা: ${psName}
-
-বিষয়: ভারতীয় নাগরিক সুরক্ষা সংহিতা (BNSS) ২০২৩-এর ধারা ১৭৩ অনুযায়ী এফআইআর (FIR) রুজু করার লিখিত অভিযোগ।
-
-১. অভিযোগকারীর বিবরণ:
-   • পুরো নাম: ${cName}${cParent ? ` (পিতা/স্বামীর নাম: ${cParent})` : ''}
-   • ঠিকানা: ${cAddress}
-   • ফোন নম্বর: ${cPhone || 'থানায় জমা দেওয়া হবে'}
-
-২. অভিযুক্ত ব্যক্তির বিবরণ:
-   • নাম / বিবরণ: ${aggressor}
-
-৩. ঘটনার তারিখ ও স্থান:
-   • তারিখ: ${incidentDate}
-   • ঘটনাস্থল: ${incidentLoc}
-
-৪. ঘটনার বিবরণ (তথ্য):
-   (ক) ${incidentDate} তারিখে ${incidentLoc} সংলগ্ন এলাকায় উক্ত অভিযুক্ত ব্যক্তি(রা) আমার ওপর অন্যায় ও অপরাধমূলক কাজ করেছে।
-   (খ) ${summaryFacts}
-
-৫. প্রযোজ্য আইনগত ধারা:
-${sectionsBlock}
-
-৬. আইনি পদক্ষেপের প্রার্থনা:
-   (১) BNSS ১৭৩ ধারায় অবিলম্বে এফআইআর নথিভুক্ত করা হোক;
-   (২) ঘটনার সুষ্ঠু তদন্ত করে উপযুক্ত আইনি ব্যবস্থা নেওয়া হোক;
-   (৩) BNSS ১৭৩(২) ধারা অনুযায়ী আমাকে বিনামূল্যে এফআইআর-এর কপি প্রদান করা হোক।
-
-তারিখ: ${todayDate}
-স্থান: ${incidentLoc}
-
-স্বাক্ষর: _____________________________ (${cName})`;
-
-    // 6. MARATHI DRAFT
-    const marathiDraft = 
-`प्रति,
-मा. पोलीस निरीक्षक / ठाणे अंमलदार साहेब,
-पोलीस ठाणे: ${psName}
-
-विषय: भारतीय नागरिक सुरक्षा संहिता (BNSS) २०२३ च्या कलम १७३ अन्वये एफ.आय.आर. (FIR) नोंदवणेबाबत लेखी तक्रार.
-
-१. तक्रारदाराचा तपशील:
-   • पूर्ण नाव: ${cName}${cParent ? ` (वडील/पती: ${cParent})` : ''}
-   • पत्ता: ${cAddress}
-   • मोबाईल: ${cPhone || 'ठाण्यात दिला जाईल'}
-
-२. आरोपीचा तपशील:
-   • नाव / वर्णन: ${aggressor}
-
-३. घटना दिनांक व ठिकाण:
-   • दिनांक: ${incidentDate}
-   • घटनास्थळ: ${incidentLoc}
-
-४. घटनेची हकीकत (तथ्ये):
-   (अ) दिनांक ${incidentDate} रोजी ${incidentLoc} येथे आरोपीने माझ्यावर बेकायदेशीर कृत्य केले.
-   (ब) ${summaryFacts}
-
-५. लागू कायदेशीर कलमे:
-${sectionsBlock}
-
-६. कायदेशीर मागणी:
-   (१) BNSS कलम १७३ नुसार तात्काळ FIR नोंदवावी;
-   (२) प्रकरणाचा सखोल तपास करून आरोपींवर कायदेशीर कारवाई करावी;
-   (३) कलम १७३(२) नुसार मला मोफत FIR प्रत द्यावी.
-
-दिनांक: ${todayDate}
-ठिकाण: ${incidentLoc}
-
-स्वाक्षरी: _____________________________ (${cName})`;
-
-    // 7. KANNADA DRAFT
-    const kannadaDraft = 
-`ಗೆ,
-ಠಾಣಾಧಿಕಾರಿಗಳು,
-ಪೊಲೀಸ್ ಠಾಣೆ: ${psName}
-
-ವಿಷಯ: ಭಾರತೀಯ ನಾಗರಿಕ ಸುರಕ್ಷಾ ಸಂಹಿತೆ (BNSS) 2023 ರ ಕಲಂ 173 ರ ಅಡಿಯಲ್ಲಿ ಎಫ್.ಐ.ಆರ್ (FIR) ದಾಖಲಿಸುವಂತೆ ಲಿಖಿತ ದೂರು.
-
-೧. ದೂರುದಾರರ ವಿವರ:
-   • ಪೂರ್ಣ ಹೆಸರು: ${cName}${cParent ? ` (ತಂದೆ/ಗಂಡನ ಹೆಸರು: ${cParent})` : ''}
-   • ವಿಳಾಸ: ${cAddress}
-   • ದೂರವಾಣಿ: ${cPhone || 'ಠಾಣೆಯಲ್ಲಿ ಒದಗಿಸಲಾಗುವುದು'}
-
-೨. ಆರೋಪಿಯ ವಿವರ:
-   • ಹೆಸರು / ವಿವರ: ${aggressor}
-
-೩. ಘಟನೆಯ ದಿನಾಂಕ ಮತ್ತು ಸ್ಥಳ:
-   • ದಿನಾಂಕ: ${incidentDate}
-   • ಸ್ಥಳ: ${incidentLoc}
-
-೪. ಘಟನೆಯ ಸಾರಾಂಶ:
-   (ಎ) ${incidentDate} ರಂದು ${incidentLoc} ಬಳಿ ಆರೋಪಿಗಳು ನನ್ನ ಮೇಲೆ ದೌರ್ಜನ್ಯವೆಸಗಿದ್ದಾರೆ.
-   (ಬಿ) ${summaryFacts}
-
-೫. ಅನ್ವಯವಾಗುವ ಕಾನೂನು ವಿಧಿಗಳು:
-${sectionsBlock}
-
-೬. ಕಾನೂನು ಕ್ರಮಕ್ಕಾಗಿ ಪ್ರಾರ್ಥನೆ:
-   (೧) BNSS ಕಲಂ 173 ರ ಅಡಿಯಲ್ಲಿ ತಕ್ಷಣವೇ FIR ದಾಖಲಿಸಬೇಕು;
-   (೨) ತನಿಖೆ ನಡೆಸಿ ಆರೋಪಿಗಳ ವಿರುದ್ಧ ಕಾನೂನು ಕ್ರಮ ಜರುಗಿಸಬೇಕು;
-   (೩) ಕಲಂ 173(2) ರ ಪ್ರಕಾರ ನನಗೆ ಉಚಿತ FIR ಪ್ರತಿಯನ್ನು ನೀಡಬೇಕು.
-
-ದಿನಾಂಕ: ${todayDate}
-ಸ್ಥಳ: ${incidentLoc}
-
-ಸಹಿ: _____________________________ (${cName})`;
-
-    // 8. MALAYALAM DRAFT
-    const malayalamDraft = 
-`സ്വീകർത്താവ്,
-സ്റ്റേഷൻ ഹൗസ് ഓഫീസർ,
-പോലീസ് സ്റ്റേഷൻ: ${psName}
-
-വിഷയം: ഭാരതീയ നാഗരിക് സുരക്ഷാ സംഹിത (BNSS) 2023 ലെ സെക്ഷൻ 173 പ്രകാരം എഫ്.ഐ.ആർ (FIR) രജിസ്റ്റർ ചെയ്യുന്നതിനുള്ള പരാതി.
-
-1. പരാതിക്കാരന്റെ വിവരങ്ങൾ:
-   • മുഴുവൻ പേര്: ${cName}${cParent ? ` (പിതാവ്/ഭർത്താവ്: ${cParent})` : ''}
-   • വിലാസം: ${cAddress}
-   • ഫോൺ: ${cPhone || 'സ്റ്റേഷനിൽ നൽകും'}
-
-2. പ്രതിയുടെ വിവരങ്ങൾ:
-   • പേര് / വിവരണം: ${aggressor}
-
-3. സംഭവം നടന്ന തീയതിയും സ്ഥലവും:
-   • തീയതി: ${incidentDate}
-   • സ്ഥലം: ${incidentLoc}
-
-4. സംഭവത്തിന്റെ വിവരണം:
-   (എ) ${incidentDate} തീയതിയിൽ ${incidentLoc} വച്ച് പ്രതി എനിക്കെതിരെ അക്രമം നടത്തി.
-   (ബി) ${summaryFacts}
-
-5. ബാധകമായ നിയമ വകുപ്പുകൾ:
-${sectionsBlock}
-
-6. നിയമപരമായ ആവശ്യം:
-   (1) BNSS സെക്ഷൻ 173 പ്രകാരം ഉടൻ FIR രജിസ്റ്റർ ചെയ്യുക;
-   (2) കൃത്യമായ അന്വേഷണം നടത്തി പ്രതിക്കെതിരെ നടപടി സ്വീകരിക്കുക;
-   (3) സെക്ഷൻ 173(2) പ്രകാരം FIR ന്റെ സൗജന്യ പകർപ്പ് നൽകുക.
-
-തീയതി: ${todayDate}
-സ്ഥലം: ${incidentLoc}
-
-ഒപ്പ്: _____________________________ (${cName})`;
+            const conf = confidence === 'high' ? ' [strong match]' : confidence === 'medium' ? '' : ' [may apply]';
+            return `${statute.code} ${sectionWord} ${statute.section} — ${title}${conf}`;
+          })
+        : [];
+
+    // ---- LABELS per language ----
+    const L = {
+        en: { to: 'To', station: 'Police Station', subject: 'Subject: Complaint for FIR registration — BNSS 2023, Section 173', name: 'Name', parent: 'S/o, D/o, W/o', address: 'Address', phone: 'Phone', accused: 'Accused', dateOfIncident: 'Date of incident', place: 'Place of incident', narrative: 'Description of incident', offence: 'Offence category', sections: 'Relevant legal sections', note: '(Based on the above description — police to verify and apply)', request: 'Request', r1: 'Register my FIR immediately under BNSS 2023, Section 173 (Zero FIR permissible at any station).', r2: 'Investigate the incident and take appropriate legal action.', r3: 'Provide a free copy of the FIR as mandated by Section 173(2) BNSS.', confirm: 'I confirm the above is true to the best of my knowledge.', signature: 'Signature / Thumb impression', na: 'Not provided' },
+        hi: { to: 'सेवा में', station: 'थाना', subject: 'विषय: FIR दर्ज करने हेतु शिकायत — BNSS 2023, धारा 173', name: 'नाम', parent: 'पिता/पति का नाम', address: 'पता', phone: 'मोबाइल', accused: 'आरोपी', dateOfIncident: 'घटना की तिथि', place: 'घटनास्थल', narrative: 'घटना का विवरण', offence: 'अपराध की श्रेणी', sections: 'लागू वैधानिक धाराएं', note: '(उपरोक्त विवरण के आधार पर — पुलिस द्वारा सत्यापन एवं लागू करने हेतु)', request: 'प्रार्थना', r1: 'BNSS 2023 की धारा 173 के अंतर्गत तुरंत FIR दर्ज करें (किसी भी थाने में जीरो FIR दर्ज की जा सकती है)।', r2: 'घटना की जांच करें और आरोपी के विरुद्ध उचित कानूनी कार्रवाई करें।', r3: 'धारा 173(2) BNSS के अनुसार FIR की निःशुल्क प्रति प्रदान करें।', confirm: 'मैं प्रमाणित करता/करती हूँ कि उपरोक्त विवरण मेरी जानकारी के अनुसार सत्य है।', signature: 'हस्ताक्षर / अंगूठे का निशान', na: 'उपलब्ध नहीं' },
+        te: { to: 'గౌరవనీయులైన', station: 'పోలీస్ స్టేషన్', subject: 'విషయం: FIR నమోదు కోసం ఫిర్యాదు — BNSS 2023, సెక్షన్ 173', name: 'పూర్తి పేరు', parent: 'తండ్రి/భర్త', address: 'చిరునామా', phone: 'ఫోన్', accused: 'నిందితుడు', dateOfIncident: 'సంఘటన తేదీ', place: 'సంఘటనా స్థలం', narrative: 'సంఘటన వివరణ', offence: 'నేర వర్గం', sections: 'వర్తించే చట్ట విభాగాలు', note: '(పైన పేర్కొన్న వివరణ ఆధారంగా — పోలీసులు ధృవీకరించి వర్తింపజేయడానికి)', request: 'అభ్యర్థన', r1: 'BNSS 2023 సెక్షన్ 173 ప్రకారం వెంటనే FIR నమోదు చేయాలి (ఏ స్టేషన్‌లోనైనా జీరో FIR నమోదు చేయవచ్చు).', r2: 'సంఘటనపై దర్యాప్తు చేసి నిందితులపై చట్టపరమైన చర్యలు తీసుకోవాలి.', r3: 'సెక్షన్ 173(2) BNSS ప్రకారం FIR ఉచిత కాపీని అందించాలి.', confirm: 'పైన పేర్కొన్న వివరాలు నా తెలిసినంతవరకు నిజమని ధృవీకరిస్తున్నాను.', signature: 'సంతకం', na: 'అందుబాటులో లేదు' },
+        ta: { to: 'பெறுநர்', station: 'காவல் நிலையம்', subject: 'பொருள்: FIR பதிவு குறித்த புகார் — BNSS 2023, பிரிவு 173', name: 'முழுப் பெயர்', parent: 'தந்தை/கணவர்', address: 'முகவரி', phone: 'தொலைபேசி', accused: 'குற்றம் சாட்டப்பட்டவர்', dateOfIncident: 'சம்பவ தேதி', place: 'சம்பவ இடம்', narrative: 'சம்பவ விவரம்', offence: 'குற்ற வகை', sections: 'பொருந்தும் சட்டப் பிரிவுகள்', note: '(மேற்கண்ட விவரணையின் அடிப்படையில் — காவல்துறை சரிபார்த்து பொருந்துவதற்கு)', request: 'கோரிக்கை', r1: 'BNSS 2023 பிரிவு 173-ன் கீழ் உடனடியாக FIR பதிவு செய்ய வேண்டும் (ஏதேனும் நிலையத்தில் ஜீரோ FIR பதிவு செய்யலாம்).', r2: 'சம்பவத்தை விசாரித்து குற்றவாளிகளுக்கு எதிராக சட்ட நடவடிக்கை எடுக்க வேண்டும்.', r3: 'பிரிவு 173(2) BNSS-ன் கீழ் FIR-இன் இலவச நகலை வழங்க வேண்டும்.', confirm: 'மேற்கண்ட தகவல்கள் எனக்குத் தெரிந்தவரை உண்மை என உறுதிப்படுத்துகிறேன்.', signature: 'கையொப்பம்', na: 'கிடைக்கவில்லை' },
+        bn: { to: 'বরাবরে', station: 'থানা', subject: 'বিষয়: FIR রুজুর জন্য অভিযোগ — BNSS ২০২৩, ধারা ১৭৩', name: 'পুরো নাম', parent: 'পিতা/স্বামী', address: 'ঠিকানা', phone: 'ফোন', accused: 'অভিযুক্ত', dateOfIncident: 'ঘটনার তারিখ', place: 'ঘটনাস্থল', narrative: 'ঘটনার বিবরণ', offence: 'অপরাধের ধরন', sections: 'প্রযোজ্য আইনগত ধারা', note: '(উপরের বিবরণের ভিত্তিতে — পুলিশ যাচাই করে প্রযোজ্য করবে)', request: 'অনুরোধ', r1: 'BNSS ২০২৩ ধারা ১৭৩ অনুযায়ী অবিলম্বে FIR রুজু করুন (যেকোনো থানায় জিরো FIR রুজু করা যেতে পারে)।', r2: 'ঘটনার তদন্ত করে অভিযুক্তের বিরুদ্ধে আইনি ব্যবস্থা নিন।', r3: 'ধারা ১৭৩(২) BNSS অনুযায়ী FIR-এর বিনামূল্যে কপি প্রদান করুন।', confirm: 'উপরের তথ্য আমার জানামতে সত্য তা আমি নিশ্চিত করছি।', signature: 'স্বাক্ষর', na: 'পাওয়া যায়নি' },
+        mr: { to: 'प्रति', station: 'पोलीस ठाणे', subject: 'विषय: FIR नोंदीसाठी तक्रार — BNSS २०२३, कलम १७३', name: 'पूर्ण नाव', parent: 'वडील/पती', address: 'पत्ता', phone: 'मोबाईल', accused: 'आरोपी', dateOfIncident: 'घटना दिनांक', place: 'घटनास्थळ', narrative: 'घटनेचे वर्णन', offence: 'गुन्ह्याचा प्रकार', sections: 'लागू कायदेशीर कलमे', note: '(वरील वर्णनाच्या आधारे — पोलीस तपासून लागू करण्यासाठी)', request: 'विनंती', r1: 'BNSS २०२३ कलम १७३ अंतर्गत तात्काळ FIR नोंदवा (कोणत्याही ठाण्यात जीरो FIR नोंदवता येते)।', r2: 'घटनेचा तपास करून आरोपीविरुद्ध कायदेशीर कारवाई करा.', r3: 'कलम १७३(२) BNSS अन्वये FIR ची मोफत प्रत प्रदान करा.', confirm: 'वरील माहिती माझ्या जाणते खरे आहे हे मी प्रमाणित करतो/करते.', signature: 'स्वाक्षरी', na: 'उपलब्ध नाही' },
+        kn: { to: 'ಗೆ', station: 'ಪೊಲೀಸ್ ಠಾಣೆ', subject: 'ವಿಷಯ: FIR ದಾಖಲಿಸಲು ದೂರು — BNSS 2023, ಕಲಂ 173', name: 'ಪೂರ್ಣ ಹೆಸರು', parent: 'ತಂದೆ/ಗಂಡ', address: 'ವಿಳಾಸ', phone: 'ದೂರವಾಣಿ', accused: 'ಆರೋಪಿ', dateOfIncident: 'ಘಟನೆಯ ದಿನಾಂಕ', place: 'ಘಟನಾ ಸ್ಥಳ', narrative: 'ಘಟನೆಯ ವಿವರಣೆ', offence: 'ಅಪರಾಧದ ವರ್ಗ', sections: 'ಅನ್ವಯವಾಗುವ ಕಾನೂನು ವಿಧಿಗಳು', note: '(ಮೇಲಿನ ವಿವರಣೆಯ ಆಧಾರದ ಮೇಲೆ — ಪೊಲೀಸರು ಪರಿಶೀಲಿಸಿ ಅನ್ವಯಿಸಲು)', request: 'ವಿನಂತಿ', r1: 'BNSS 2023 ಕಲಂ 173 ರ ಅಡಿಯಲ್ಲಿ ತಕ್ಷಣವೇ FIR ದಾಖಲಿಸಿ (ಯಾವುದೇ ಠಾಣೆಯಲ್ಲಿ ಜೀರೋ FIR ದಾಖಲಿಸಬಹುದು).', r2: 'ಘಟನೆಯ ತನಿಖೆ ನಡೆಸಿ ಆರೋಪಿಗಳ ವಿರುದ್ಧ ಕಾನೂನು ಕ್ರಮ ಜರುಗಿಸಿ.', r3: 'ಕಲಂ 173(2) BNSS ರ ಪ್ರಕಾರ FIR ನ ಉಚಿತ ಪ್ರತಿ ನೀಡಿ.', confirm: 'ಮೇಲಿನ ಮಾಹಿತಿ ನನಗೆ ತಿಿಳಿದಂತೆ ಸತ್ಯ ಎಂದು ನಾನು ದೃಢೀಕರಿಸುತ್ತೇನೆ.', signature: 'ಸಹಿ', na: 'ಲಭ್ಯವಿಲ್ಲ' },
+        ml: { to: 'സ്വീകർത്താവ്', station: 'പോലീസ് സ്റ്റേഷൻ', subject: 'വിഷയം: FIR രജിസ്റ്റർ ചെയ്യുന്നതിനുള്ള പരാതി — BNSS 2023, സെക്ഷൻ 173', name: 'മുഴുവൻ പേര്', parent: 'പിതാവ്/ഭർത്താവ്', address: 'വിലാസം', phone: 'ഫോൺ', accused: 'പ്രതി', dateOfIncident: 'സംഭവ തീയതി', place: 'സംഭവ സ്ഥലം', narrative: 'സംഭവ വിവരണം', offence: 'കുറ്റത്തിന്റെ തരം', sections: 'ബാധകമായ നിയമ വകുപ്പുകൾ', note: '(മുകളിലെ വിവരണത്തിന്റെ അടിസ്ഥാനത്തിൽ — പോലീസ് പരിശോധിച്ച് ബാധകമാക്കാൻ)', request: 'അഭ്യർത്ഥന', r1: 'BNSS 2023 സെക്ഷൻ 173 പ്രകാരം ഉടൻ FIR രജിസ്റ്റർ ചെയ്യുക (ഏതെങ്കിലും സ്റ്റേഷനിൽ സീറോ FIR രജിസ്റ്റർ ചെയ്യാം).', r2: 'സംഭവത്തെക്കുറിച്ച് അന്വേഷിച്ച് പ്രതിക്കെതിരെ നിയമനടപടി സ്വീകരിക്കുക.', r3: 'സെക്ഷൻ 173(2) BNSS പ്രകാരം FIR-ന്റെ സൗജന്യ പകർപ്പ് നൽകുക.', confirm: 'മുകളിലെ വിവരങ്ങൾ എനിക്കറിയാവുന്നത് സത്യമാണെന്ന് ഞാൻ സ്ഥിരീകരിക്കുന്നു.', signature: 'ഒപ്പ്', na: 'ലഭ്യമല്ല' }
+    };
+    const l = L[lang] || L.en;
+
+    // ---- Helper to build section lines ----
+    const sectionLines = sectionsLines.length
+        ? sectionsLines.map((s) => `   • ${s}`).join('\n')
+        : `   (${l.note})`;
+
+    const locDisplay = incidentLoc || l.na;
+    const dateDisplay = incidentDate || todayDate;
+    const parentLine = cParent ? `\n${l.parent}: ${cParent}` : '';
+    const addressLine = cAddress ? `\n${l.address}: ${cAddress}` : '';
+    const phoneLine = cPhone ? `\n${l.phone}: ${cPhone}` : '';
+    const stationLine = psName ? `\n${l.station}: ${psName}` : '';
+
+    // ---- Build all 8 drafts with identical structure ----
+    const draft = (extraBefore) =>
+`${l.to},
+${l.station}${stationLine ? `: ${psName}` : ''}
+
+${l.subject}
+
+${l.name}: ${cName}${parentLine}${addressLine}${phoneLine}
+
+${l.accused}: ${aggressor || l.na}
+
+${l.dateOfIncident}: ${dateDisplay}
+${l.place}: ${locDisplay}
+
+${l.narrative}:
+${narrative || l.na}
+${extraBefore || ''}
+${catLabel ? `\n${l.offence}: ${catLabel}` : ''}
+
+${l.sections}:
+${sectionLines}
+
+${l.request}:
+(1) ${l.r1}
+(2) ${l.r2}
+(3) ${l.r3}
+
+${l.confirm}
+
+${l.dateOfIncident}: ${todayDate}
+${l.place}: ${locDisplay}
+
+${l.signature}: _____________________________
+${l.name}: ${cName}`;
+
+    const englishDraft = draft(
+        englishSummary ? `\nEnglish summary: ${englishSummary}` : ''
+    );
 
     let nativeOutput = englishDraft;
-    if (lang === 'hi') nativeOutput = hindiDraft;
-    else if (lang === 'te') nativeOutput = teluguDraft;
-    else if (lang === 'ta') nativeOutput = tamilDraft;
-    else if (lang === 'bn') nativeOutput = bengaliDraft;
-    else if (lang === 'mr') nativeOutput = marathiDraft;
-    else if (lang === 'kn') nativeOutput = kannadaDraft;
-    else if (lang === 'ml') nativeOutput = malayalamDraft;
+    if (lang === 'hi') nativeOutput = draft();
+    else if (lang === 'te') nativeOutput = draft();
+    else if (lang === 'ta') nativeOutput = draft();
+    else if (lang === 'bn') nativeOutput = draft();
+    else if (lang === 'mr') nativeOutput = draft();
+    else if (lang === 'kn') nativeOutput = draft();
+    else if (lang === 'ml') nativeOutput = draft();
 
     return {
         english: englishDraft,
         native: nativeOutput,
-        hindi: hindiDraft,
+        hindi: lang === 'hi' ? nativeOutput : draft(),
         language: lang
     };
 }
