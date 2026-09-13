@@ -1,19 +1,27 @@
 // Nyaya-Setu CPU NER fallback — multilingual token-classification via transformers.js.
-// Sits between instant regex rules and the 700MB WebLLM model:
-//   rules (instant, offline) → NER (~100-180MB q8, CPU/WASM, lazy) → LLM (WebGPU).
+// OPT-IN ONLY (measured decision 2026-09-13, tests/extraction_benchmark.mjs):
+// the smallest viable multilingual checkpoint is ~129MB (distilbert q8; the
+// repo's "q4" file is ~377MB, not smaller) yet adds zero measured gain over the
+// rule engine, so the pipeline does NOT auto-load it. Enable explicitly via
+// extractEntities(narrative, { ner: true }) or preloadNER().
+// Sits between instant regex rules and the 700MB WebLLM model when enabled:
+//   rules (instant, offline) → NER (~129MB q8, CPU/WASM, lazy) → LLM (WebGPU).
 // Only fills UNKNOWN slots (location/aggressor); never overrides confident rule
 // values. Best-effort: lazy-loaded, cached, timeout-guarded, fails soft to null
-// so the pipeline never blocks on model download. Skipped in Node tests unless
-// explicitly enabled (keeps the 252-test suite offline + fast).
+// so the pipeline never blocks on model download.
 import { hasPossessiveBefore } from './shared_sanitize.js';
 
 // Small multilingual NER checkpoints (Xenova ONNX). Tried in order; first that
-// loads wins and is cached. q8 + wasm keeps low-end tabs usable.
+// loads wins and is cached. q8 int8 (~129MB, same weight as the MiniLM the app
+// already ships) — the repo's "q4" file is ~377MB, NOT smaller, so it is not
+// attempted. wasm/cpu keeps low-end tabs usable.
+// NOTE: xlm-roberta NER repos are access-gated (401 without HF token) —
+// deliberately NOT listed so devices never burn attempts on them.
 const NER_CANDIDATES = [
     'Xenova/distilbert-base-multilingual-cased-ner-hrl',
-    'Xenova/bert-base-multilingual-cased-ner-hrl',
-    'Xenova/xlm-roberta-base-ner-hrl'
+    'Xenova/bert-base-multilingual-cased-ner-hrl'
 ];
+const NER_DTYPES = ['q8'];
 
 let nerPromise = null;
 let activeModel = null;
@@ -36,21 +44,23 @@ export async function ensureNER(onProgress) {
     const devices = pickDevices();
     let lastErr = null;
     for (const model of NER_CANDIDATES) {
-        for (const device of devices) {
-            try {
-                onProgress?.({ model, device, text: `Loading NER model (${model}, ${device})…` });
-                nerPromise = pipeline('token-classification', model, {
-                    dtype: 'q8',
-                    device,
-                    aggregation_strategy: 'simple'
-                });
-                await nerPromise;
-                activeModel = model;
-                activeDevice = device;
-                return { ready: true, model, device };
-            } catch (err) {
-                lastErr = err;
-                nerPromise = null;
+        for (const dtype of NER_DTYPES) {
+            for (const device of devices) {
+                try {
+                    onProgress?.({ model, device, dtype, text: `Loading NER model (${model}, ${device}, ${dtype})…` });
+                    nerPromise = pipeline('token-classification', model, {
+                        dtype,
+                        device,
+                        aggregation_strategy: 'simple'
+                    });
+                    await nerPromise;
+                    activeModel = `${model}#${dtype}`;
+                    activeDevice = device;
+                    return { ready: true, model: activeModel, device };
+                } catch (err) {
+                    lastErr = err;
+                    nerPromise = null;
+                }
             }
         }
     }

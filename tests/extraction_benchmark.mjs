@@ -16,52 +16,10 @@
 // the reason; run the same gold set in the browser console to fill that column.
 import { extractEntitiesRuleBased, extractEntities, isWebGPUSupported } from '../src/llm.js';
 import { extractEntitiesNER, mapNerEntities } from '../src/ner.js';
+import { CASES } from './gold_cases.mjs';
 
 const SKIP_NER = process.argv.includes('--skip-ner');
 const NER_BUDGET_MS = Number(process.env.NER_BUDGET_MS || 60000);
-
-// ---------------------------------------------------------------------------
-// Gold set: 29 cases, 8 languages. Human truth — see header comment.
-// ---------------------------------------------------------------------------
-const CASES = [
-    // English
-    { id: 'E01', lang: 'en', text: 'Ramu hit me with a stick near the bus stand on 15th March', gold: { location: 'bus stand', aggressor: 'Ramu', category: 'assault' } },
-    { id: 'E02', lang: 'en', text: 'I was going to vote for my village sarpanch but strangers surrounded me and threatened me', gold: { location: 'unknown', aggressor: 'strangers', category: 'intimidation' } },
-    { id: 'E03', lang: 'en', text: 'Near the bus stop, Ramu hit me', gold: { location: 'bus stop', aggressor: 'Ramu', category: 'assault' } },
-    { id: 'E04', lang: 'en', text: 'Ramu and Shyam beat me', gold: { location: 'unknown', aggressor: 'Ramu and Shyam', category: 'assault' } },
-    { id: 'E05', lang: 'en', text: 'The shopkeeper cheated me by selling fake gold, I lost 20000', gold: { location: 'unknown', aggressor: 'shopkeeper', category: 'property_fraud' } },
-    { id: 'E06', lang: 'en', text: 'Police refused to file my FIR at the station', gold: { location: 'station', aggressor: 'police', category: 'procedure' } },
-    { id: 'E07', lang: 'en', text: "He said he will kill me if I don't pay 10000", gold: { location: 'unknown', aggressor: 'unknown', category: 'intimidation' } },
-    { id: 'E08', lang: 'en', text: 'My husband and in-laws are demanding 5 lakh dowry and threatening to throw me out', gold: { location: 'unknown', aggressor: 'husband and in-laws', category: 'women_safety' } },
-    { id: 'E09', lang: 'en', text: 'Rajesh Kumar used abusive language and threatened to kill me', gold: { location: 'unknown', aggressor: 'Rajesh Kumar', category: 'intimidation' } },
-    { id: 'E10', lang: 'en', text: 'My mobile was snatched near the railway station', gold: { location: 'station', aggressor: 'unknown', category: 'property_fraud' } },
-    { id: 'E11', lang: 'en', text: 'At the school, they threatened me', gold: { location: 'school', aggressor: 'unknown', category: 'intimidation' } },
-    // Hindi
-    { id: 'H01', lang: 'hi', text: 'मेरे पड़ोसी ने गांव में मुझे धमकी दी', gold: { location: 'गांव', aggressor: 'पड़ोसी', category: 'intimidation' } },
-    { id: 'H02', lang: 'hi', text: 'मेरे गांव में चोरी हुई', gold: { location: 'unknown', aggressor: 'unknown', category: 'property_fraud' } },
-    { id: 'H03', lang: 'hi', text: 'घर के पास रामु ने मारा', gold: { location: 'घर', aggressor: 'रामु', category: 'assault' } },
-    { id: 'H04', lang: 'hi', text: 'मंदिर में चोरी हुई', gold: { location: 'मंदिर', aggressor: 'unknown', category: 'property_fraud' } },
-    { id: 'H05', lang: 'hi', text: 'मैं अपने गांव का सरपंच के लिए वोट करने जा रहा था। दो व्यक्ति मुझे रोक कर पूछे। मैं उनका जवाब नहीं देने पर उन्हें धमकी देने की कोशिश की।', gold: { location: 'unknown', aggressor: 'unknown', category: 'intimidation' } },
-    // Telugu
-    { id: 'T01', lang: 'te', text: 'నా పొరుగువాడు రాము నన్ను కొట్టాడు', gold: { location: 'unknown', aggressor: 'రాము', category: 'assault' } },
-    { id: 'T02', lang: 'te', text: 'మార్కెట్ లో రాము నన్ను కొట్టాడు', gold: { location: 'మార్కెట్', aggressor: 'రాము', category: 'assault' } },
-    { id: 'T03', lang: 'te', text: 'రాము ఆసుపత్రిలో నన్ను కొట్టాడు', gold: { location: 'ఆసుపత్రి', aggressor: 'రాము', category: 'assault' } },
-    // Tamil
-    { id: 'A01', lang: 'ta', text: 'சந்தையில் திருட்டு', gold: { location: 'சந்தை', aggressor: 'unknown', category: 'property_fraud' } },
-    { id: 'A02', lang: 'ta', text: 'பள்ளியில் திருட்டு', gold: { location: 'பள்ளி', aggressor: 'unknown', category: 'property_fraud' } },
-    { id: 'A03', lang: 'ta', text: 'ராமு என்னை அடித்தார்', gold: { location: 'unknown', aggressor: 'ராமு', category: 'assault' } },
-    // Bengali
-    { id: 'B01', lang: 'bn', text: 'বাজারে চুরি হয়েছে', gold: { location: 'বাজার', aggressor: 'unknown', category: 'property_fraud' } },
-    { id: 'B02', lang: 'bn', text: 'আমাকে হুমকি দিয়েছে', gold: { location: 'unknown', aggressor: 'unknown', category: 'intimidation' } },
-    // Kannada
-    { id: 'K01', lang: 'kn', text: 'ಮಾರುಕಟ್ಟೆಯಲ್ಲಿ ಕಳ್ಳತನ', gold: { location: 'ಮಾರುಕಟ್ಟೆ', aggressor: 'unknown', category: 'property_fraud' } },
-    { id: 'K02', lang: 'kn', text: 'ಶಾಲೆಯಲ್ಲಿ ಕಳ್ಳತನ', gold: { location: 'ಶಾಲೆ', aggressor: 'unknown', category: 'property_fraud' } },
-    // Malayalam
-    { id: 'M01', lang: 'ml', text: 'കടയിൽ മോഷണം', gold: { location: 'കട', aggressor: 'unknown', category: 'property_fraud' } },
-    // Marathi
-    { id: 'R01', lang: 'mr', text: 'बाजारात चोरी झाली', gold: { location: 'बाजार', aggressor: 'unknown', category: 'property_fraud' } },
-    { id: 'R02', lang: 'mr', text: 'शाळेत चोरी', gold: { location: 'शाळ', aggressor: 'unknown', category: 'property_fraud' } }
-];
 
 // Mock model outputs → NER post-processing (mapNerEntities). Always runs offline:
 // measures whether the shared possessive guard + score floor + tag mapping work,

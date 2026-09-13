@@ -180,16 +180,24 @@ export function extractEntitiesRuleBased(narrative) {
     const accusedMatches = [
         // Multi-name: "Ramu and Shyam beat me", "Ramu aur Shyam ne mara"
         /\b([A-Z][a-zA-Z]+(?:\s+and\s+[A-Z][a-zA-Z]+)+)\s+(?:beat|hit|slapped|abused|assaulted|attacked|threatened|both|neighbours|neighbors)\b/i,
+        // Kin + associate: "husband and in-laws are demanding dowry"
+        /\b((?:husband|wife|son|daughter|father|mother|brother|sister)\s+and\s+[A-Za-z][A-Za-z-]*)\s+(?:are\s+|is\s+|was\s+|were\s+)?(?:demanding|demanded|threatening|threatened|beating|harassing|torturing)\b/i,
         /\b([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[A-Za-z\u0900-\u0D7F]+)+)\s+ने\s+(?:मेरा|मुझे|हमला|पीटा|मारा|धमकी)/i,
         /([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+उसके\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)\s+ने\s+(?:मेरा\s+रास्ता|मुझे|हमला|पीटा|मारा|धमकी)/i,
         /(?:आरोपी|accused|attacked by|threatened by|beaten by)\s*[:=-]?\s*([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)/i,
         // Hindi subject-verb with role-nouns: "मालिक ने मारा", "पड़ोसी ने धमकी दी"
-        /\b(मालिक|पड़ोसी|ठेकेदार|अधिकारी|कर्मचारी|प्रबंधक|मालिकन|मकान मालिक|भूमि मालिक|टीचर|प्रोफेसर|डॉक्टर|वकील)\s+ने\s+(?:मारा|पीटा|धमकी|गाली|मारपीट|छेड़|चोरी|हमला|किया)/i,
+        // NOTE: \b is ASCII-only and never matches around Devanagari — use explicit
+        // boundaries here, else these patterns are dead code.
+        /(?:^|[\s,;:(])(मालिक|पड़ोसी|ठेकेदार|अधिकारी|कर्मचारी|प्रबंधक|मालिकन|मकान मालिक|भूमि मालिक|टीचर|प्रोफेसर|डॉक्टर|वकील)\s+ने(?=[\s,;:.!?])\s*(?:मारा|पीटा|धमकी|गाली|मारपीट|छेड़|चोरी|हमला|किया)/i,
+        // Hindi role-noun with distance: "पड़ोसी ने गांव में मुझे धमकी दी"
+        // (crime verb up to ~30 chars after ने, same clause; explicit boundaries —
+        // \b never matches around Devanagari)
+        /(?:^|[\s,;:(])(मालिक|पड़ोसी|ठेकेदार|अधिकारी|कर्मचारी|प्रबंधक|मालिकन|मकान मालिक|भूमि मालिक|टीचर|प्रोफेसर|डॉक्टर|वकील|पति|ससुराल)\s+ने(?=[\s,;:.!?])[^।!?\n]{0,30}?[\s,;:(](?:मारा|पीटा|धमकी|गाली|मारपीट|छेड़|चोरी|हमला)(?=[\s,;:.!?।]|$)/i,
         // Hindi "X ne mujhe / mera ... kiya"
         /\b([A-Za-z\u0900-\u0D7F]{2,})\s+ने\s+(?:मुझे|मेरा|मेरी)\s+(?:मारा|पीटा|धमकी|गाली|मारपीट|छेड़|चोरी|हमला|रास्ता|रोका|जबरन|जबरदस्ती)/i,
         /(?:सामने|द्वारा|खिलाफ)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+)?)\s+ने/i,
         // English subject-verb: "People hit me", "Mohan beat me", "Rajesh slapped me"
-        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|strangers|stranger|miscreants|assailants|neighbours|neighbors|relatives|contractor|officials|goons|policeman|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor)\b\s+(?:hit|beat|beats|beaten|slapped|abused|assaulted|attacked|threatened|cheated|grabbed|stole|molested|yelled|shouted|fired|harassed|intimidated|robbed|extorted|defrauded|forged|encroached|grabbed|surrounded|surround|encircled|stopped|blocked|bribed)\b/i,
+        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|police|strangers|stranger|miscreants|assailants|neighbours|neighbors|relatives|contractor|officials|goons|policeman|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor)\b\s+(?:hit|beat|beats|beaten|slapped|abused|assaulted|attacked|threatened|cheated|grabbed|stole|molested|yelled|shouted|fired|harassed|intimidated|robbed|extorted|defrauded|forged|encroached|grabbed|surrounded|surround|encircled|stopped|blocked|bribed|refused)\b/i,
         // "Rajesh Kumar used abusive language" (adjacent — avoids "March ... used" spans)
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+used\s+abusive\b/,
         // "<name> did kabza / grabbed the land" (encroachment phrasing)
@@ -202,7 +210,7 @@ export function extractEntitiesRuleBased(narrative) {
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b[^.!?]{0,40}?\b(?:slapped|abused|assaulted|threatened|attacked|molested|kottadu|kottaru|maara|peeta)\b/
     ];
     const BAD_SUBJECT = /^(the|a|an|on|in|at|and|or|of|to|for|with|from|against|language|did|yesterday|today|my|me|i|they|them|he|she|it|we|you|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|मैं|मुझे|हम)$/i;
-    const LOWCASE_NOUNS = /^(people|strangers|stranger|miscreants|assailants|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor|contractor)$/i;
+    const LOWCASE_NOUNS = /^(people|in-laws?|in laws?|strangers|stranger|miscreants|assailants|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor|contractor)$/i;
     const INDIC_PRONOUN = /^(నన్ను|నాకు|నేను|మేము|అతను|ఆమె|వారు|என்னை|நான்|எனக்கு|அவர்|நாங்கள்)$/i;
     for (const pat of accusedMatches) {
         const m = text.match(pat);
@@ -223,6 +231,20 @@ export function extractEntitiesRuleBased(narrative) {
             else if (cut >= toks.length) continue;
         }
         if (!cand || BAD_SUBJECT.test(cand) || INDIC_PRONOUN.test(cand)) continue;
+        // Telugu spans ("మార్కెట్ లో రాము", "రాము ఆసుపత్రిలో", "నా పొరుగువాడు రాము"):
+        // SOV order — the subject sits next to the verb. Walk left past
+        // location-suffixed tokens, drop leading possessives, take the last token.
+        if (/[\u0C00-\u0C7F]/.test(cand) && /\s/.test(cand)) {
+            const TE_LOC_SUF = /(?:లో|దగ్గర|సమీపంలో|ఇందులో|పైన|వద్ద|నుండి|నించి|కి|కు)$/;
+            const TE_PLACE = /^(మార్కెట్|స్కూల్|ఆసుపత్రి|టెంపుల్|కాలేజ్|పోలీస్|అంగడి|రస్తె|కంపెనీ|ఇల్లు|గావ్|మనె|సినిమా|సెంటర్|హోటల్|షాపు|స్టేషన్)$/;
+            const TE_POSS = /^(నా|మా|తన|అతని|ఆమె|వారి|మీ)$/;
+            let toks = cand.split(/\s+/).filter(Boolean);
+            while (toks.length > 1 && (TE_LOC_SUF.test(toks[toks.length - 1]) || TE_PLACE.test(toks[toks.length - 1]))) toks.pop();
+            while (toks.length > 1 && TE_POSS.test(toks[0])) toks.shift();
+            if (toks.length > 1) toks = toks.slice(-1);
+            cand = toks.join(' ');
+            if (!cand || INDIC_PRONOUN.test(cand)) continue;
+        }
         if (/^[a-z]/.test(cand) && !LOWCASE_NOUNS.test(cand.split(/\s+/).pop())) continue;
         aggressor = cand;
         break;
@@ -326,11 +348,28 @@ export function extractEntitiesRuleBased(narrative) {
     }
 
     // 6. Offence Category Classification (all 8 lexicon languages, not just EN/HI)
+    // Priority: physical violence leads (assault first) so "dowry + beating" reads
+    // assault (+women_safety secondary), while pure "dowry + threats" still reads
+    // women_safety. Bare spouse words stay out of the dowry matcher.
+    // Multi-offence: every matching category is recorded; the first in priority
+    // order is primary, the next different one becomes secondaryCategory so the
+    // draft can flag it ("Also relevant: ...") instead of dropping it.
     const low = text.toLowerCase();
-    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|kottadu|kottaru|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|గాయమై|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി|తోపు|నెట్టు|తన్ను|அடித்தல்|தாக்குதல்|காயப்படுத்து/i.test(low)) category = 'assault';
-    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मार|गाली|गाली-गलौज|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|హెచ్చరిక|మిరడ్డ|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|social media|yelled|shouted|intimidat/i.test(low)) category = 'intimidation';
-    else if (/fraud|cheat|dhokha|chori|stole|stolen|theft|robbery|extortion|snatch|snatched|forg|fake|kabza|encroach|trespass|land grab|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|घुसून|पीक|शेतात|దొంగతనం|మోసం|డబ్బులు|జీతం|వేతనం|తిరిగి ఇవ్వలేదు|திருட்டு|மோசடி|చౌర్యం|వంచన|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ಕದ್ದ|ವಂಚನೆ|മോഷണം|വഞ്ചന|కಬ್ಜ|ಒಕ್ಕಲಿತ್ತು|ভূমি দখল/i.test(low)) category = 'property_fraud';
-    else if (/woman|chhed|modesty|molest|stalk|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी|వరకట్నం|దహేజం|భార్య|అత్తమామ|చిత్రహింస|கணவர்|மாமியார்|தகாத தொல்லை|পত্নী|স্বামী|যৌতুক|ഭാര്യ|ഭർത്താവ്|വധു പീഡനം/i.test(low)) category = 'women_safety';
+    const isReflexiveHarm = /\bkill\s+(myself|yourself|himself|herself|themselves)\b/i.test(text);
+    const CAT_RES = {
+        dowry: /dowry|dahej|दहेज|వరకట్నం|దహేజం|வரதட்சணை|যৌতুক|ವರದಕ್ಷಿಣೆ|വധു പീഡനം|हुंडा|दहेज उत्पीड़न|dowry harassment|cruelty by husband/i,
+        assault: /marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|kottadu|kottaru|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టాడు|కొట్టింది|కొట్టారు|దెబ్బలాట|దాడి|గాయం|గాయమై|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത్రി|తోపు|నెట్టు|తన్ను|அடித்தல்|தாக்குதல்|காயப்படுத்து/i,
+        intimidation: /dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|\bkill\b|\bmurder\b|jaan\s*se\s*maar|धमकी|जान से मार|गाली|गाली-गलौज|हत्या|मर्डर|कत्ल|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|హెచ్చరిక|మిరడ్డ|చంపు|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|கொல்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|খুন|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ಕೊಲೆ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|കൊല|social media|yelled|shouted|intimidat/i,
+        property_fraud: /fraud|cheat|dhokha|chori|stole|stolen|theft|robbery|extortion|snatch|snatched|forg|fake|kabza|encroach|trespass|land grab|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|घुसून|पीक|शेतात|దొంగతనం|మోసం|డబ్బులు|జీతం|వేతనం|తిరిగి ఇవ్వలేదు|திருட்டு|மோசடி|చౌర్యం|వంచన|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ಕದ್ದ|ವಂಚನೆ|മോഷണം|വഞ്ചന|కబ్జ|ಒಕ್ಕಲಿತ್ತು|ভূমি দখল/i,
+        women_safety: /woman|chhed|modesty|molest|stalk|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी|వరకట్నం|దహేజం|భార్య|అత్తమామ|చిత్రహింస|கணவர்|மாமியார்|தகாத தொல்லை|পত্নী|স্বামী|যৌতুক|ഭാര്യ|ഭർത്താവ്|വധു പീഡനം/i,
+        procedure: /\bzero\s*fir\b|refused?\s+to\s+(register|file)(\s+my)?\s+fir\b|fir\s+(refused|denied|not\s+registered)|police\s+(refused|did\s+not\s+register|inaction)|complaint\s+not\s+(registered|filed)|thana.*(mana|नहीं)|fir.*(मना|नहीं\s+लिखी|दर्ज\s+नहीं|इनकार|నిరాకరించారు|నమోదు\s+చేయలేదు)|पुलिस.*(मना|नहीं\s+सुनी|रिपोर्ट\s+नहीं)|పోలీసు.*(నిరాకరించారు|పట్టించుకోలేదు)|fir\s+likhne\s+se\s+mana|एफआईआर.*(मना|नहीं)/i
+    };
+    const CAT_ORDER = ['assault', 'dowry', 'intimidation', 'property_fraud', 'women_safety', 'procedure'];
+    const matchedCats = CAT_ORDER.filter((k) => (k === 'intimidation' ? !isReflexiveHarm : true) && CAT_RES[k].test(low));
+    const toCat = (k) => (k === 'dowry' ? 'women_safety' : k);
+    category = matchedCats.length ? toCat(matchedCats[0]) : 'needs_human_review';
+    const secondaryRaw = matchedCats.find((k) => toCat(k) !== category) || null;
+    const secondaryCategory = secondaryRaw ? toCat(secondaryRaw) : 'needs_human_review';
 
     // Generate a brief summary from extracted entities (not raw text slice)
     const catLabel = { assault: 'Physical assault', intimidation: 'Criminal intimidation / Threat', property_fraud: 'Property fraud / Cheating', women_safety: 'Offence against woman', needs_human_review: 'Incident' }[category] || 'Incident';
@@ -349,6 +388,7 @@ export function extractEntitiesRuleBased(narrative) {
         date: incidentDate,
         location: incidentLoc,
         category,
+        secondaryCategory,
         events: [text]
     };
 }
@@ -363,10 +403,11 @@ export async function extractEntities(narrative, opts = {}) {
     const ruleEntities = extractEntitiesRuleBased(narrative);
     const merged = { ...ruleEntities, extractionSource: 'rule' };
 
-    // CPU NER supplement (best-effort, browser-only): fills unknowns the regex
-    // misses, using context instead of keyword lists. Never overrides a confident
-    // rule value; skipped in Node tests (offline) unless explicitly enabled.
-    const wantNER = opts.ner ?? (typeof window !== 'undefined');
+    // CPU NER supplement (OPT-IN ONLY via opts.ner — measured decision 2026-09-13):
+    // the smallest viable multilingual checkpoint (distilbert q8) is ~129MB yet
+    // adds zero measured gain over rules (benchmark 29/29 vs 29/29), so it must
+    // not tax every user's download. src/ner.js stays for opt-in/future use.
+    const wantNER = opts.ner ?? false;
     if (wantNER && (!isKnown(merged.location) || !isKnown(merged.aggressor))) {
         try {
             const nerMod = await import('./ner.js');
@@ -468,6 +509,7 @@ Input: "He said he will kill me if I don't pay ₹10000"
             date: cleanStr(parsed.date, merged.date),
             location: llmLoc,
             category: normalizeCategory(parsed.category, merged.category),
+            secondaryCategory: normalizeCategory(parsed.secondaryCategory, merged.secondaryCategory || 'needs_human_review'),
             events: [narrative],
             extractionSource: 'llm'
         };
@@ -534,6 +576,12 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
         ml: { assault: 'ശാരീരിക ആക്രമണം / പരിക്ക്', intimidation: 'കുറ്റകരമായ ഭീഷണി', property_fraud: 'വഞ്ചന / സ്വത്ത് കുറ്റം', women_safety: 'സ്ത്രീക്കെതിരായ കുറ്റം / വധു പീഡനം', procedure: 'നടപടിക്രമ പരാതി (FIR നിരാകരണം)' }
     };
     const catLabel = (CAT_LABELS[lang] || CAT_LABELS.en)[cat] || '';
+    // Secondary offence (multi-offence narratives): shown as "Also relevant: ..."
+    // so the second crime isn't silently dropped. Never equals primary.
+    const secCat = normalizeCategory(entities?.secondaryCategory, '');
+    const secLabel = (secCat && secCat !== cat) ? ((CAT_LABELS[lang] || CAT_LABELS.en)[secCat] || '') : '';
+    const ALSO = { en: 'Also relevant', hi: 'यह भी प्रासंगिक', te: 'ఇది కూడా వర్తిస్తుంది', ta: 'இதுவும் பொருந்தும்', bn: 'এটিও প্রযোজ্য', mr: 'हे देखील लागू', kn: 'ಇದೂ ಅನ್ವಯಿಸುತ್ತದೆ', ml: 'ഇതും ബാധകമാണ്' };
+    const alsoWord = ALSO[lang] || ALSO.en;
 
     // ---- Section list ----
     const sectionWord = lang === 'hi' ? 'धारा' : lang === 'te' ? 'సెక్షన్' : lang === 'ta' ? 'பிரிவு' : lang === 'bn' ? 'ধারা' : lang === 'mr' ? 'कलम' : lang === 'kn' ? 'ಕಲಂ' : lang === 'ml' ? 'സെക്ഷൻ' : 'Section';
@@ -602,7 +650,7 @@ ${l.place}: ${locDisplay}
 ${l.narrative}:
 ${narrative || l.na}
 ${extraBefore || ''}
-${catLabel ? `\n${l.offence}: ${catLabel}` : ''}
+${catLabel ? `\n${l.offence}: ${catLabel}${secLabel ? ` · ${alsoWord}: ${secLabel}` : ''}` : ''}
 
 ${l.sections}:
 ${sectionLines}

@@ -5,7 +5,11 @@
 // advice-questions without either are routed to legal aid, not drafted.
 export function isActionableComplaint(text, entities, retrieved) {
     const value = (text || '').trim();
-    if (!value || value.length < 15) return false;
+    if (!value) return false;
+    // 15-char floor is substance-based, not absolute: dense Indic scripts carry a
+    // complete grievance in ~11-13 chars ("കടയിൽ മോഷണം", "शाळेत चोरी"). Tiny
+    // texts without BOTH an offence signal and a medium/high statute still fail.
+    const tinyText = value.length < 15;
 
     const low = value.toLowerCase();
     const words = value.split(/\s+/).filter(Boolean);
@@ -29,7 +33,12 @@ export function isActionableComplaint(text, entities, retrieved) {
     // 3-word floor (not 4): genuine short complaints ("ಮೊಬೈಲ್ ಕಳ್ಳತನವಾಗಿದೆ",
     // "mara pitai hui" is still blocked by the 15-char floor) must pass;
     // junk is caught by length + junk-patterns + signal requirements below.
-    if (words.length < 3) return false;
+    // 2-word exception: in agglutinative/short-form grievances ("சந்தையில் திருட்டு",
+    // "शाळेत चोरी") two words carry a complete complaint — accept when BOTH an
+    // offence signal and a medium/high statute match back it. Junk 2-word texts
+    // ("hello test") still fail for lack of either.
+    if (words.length < 2) return false;
+    const shortTwoWord = words.length < 3;
 
     const junkPatterns = [
         /\bi am doing good\b/,
@@ -71,5 +80,7 @@ export function isActionableComplaint(text, entities, retrieved) {
     const isQuestion = /\?\s*$/.test(value) || /^(क्या|kya |should i\b|do i need\b|can i\b)/i.test(low);
     if (isQuestion && !hasStrongStatute && !hasIssueSignal) return false;
 
+    if (shortTwoWord && !(hasIssueSignal && hasStrongStatute)) return false;
+    if (tinyText && !(hasIssueSignal && hasStrongStatute)) return false;
     return hasIssueSignal || hasStrongStatute;
 }
