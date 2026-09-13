@@ -189,7 +189,7 @@ export function extractEntitiesRuleBased(narrative) {
         /\b([A-Za-z\u0900-\u0D7F]{2,})\s+ने\s+(?:मुझे|मेरा|मेरी)\s+(?:मारा|पीटा|धमकी|गाली|मारपीट|छेड़|चोरी|हमला|रास्ता|रोका|जबरन|जबरदस्ती)/i,
         /(?:सामने|द्वारा|खिलाफ)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+)?)\s+ने/i,
         // English subject-verb: "People hit me", "Mohan beat me", "Rajesh slapped me"
-        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|neighbours|neighbors|relatives|contractor|officials|goons|policeman|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor)\b\s+(?:hit|beat|beats|beaten|slapped|abused|assaulted|attacked|threatened|cheated|grabbed|stole|molested|yelled|shouted|fired|harassed|intimidated|robbed|extorted|defrauded|forged|encroached|grabbed)\b/i,
+        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|strangers|stranger|miscreants|assailants|neighbours|neighbors|relatives|contractor|officials|goons|policeman|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor)\b\s+(?:hit|beat|beats|beaten|slapped|abused|assaulted|attacked|threatened|cheated|grabbed|stole|molested|yelled|shouted|fired|harassed|intimidated|robbed|extorted|defrauded|forged|encroached|grabbed|surrounded|surround|encircled|stopped|blocked|bribed)\b/i,
         // "Rajesh Kumar used abusive language" (adjacent — avoids "March ... used" spans)
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+used\s+abusive\b/,
         // "<name> did kabza / grabbed the land" (encroachment phrasing)
@@ -202,7 +202,7 @@ export function extractEntitiesRuleBased(narrative) {
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b[^.!?]{0,40}?\b(?:slapped|abused|assaulted|threatened|attacked|molested|kottadu|kottaru|maara|peeta)\b/
     ];
     const BAD_SUBJECT = /^(the|a|an|on|in|at|and|or|of|to|for|with|from|against|language|did|yesterday|today|my|me|i|they|them|he|she|it|we|you|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|मैं|मुझे|हम)$/i;
-    const LOWCASE_NOUNS = /^(people|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor|contractor)$/i;
+    const LOWCASE_NOUNS = /^(people|strangers|stranger|miscreants|assailants|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor|contractor)$/i;
     const INDIC_PRONOUN = /^(నన్ను|నాకు|నేను|మేము|అతను|ఆమె|వారు|என்னை|நான்|எனக்கு|அவர்|நாங்கள்)$/i;
     for (const pat of accusedMatches) {
         const m = text.match(pat);
@@ -211,6 +211,18 @@ export function extractEntitiesRuleBased(narrative) {
         // known lowercase role-nouns (people, policeman, ...) pass through.
         let cand = m[1].trim().replace(/\s+(నన్ను|నాకు|నేను|என்னை|நான்|எனக்கு)$/, '').trim();
         if (!cand || INDIC_PRONOUN.test(cand)) continue;
+        // Loose {0,2}-word spans glue fillers ("sarpanch but strangers"): keep only
+        // the trailing segment after the last filler. "and"/"or" are kept whole
+        // (genuine multi-names like "Ramu and Shyam").
+        if (/\s/.test(cand)) {
+            const CUT = /^(but|for|with|from|to|of|in|on|at|the|a|an|my|his|her|our|their|your|was|were|is|are|going|vote)$/i;
+            const toks = cand.split(/\s+/);
+            let cut = 0;
+            toks.forEach((t, i) => { if (CUT.test(t)) cut = i + 1; });
+            if (cut > 0 && cut < toks.length) cand = toks.slice(cut).join(' ');
+            else if (cut >= toks.length) continue;
+        }
+        if (!cand || BAD_SUBJECT.test(cand) || INDIC_PRONOUN.test(cand)) continue;
         if (/^[a-z]/.test(cand) && !LOWCASE_NOUNS.test(cand.split(/\s+/).pop())) continue;
         aggressor = cand;
         break;
@@ -266,7 +278,7 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 5. Extract Location: conservative — only match known place-nouns or clear preposition+place patterns.
     // Avoids false positives like "me badly" or "my land" being extracted as locations.
-    const NOUN_RE = /^(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|court|gate|colony|nagar|ward|sector|block|పోలీస్\s*స్టేషన్|మార్కెట్|స్కూల్|ఆసుపత్రి|టెంపుల్|కాలేజ్|గావ్|మనె|అంగడి|రస్తె|కంపెనీ|ఇల్లు|వీడు|వ్యవసాయం|భూమి|పొలం|బంగళా|షాపు|హోటల్|సినిమా|సెంటర్|సిటీ|టౌన్|గేట్|కాలనీ|వార్డ్|సెక్టార్|బ్లాక్)$/i;
+    // Possessive guard lives in shared_sanitize.js (single source for rules + NER + LLM).
     const locMatches = [
         // Known place-nouns ONLY (highest confidence)
         /\b(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|court|gate|colony|nagar|ward|sector|block)\b/i,
@@ -304,10 +316,9 @@ export function extractEntitiesRuleBased(narrative) {
         if (m && m[1] && m[1].length >= 2 && !/^(the|a|an|my|me|i|his|her|this|that|मुझे|मेरा|मेरी|हमारा|నా|నాకు|నన్ను)$/i.test(m[1].trim())) {
             let loc = m[1].trim();
             for (let i = 0; i < 2; i++) loc = loc.replace(/^(me|my|the|a|an|this|that|his|her|our|during|at|in)\s+/i, '').trim();
-            // Reject if preceded by possessive pronoun ("my village", "their house", "मेरे गांव")
-            const beforeMatch = text.slice(0, m.index + m[0].indexOf(loc)).trimEnd();
-            const possRe = /(?:^|[\s,;:(])(my|his|her|our|their|your|मेरे|मेरा|हमारा|उनका|నా|మా|తన|అతని|మీ|এন|আমার|মোর|অবর|অವರ|ನನ್ನ)$/i;
-            if (possRe.test(beforeMatch)) { loc = ''; }
+            // Shared guard (rules + NER + LLM use the same possessive list):
+            // "my village" / "मेरे गांव" / "నా స్కూల్" = origin, not incident place.
+            if (loc && hasPossessiveBefore(text, loc)) { loc = ''; }
             incidentLoc = loc || 'unknown';
             if (incidentLoc.length >= 2) break;
             incidentLoc = 'unknown';
@@ -346,14 +357,40 @@ const ALLOWED_CATEGORIES = new Set(['assault', 'intimidation', 'property_fraud',
 
 // Shared sanitizer — single source of truth for both llm.js and main.js.
 // Imported by main via ./shared_sanitize.js to avoid duplicating this logic.
-import { cleanStr, isKnown, normalizeCategory } from './shared_sanitize.js';
+import { cleanStr, isKnown, normalizeCategory, hasPossessiveBefore, isValidLocation } from './shared_sanitize.js';
 
-export async function extractEntities(narrative) {
+export async function extractEntities(narrative, opts = {}) {
     const ruleEntities = extractEntitiesRuleBased(narrative);
+    const merged = { ...ruleEntities, extractionSource: 'rule' };
+
+    // CPU NER supplement (best-effort, browser-only): fills unknowns the regex
+    // misses, using context instead of keyword lists. Never overrides a confident
+    // rule value; skipped in Node tests (offline) unless explicitly enabled.
+    const wantNER = opts.ner ?? (typeof window !== 'undefined');
+    if (wantNER && (!isKnown(merged.location) || !isKnown(merged.aggressor))) {
+        try {
+            const nerMod = await import('./ner.js');
+            const timeoutMs = opts.nerTimeoutMs ?? 8000;
+            const nerRes = await Promise.race([
+                nerMod.extractEntitiesNER(narrative),
+                new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs))
+            ]);
+            if (nerRes) {
+                if (!isKnown(merged.location) && nerRes.location && isValidLocation(narrative, nerRes.location)) {
+                    merged.location = cleanStr(nerRes.location, merged.location);
+                    merged.extractionSource = 'rule+ner';
+                }
+                if (!isKnown(merged.aggressor) && nerRes.aggressor && !hasPossessiveBefore(narrative, nerRes.aggressor)) {
+                    merged.aggressor = cleanStr(nerRes.aggressor, merged.aggressor);
+                    merged.extractionSource = merged.extractionSource === 'rule' ? 'rule+ner' : merged.extractionSource;
+                }
+            }
+        } catch { /* NER best-effort — rules still stand */ }
+    }
 
     // Runnable by default: skip 700MB WebGPU download unless explicitly opted in.
     if (!isAIAssistEnabled() || !isWebGPUSupported()) {
-        return ruleEntities;
+        return merged;
     }
 
     try {
@@ -371,11 +408,25 @@ Category rules:
 - women_safety: dowry, sexual harassment, acid attack, stalking
 - procedure: FIR refusal, police inaction, procedural complaints
 
+LOCATION RULES (strict — never invent a place):
+- Extract ONLY the place where the incident happened.
+- Possessive/origin references are NOT locations: "my village sarpanch",
+  "their house", "मेरे गांव", "నా స్కూల్" describe ownership/origin → return "unknown".
+- Articles/prepositions are fine: "near the bus stop" → "bus stand"/"bus stop";
+  "at the school" → "school".
+- If no incident place is stated, return "unknown". Do not guess.
+
 IMPORTANT: "he threatened to kill me" = intimidation (crime report, proceed). "I want to kill myself" = self-harm (do NOT produce a complaint; the app handles this separately).
 
 Examples:
 Input: "Ramu hit me with a stick near the bus stand on 15th March"
 → {"summary":"Ramu physically assaulted the complainant with a stick near the bus stand on 15th March 2025.","complainantName":"unknown","parentName":"unknown","aggressor":"Ramu","date":"15th March 2025","location":"bus stand","category":"assault"}
+
+Input: "I was going to vote for my village sarpanch but strangers surrounded me and threatened me"
+→ {"summary":"Strangers surrounded the complainant and issued threats while they were going to vote.","complainantName":"unknown","parentName":"unknown","aggressor":"strangers","date":"current","location":"unknown","category":"intimidation"}
+
+Input: "मेरे गांव में चोरी हुई"
+→ {"summary":"A theft was reported by the complainant.","complainantName":"unknown","parentName":"unknown","aggressor":"unknown","date":"current","location":"unknown","category":"property_fraud"}
 
 Input: "My husband and in-laws are demanding ₹5 lakh dowry and threatening to throw me out"
 → {"summary":"Complainant's husband and in-laws are demanding dowry of ₹5 lakh and threatening eviction.","complainantName":"unknown","parentName":"unknown","aggressor":"husband and in-laws","date":"current","location":"unknown","category":"women_safety"}
@@ -401,20 +452,27 @@ Input: "He said he will kill me if I don't pay ₹10000"
         // Summary must stay a prose string — fall back to rule summary if it looks like JSON.
         let summary = cleanStr(parsed.summary, '');
         if (!summary || /^[{[].*[}\]]$/.test(summary) || /"aggressor"|"parentName"|"complainantName"/.test(summary)) {
-            summary = ruleEntities.summary;
+            summary = merged.summary;
+        }
+        // Validate LLM location against the same possessive guard as rules+NER:
+        // a "my village" style answer from the model is corrected to unknown.
+        let llmLoc = cleanStr(parsed.location, merged.location);
+        if (llmLoc !== 'unknown' && !isValidLocation(narrative, llmLoc)) {
+            llmLoc = 'unknown';
         }
         return {
             summary,
-            complainantName: cleanStr(parsed.complainantName, ruleEntities.complainantName),
-            parentName: cleanStr(parsed.parentName, ruleEntities.parentName),
-            aggressor: cleanStr(parsed.aggressor, ruleEntities.aggressor),
-            date: cleanStr(parsed.date, ruleEntities.date),
-            location: cleanStr(parsed.location, ruleEntities.location),
-            category: normalizeCategory(parsed.category, ruleEntities.category),
-            events: [narrative]
+            complainantName: cleanStr(parsed.complainantName, merged.complainantName),
+            parentName: cleanStr(parsed.parentName, merged.parentName),
+            aggressor: cleanStr(parsed.aggressor, merged.aggressor),
+            date: cleanStr(parsed.date, merged.date),
+            location: llmLoc,
+            category: normalizeCategory(parsed.category, merged.category),
+            events: [narrative],
+            extractionSource: 'llm'
         };
     } catch {
-        return ruleEntities;
+        return merged;
     }
 }
 
