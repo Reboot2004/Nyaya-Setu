@@ -103,3 +103,53 @@ export async function guardWithLocalModel(text, timeoutMs = 12000) {
         return { ...rule, source: 'rule-fallback' };
     }
 }
+
+// Section relevance validation using Llama Guard 3.
+// Verifies that the cited BNS/BNSS sections are actually relevant to the narrative.
+// Returns { ok, validatedSections, droppedSections }.
+const SECTION_VALIDATOR_SYS = `You are a legal section validator. Given a citizen grievance narrative and a list of BNS/BNSS sections with their titles, determine which sections are RELEVANT to the narrative.
+
+Rules:
+- A section is relevant if the narrative describes conduct that falls under that section's offence
+- A section is NOT relevant if the narrative does not describe the type of offence defined by that section
+- If unsure, include the section (err on the side of inclusion)
+- Return ONLY a JSON array of section numbers that are relevant, e.g. ["115","351"]
+- If NO sections are relevant, return an empty array []
+
+Example:
+Narrative: "My neighbor threatened to kill me"
+Sections: BNS-115 (assault), BNS-351 (criminal intimidation), BNS-303 (theft)
+→ ["351"]`;
+
+export async function validateSectionsWithGuard(narrative, sections, timeoutMs = 10000) {
+    if (!sections || !sections.length) return { ok: true, validatedSections: sections, droppedSections: [] };
+    if (!isAIAssistEnabled() || !isWebGPUSupported()) return { ok: true, validatedSections: sections, droppedSections: [], source: 'rule-only' };
+    try {
+        const eng = await withTimeout(ensureGuardEngine(), timeoutMs);
+        const sectionList = sections.map((s) => `${s.statute.code}-${s.statute.section}: ${s.statute.title || ''}`).join('\n');
+        const prompt = `Narrative: "${String(narrative || '').slice(0, 500)}"\n\nSections to validate:\n${sectionList}\n\nReturn ONLY a JSON array of relevant section numbers.`;
+        const reply = await withTimeout(eng.chat.completions.create({
+            messages: [
+                { role: 'system', content: SECTION_VALIDATOR_SYS },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.0,
+            max_tokens: 100
+        }), timeoutMs);
+        const raw = (reply.choices[0]?.message?.content || '').trim();
+        const jsonStart = raw.indexOf('[');
+        const jsonEnd = raw.lastIndexOf(']');
+        if (jsonStart === -1 || jsonEnd === -1) return { ok: true, validatedSections: sections, droppedSections: [], source: 'parse-fail' };
+        const relevantNums = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+        const relevantSet = new Set(relevantNums.map(String));
+        const validated = sections.filter((s) => relevantSet.has(String(s.statute.section)));
+        const dropped = sections.filter((s) => !relevantSet.has(String(s.statute.section)));
+        // Never drop ALL sections — keep at least the top result
+        if (validated.length === 0 && sections.length > 0) {
+            return { ok: true, validatedSections: sections.slice(0, 1), droppedSections: sections.slice(1), source: guardModelId || 'llama-guard-3' };
+        }
+        return { ok: true, validatedSections: validated, droppedSections: dropped, source: guardModelId || 'llama-guard-3' };
+    } catch {
+        return { ok: true, validatedSections: sections, droppedSections: [], source: 'rule-fallback' };
+    }
+}

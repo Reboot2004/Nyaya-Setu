@@ -781,6 +781,19 @@ $('runBtn').onclick = async () => {
 
         // ---- Step 5: Complaint Drafting (+ dynamic English gist, on-device) ----
         setStep(5);
+
+        // Validate cited sections with Guard 3 (best-effort, non-blocking)
+        try {
+            if (typeof retrieved !== 'undefined' && retrieved.length > 0) {
+                const { validateSectionsWithGuard } = await import('./guard.js');
+                const validated = await validateSectionsWithGuard(narrative, retrieved);
+                if (validated.droppedSections && validated.droppedSections.length > 0) {
+                    console.log(`Guard 3 dropped ${validated.droppedSections.length} irrelevant sections: ${validated.droppedSections.map((s) => s.statute.section).join(', ')}`);
+                    retrieved = validated.validatedSections;
+                }
+            }
+        } catch { /* guard validation best-effort */ }
+
         let gist = { text: '', source: 'original' };
         if (selectedLanguage !== 'en') {
             try {

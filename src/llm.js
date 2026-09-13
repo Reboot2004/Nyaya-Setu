@@ -183,9 +183,13 @@ export function extractEntitiesRuleBased(narrative) {
         /\b([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[A-Za-z\u0900-\u0D7F]+)+)\s+ने\s+(?:मेरा|मुझे|हमला|पीटा|मारा|धमकी)/i,
         /([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+उसके\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)\s+ने\s+(?:मेरा\s+रास्ता|मुझे|हमला|पीटा|मारा|धमकी)/i,
         /(?:आरोपी|accused|attacked by|threatened by|beaten by)\s*[:=-]?\s*([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+|\s+and\s+[^,।\n]+)?)/i,
+        // Hindi subject-verb with role-nouns: "मालिक ने मारा", "पड़ोसी ने धमकी दी"
+        /\b(मालिक|पड़ोसी|ठेकेदार|अधिकारी|कर्मचारी|प्रबंधक|मालिकन|मकान मालिक|भूमि मालिक|टीचर|प्रोफेसर|डॉक्टर|वकील)\s+ने\s+(?:मारा|पीटा|धमकी|गाली|मारपीट|छेड़|चोरी|हमला|किया)/i,
+        // Hindi "X ne mujhe / mera ... kiya"
+        /\b([A-Za-z\u0900-\u0D7F]{2,})\s+ने\s+(?:मुझे|मेरा|मेरी)\s+(?:मारा|पीटा|धमकी|गाली|मारपीट|छेड़|चोरी|हमला|रास्ता|रोका|जबरन|जबरदस्ती)/i,
         /(?:सामने|द्वारा|खिलाफ)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+और\s+[^,।\n]+)?)\s+ने/i,
         // English subject-verb: "People hit me", "Mohan beat me", "Rajesh slapped me"
-        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|neighbours|neighbors|relatives|contractor|officials|goons|policeman)\b\s+(?:hit|beat|beats|beaten|slapped|abused|assaulted|attacked|threatened|cheated|grabbed|stole|molested)\b/i,
+        /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2}|people|neighbours|neighbors|relatives|contractor|officials|goons|policeman|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor)\b\s+(?:hit|beat|beats|beaten|slapped|abused|assaulted|attacked|threatened|cheated|grabbed|stole|molested|yelled|shouted|fired|harassed|intimidated|robbed|extorted|defrauded|forged|encroached|grabbed)\b/i,
         // "Rajesh Kumar used abusive language" (adjacent — avoids "March ... used" spans)
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+used\s+abusive\b/,
         // "<name> did kabza / grabbed the land" (encroachment phrasing)
@@ -198,7 +202,7 @@ export function extractEntitiesRuleBased(narrative) {
         /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b[^.!?]{0,40}?\b(?:slapped|abused|assaulted|threatened|attacked|molested|kottadu|kottaru|maara|peeta)\b/
     ];
     const BAD_SUBJECT = /^(the|a|an|on|in|at|and|or|of|to|for|with|from|against|language|did|yesterday|today|my|me|i|they|them|he|she|it|we|you|january|february|march|april|may|june|july|august|september|october|november|december|monday|tuesday|wednesday|thursday|friday|saturday|sunday|मैं|मुझे|हम)$/i;
-    const LOWCASE_NOUNS = /^(people|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper)$/i;
+    const LOWCASE_NOUNS = /^(people|neighbours|neighbors|neighbor|husband|wife|relatives|contractor|officials|goons|policeman|shopkeeper|boss|owner|employer|landlord|tenant|officer|revenue officer|superintendent|inspector|sub-inspector|constable|sergeant|peon|clerk|manager|supervisor|contractor)$/i;
     const INDIC_PRONOUN = /^(నన్ను|నాకు|నేను|మేము|అతను|ఆమె|వారు|என்னை|நான்|எனக்கு|அவர்|நாங்கள்)$/i;
     for (const pat of accusedMatches) {
         const m = text.match(pat);
@@ -299,13 +303,22 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 6. Offence Category Classification (all 8 lexicon languages, not just EN/HI)
     const low = text.toLowerCase();
-    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|kottadu|kottaru|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|గాయమై|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി/i.test(low)) category = 'assault';
-    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मार|गाली|गाली-गलौज|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|social media/i.test(low)) category = 'intimidation';
-    else if (/fraud|cheat|dhokha|chori|stole|stolen|theft|robbery|extortion|snatch|snatched|forg|fake|kabza|encroach|trespass|land grab|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|घुसून|पीक|शेतात|దొంగతనం|మోసం|డబ్బులు|திருட்டு|மோசடி|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ಕದ್ದ|ವಂಚನೆ|മോഷണം|വഞ്ചന/i.test(low)) category = 'property_fraud';
-    else if (/woman|chhed|modesty|molest|stalk|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी/i.test(low)) category = 'women_safety';
+    if (/marpit|assault|\bhit\b|\bbeat\b|\bbeats\b|beaten|kottadu|kottaru|laathi|hurt|fracture|blood|attack|chot|injury|raktham|मारपीट|पीटा|लाठी|डंडों|चोट|घायल|मारा|अस्पताल|కొట్టారు|దెబ్బలాట|దాడి|గాయం|గాయమై|రక్తం|ఆసుపత్రి|அடி|தாக்கு|காயம்|ரத்தம்|மருத்துவமனை|मारहाण|हाणामारी|जखमी|रक्तस्त्राव|রক্তপাত|হাসপাতাল|ಹಲ್ಲೆ|ಹೊಡೆ|ಗಾಯ|ರಕ್ತ|ಆಸ್ಪತ್ರೆ|മർദ്ദനം|തല്ലി|പരിക്ക്|രക്തം|ആശുപത്രി|తోపు|నెట్టు|తన్ను|அடித்தல்|தாக்குதல்|காயப்படுத்து/i.test(low)) category = 'assault';
+    else if (/dhamki|threat|intimidation|warned|gali|abuse|bedirimpulu|धमकी|जान से मार|गाली|गाली-गलौज|బెదిరింపు|భయపెట్టారు|బూతులు|దూషించారు|అసహ్యం|చెడ్డ పదాలు|హెచ్చరిక|మిరడ్డ|மிரட்டல்|பயமுறுத்தி|திட்டினார்கள்|அவமானம்|धमकी|घाबरवले|शिवीगाळ|হুমকি|ভয়|গালাগালি|ಬೆದರಿಕೆ|ಹೆದರಿಸಿದರು|ಬೈಗುಳ|ഭീഷണി|പേടിപ്പിച്ചു|ചീത്തവിളിച്ചു|social media|yelled|shouted|intimidat/i.test(low)) category = 'intimidation';
+    else if (/fraud|cheat|dhokha|chori|stole|stolen|theft|robbery|extortion|snatch|snatched|forg|fake|kabza|encroach|trespass|land grab|paisa|wage|salary|property|चोरी|हफ्ता|रंगदारी|धोखा|वेतन|मजदूरी|घुसून|पीक|शेतात|దొంగతనం|మోసం|డబ్బులు|జీతం|వేతనం|తిరిగి ఇవ్వలేదు|திருட்டு|மோசடி|చౌర్యం|వంచన|पळवून|फसवणूक|চুরি|প্রতারণা|ಕಳ್ಳತನ|ಕದ್ದ|ವಂಚನೆ|മോഷണം|വഞ്ചന|కಬ್ಜ|ಒಕ್ಕಲಿತ್ತು|ভূমি দখল/i.test(low)) category = 'property_fraud';
+    else if (/woman|chhed|modesty|molest|stalk|dowry|dahej|husband|wife|cruelty|महिला|छेड़छाड़|दहेज|पति|पत्नी|వరకట్నం|దహేజం|భార్య|అత్తమామ|చిత్రహింస|கணவர்|மாமியார்|தகாத தொல்லை|পত্নী|স্বামী|যৌতুক|ഭാര്യ|ഭർത്താവ്|വധു പീഡനം/i.test(low)) category = 'women_safety';
+
+    // Generate a brief summary from extracted entities (not raw text slice)
+    const catLabel = { assault: 'Physical assault', intimidation: 'Criminal intimidation / Threat', property_fraud: 'Property fraud / Cheating', women_safety: 'Offence against woman', needs_human_review: 'Incident' }[category] || 'Incident';
+    const parts = [];
+    parts.push(catLabel);
+    if (aggressor !== 'unknown') parts.push(`by ${aggressor}`);
+    if (incidentLoc !== 'unknown') parts.push(`at ${incidentLoc}`);
+    if (incidentDate !== 'unknown') parts.push(`on ${incidentDate}`);
+    const generatedSummary = parts.join(' ');
 
     return {
-        summary: text.slice(0, 300),
+        summary: generatedSummary,
         complainantName,
         parentName,
         aggressor,

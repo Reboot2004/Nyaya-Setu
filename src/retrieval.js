@@ -72,48 +72,52 @@ function tokenize(text) {
         .filter((t) => t.length > 1 && !ALL_STOP.has(t));
 }
 
-// Negation patterns: if these appear near a trigger word, reduce score.
-// Covers EN, HI, TE, TA, BN, MR, KN, ML.
-const NEGATION_PATTERNS = [
-    /\b(nobody|no one|noone|not|never|neither|nor|hardly|barely|scarcely)\b/i,
-    /कोई\s+नहीं|नहीं|मतलब\s+नहीं|बिल्कुल\s+नहीं/,
-    /ఎవరూ\s+లేరు|లేదు|కాదు/,
-    /யாரும்\s+இல்லை|இல்லை|அல்ல/,
-    /কেউ\s+নেই|নেই|না/,
-    /कोणी\s+नाही|नाही/,
-    /ಯಾರೂ\s+ಇಲ್ಲ|ಇಲ್ಲ|ಅಲ್ಲ/,
-    /ആരും\s+ഇല്ല|ഇല്ല|അല്ല/,
+// Negation patterns: only negate when at START of narrative or clearly negating
+// the entire complaint. NOT when "नहीं" is embedded in crime description
+// ("मजदूरी नहीं दी" = wage theft IS the crime).
+const NEGATION_START_PATTERNS = [
+    /\b(nobody|no one|noone|nothing happened|never)\b/i,
+    /कोई\s+नहीं|बिल्कुल\s+नहीं/,
+    /ఎవరూ\s+లేరు|ఏమీ\s+జరగలేదు/,
+    /யாரும்\s+இல்லை|ஒன்றும்\s+நடக்கவில்லை/,
+    /কেউ\s+নেই|কিছু\s+হয়নি/,
+    /कोणी\s+नाही|काहीच\s+झालं\s+नाही/,
+    /ಯಾರೂ\s+ಇಲ್ಲ|ಏನೂ\s+ಆಗಿಲ್ಲ/,
+    /ആരും\s+ഇല്ല|ഒന്നും\s+സംഭവിച്ചിട്ടില്ല/,
 ];
+
+// Full-narrative negation: "not...hit", "never...assaulted" etc.
+const ASSAULT_NEGATION = /\b(nobody|no one|noone|not|never)\b.*\b(hit|beat|struck|assault|attack|hurt|killed|threatened|stabbed|burned|molested|raped)\b/i;
+const ASSAULT_BEFORE_NEG = /\b(hit|beat|struck|assault|attack|hurt|killed|threatened|stabbed|burned|molested|raped)\b.*\b(nobody|no one|noone|not|never)\b/i;
 
 /**
  * Check if narrative is negated (e.g. "Nobody hit me", "I was not beaten").
- * Returns true if negation pattern appears in the narrative near ANY trigger token.
- * Also catches "nobody...hit" even when far apart.
+ * Returns true ONLY when the negation clearly negates the entire complaint.
+ * NOT when "नहीं" is embedded in crime description ("मजदूरी नहीं दी" = wage theft).
  */
 function isNegated(narrative, tokens) {
     const lower = (narrative || '').toLowerCase();
     const words = lower.split(/\s+/);
-    let hasNegation = false;
-    let negIdx = -1;
-    for (const pat of NEGATION_PATTERNS) {
-        if (pat.test(lower)) {
-            hasNegation = true;
-            negIdx = words.findIndex((w) => pat.test(w));
-            if (negIdx !== -1) break;
-        }
+
+    // 1. Check if negation is at the START of the narrative (first 5 words)
+    // "Nobody hit me", "No one assaulted me", "कोई नहीं मारा"
+    const startSlice = words.slice(0, 5).join(' ');
+    for (const pat of NEGATION_START_PATTERNS) {
+        if (pat.test(startSlice)) return true;
     }
-    if (!hasNegation) return false;
-    // If negation word is found, check if ANY trigger token is within 8 words
-    // or if the narrative contains both negation AND a trigger anywhere.
-    for (const tok of tokens) {
-        const tokIdx = words.findIndex((w) => w.includes(tok) || tok.includes(w));
-        if (tokIdx !== -1 && Math.abs(tokIdx - negIdx) <= 8) return true;
+
+    // 2. Check full-narrative negation + assault keyword pattern
+    if (ASSAULT_NEGATION.test(lower) || ASSAULT_BEFORE_NEG.test(lower)) return true;
+
+    // 3. Check if negation word is near the SUBJECT of the narrative
+    // "मैंने किसी को नहीं मारा" (I didn't hit anyone) — negation near subject
+    const SUBJECT_NEAR_NEG = /\b(maine|मैंने|मैं|maine|i|we|hum|हम)\b.{0,15}\b(nahi|नहीं|లేదు|இல்லை|নেই|नाही|ಇಲ್ಲ|ഇല്ല)\b/i;
+    if (SUBJECT_NEAR_NEG.test(lower)) {
+        // Only if the negation is near the subject, AND the narrative is SHORT (< 20 words)
+        // This catches "I didn't hit anyone" but NOT "मजदूरी नहीं दी" (12 words, no subject)
+        if (words.length <= 20) return true;
     }
-    // Broader: if negation word exists AND narrative mentions assault/threat keywords,
-    // treat as negated even if tokens are far apart
-    const assaultNearNeg = /\b(nobody|no one|noone|not|never)\b.*\b(hit|beat|struck|assault|attack|hurt|killed|threatened|stabbed|burned|molested|raped)\b/i;
-    const assaultBeforeNeg = /\b(hit|beat|struck|assault|attack|hurt|killed|threatened|stabbed|burned|molested|raped)\b.*\b(nobody|no one|noone|not|never)\b/i;
-    if (assaultNearNeg.test(lower) || assaultBeforeNeg.test(lower)) return true;
+
     return false;
 }
 
