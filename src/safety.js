@@ -15,6 +15,19 @@ const DISALLOWED_PATTERNS = [
     /kill myself/i,
     /i (want to|will|shall) (kill myself|die|end my life)/i,
     /suicide/i,
+    // Indic language self-harm patterns
+    /आत्महत्या/i,
+    /खुदकुशी/i,
+    /आपने आप को मार/i,
+    /ఆత్మहత్య/i,
+    /తనను తాను చంపుకుంటా/i,
+    /தற்கொலை/i,
+    /আত্মহত্যা/i,
+    /आत्मघाती/i,
+    /ਆਤਮਹੱਤਿਆ/i,
+    /आपल्याला मार/i,
+    /ಆತ್ಮಹತ್ಯೆ/i,
+    /ആത്മഹത്യ/i,
 ];
 const MAX_LEN = 2000;
 

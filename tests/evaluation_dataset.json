@@ -751,6 +751,106 @@
             ],
             "should_accept": true,
             "confidence": "high"
+        },
+        {
+            "id": "TEST-045",
+            "language": "en",
+            "narrative": "Nobody hit me, I was not beaten by anyone. Everything is fine.",
+            "expected_entities": {
+                "summary": "Negated narrative - no assault occurred",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "needs_human_review"
+            },
+            "expected_sections": [],
+            "should_accept": false,
+            "confidence": "low"
+        },
+        {
+            "id": "TEST-046",
+            "language": "en",
+            "narrative": "Ramu and Shyam together beat me with sticks outside the temple yesterday evening.",
+            "expected_entities": {
+                "summary": "Multiple aggressors physically assaulted complainant",
+                "aggressor": "Ramu and Shyam",
+                "date": "yesterday",
+                "location": "temple",
+                "category": "assault"
+            },
+            "expected_sections": [
+                "BNS-115"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-047",
+            "language": "hi",
+            "narrative": "मैं रामपुर गांव में रहता हूं। मेरे पड़ोसी ने मेरी जमीन पर कब्जा कर लिया और मुझे धमकी दी।",
+            "expected_entities": {
+                "summary": "Land grab with criminal intimidation in Hindi",
+                "aggressor": "पड़ोसी",
+                "date": "unknown",
+                "location": "रामपुर गांव",
+                "category": "property_fraud"
+            },
+            "expected_sections": [
+                "BNS-329"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-048",
+            "language": "te",
+            "narrative": "నా భార్య మరియు అత్తమామలు నన్ను వేధిస్తున్నారు, దహేజం కోసం చిత్రహింస చేస్తున్నారు.",
+            "expected_entities": {
+                "summary": "Dowry harassment in Telugu",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "women_safety"
+            },
+            "expected_sections": [
+                "BNS-85"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-049",
+            "language": "ta",
+            "narrative": "என் கணவர் என்னை அடித்தார், கத்தியால் குத்தினார். நான் மருத்துவமனையில் சிகிச்சை பெற்றேன்.",
+            "expected_entities": {
+                "summary": "Domestic violence with weapon in Tamil",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "unknown",
+                "category": "assault"
+            },
+            "expected_sections": [
+                "BNS-115"
+            ],
+            "should_accept": true,
+            "confidence": "high"
+        },
+        {
+            "id": "TEST-050",
+            "language": "en",
+            "narrative": "I got a threatening email saying they will publish my private photos if I don't pay 50000 rupees.",
+            "expected_entities": {
+                "summary": "Blackmail with threat to publish private photos",
+                "aggressor": "unknown",
+                "date": "unknown",
+                "location": "online",
+                "category": "intimidation"
+            },
+            "expected_sections": [
+                "BNS-351"
+            ],
+            "should_accept": true,
+            "confidence": "high"
         }
     ],
     "evaluation_metrics": {

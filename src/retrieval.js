@@ -87,24 +87,33 @@ const NEGATION_PATTERNS = [
 
 /**
  * Check if narrative is negated (e.g. "Nobody hit me", "I was not beaten").
- * Returns true if negation pattern appears within 5 words of any trigger.
+ * Returns true if negation pattern appears in the narrative near ANY trigger token.
+ * Also catches "nobody...hit" even when far apart.
  */
 function isNegated(narrative, tokens) {
     const lower = (narrative || '').toLowerCase();
     const words = lower.split(/\s+/);
+    let hasNegation = false;
+    let negIdx = -1;
     for (const pat of NEGATION_PATTERNS) {
-        if (!pat.test(lower)) continue;
-        // Find negation word position
-        const negMatch = lower.match(pat);
-        if (!negMatch) continue;
-        const negIdx = words.findIndex((w) => pat.test(w));
-        if (negIdx === -1) continue;
-        // Check if any trigger token is within 5 words of negation
-        for (const tok of tokens) {
-            const tokIdx = words.findIndex((w) => w.includes(tok) || tok.includes(w));
-            if (tokIdx !== -1 && Math.abs(tokIdx - negIdx) <= 5) return true;
+        if (pat.test(lower)) {
+            hasNegation = true;
+            negIdx = words.findIndex((w) => pat.test(w));
+            if (negIdx !== -1) break;
         }
     }
+    if (!hasNegation) return false;
+    // If negation word is found, check if ANY trigger token is within 8 words
+    // or if the narrative contains both negation AND a trigger anywhere.
+    for (const tok of tokens) {
+        const tokIdx = words.findIndex((w) => w.includes(tok) || tok.includes(w));
+        if (tokIdx !== -1 && Math.abs(tokIdx - negIdx) <= 8) return true;
+    }
+    // Broader: if negation word exists AND narrative mentions assault/threat keywords,
+    // treat as negated even if tokens are far apart
+    const assaultNearNeg = /\b(nobody|no one|noone|not|never)\b.*\b(hit|beat|struck|assault|attack|hurt|killed|threatened|stabbed|burned|molested|raped)\b/i;
+    const assaultBeforeNeg = /\b(hit|beat|struck|assault|attack|hurt|killed|threatened|stabbed|burned|molested|raped)\b.*\b(nobody|no one|noone|not|never)\b/i;
+    if (assaultNearNeg.test(lower) || assaultBeforeNeg.test(lower)) return true;
     return false;
 }
 
@@ -223,15 +232,15 @@ export async function retrieveSections(narrative, topK = 4) {
             let finalScore = score;
             let finalTriggerHits = triggerHits;
 
-            // Negation penalty: if narrative is negated ("Nobody hit me"), halve scores
+            // Negation penalty: if narrative is negated ("Nobody hit me"), heavily reduce scores
             // so negated complaints don't auto-match assault statutes.
             if (negated && finalScore > 0) {
-                finalScore = Math.ceil(finalScore * 0.5);
-                finalTriggerHits = Math.max(0, finalTriggerHits - 1);
+                finalScore = Math.max(0, Math.ceil(finalScore * 0.25));
+                finalTriggerHits = 0;
             }
 
             const bhashiniBoost = suggestedSet.has(String(s.section));
-            if (bhashiniBoost) {
+            if (bhashiniBoost && !negated) {
                 finalScore += 4;
                 finalTriggerHits += 1;
             }

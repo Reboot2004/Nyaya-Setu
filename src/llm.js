@@ -216,16 +216,34 @@ export function extractEntitiesRuleBased(narrative) {
         if (directAccused && directAccused[1]) aggressor = directAccused[1].trim();
     }
 
-    // 4. Extract Date / Time (incl. ISO 2023-02-20, weekdays, month-first)
-    // Note: no lookbehind (older Safari compat) — digit-glued matches like
-    // "00 rupees" inside "15000" are rejected by the boundary check below.
+    // 4. Extract Date / Time (incl. ISO 2023-02-20, weekdays, month-first, all 8 languages)
     const dateMatches = [
+        // ISO date
         /(\d{4}\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{1,2})/,
+        // English weekdays
         /\b((?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))\b/i,
+        // English months
         /\b((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*,?\s*\d{2,4})?)/i,
+        // Hindi weekdays
         /\b(सोमवार|मंगलवार|बुधवार|गुरुवार|शुक्रवार|शनिवार|रविवार)\b/,
-        /(?:दिनांक|तारीख|दिनांकित|on|dated|dinank)?\s*(\d{1,2}(?:st|nd|rd|th)?(?:\s+[A-Za-z\u0900-\u0D7F]+(?:\s+\d{2,4})?|\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{2,4}))/i,
-        /\b(कल|आज|परसों|yesterday|today|ninna|netru)\b/i
+        // Hindi date patterns: "15 मार्च को", "15 फरवरी 2024 को"
+        /\b(\d{1,2}\s+(?:जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|अक्टूबर|नवंबर|दिसंबर)(?:\s+\d{2,4})?(?:\s+को)?)\b/i,
+        // Telugu date patterns: "15 మార్చి న", "15 ఫిబ్రవరి 2024"
+        /\b(\d{1,2}\s+(?:జనవరి|ఫిబ్రవరి|మార్చి|ఏప్రిల్|మే|జూన్|జూలై|ఆగస్టు|సెప్టెంబర్|అక్టోబర్|నవంబర్|డిసెంబర్)(?:\s+\d{2,4})?)\b/i,
+        // Tamil date patterns: "15 மார்ச்", "15 பிப்ரவரி 2024"
+        /\b(\d{1,2}\s+(?:ஜனவரி|பிப்ரவரி|மார்ச்|ஏப்ரல்|மே|ஜூன்|ஜூலை|ஆகஸ்ட்|செப்டம்பர்|அக்டோபர்|நவம்பர்|டிசம்பர்)(?:\s+\d{2,4})?)\b/i,
+        // Bengali date patterns: "15 মার্চ", "15 ফেব্রুয়ারি 2024"
+        /\b(\d{1,2}\s+(?:জানুয়ারি|ফেব্রুয়ারি|মার্চ|এপ্রিল|মে|জুন|জুলাই|আগস্ট|সেপ্টেম্বর|অক্টোবর|নভেম্বর|ডিসেম্বর)(?:\s+\d{2,4})?)\b/i,
+        // Marathi date patterns: "15 मार्च", "15 फेब्रुवारी 2024"
+        /\b(\d{1,2}\s+(?:जानेवारी|फेब्रुवारी|मार्च|एप्रिल|मे|जून|जुलै|ऑगस्ट|सप्टेंबर|ऑक्टोबर|नोव्हेंबर|डिसेंबर)(?:\s+\d{2,4})?)\b/i,
+        // Kannada date patterns: "15 ಮಾರ್ಚ್", "15 ಫೆಬ್ರವರಿ 2024"
+        /\b(\d{1,2}\s+(?:ಜನವರಿ|ಫೆಬ್ರವರಿ|ಮಾರ್ಚ್|ಏಪ್ರಿಲ್|ಮೇ|ಜೂನ್|ಜುಲೈ|ಆಗಸ್ಟ್|ಸೆಪ್ಟೆಂಬರ್|ಅಕ್ಟೋಬರ್|ನವೆಂಬರ್|ಡಿಸೆಂಬರ್)(?:\s+\d{2,4})?)\b/i,
+        // Malayalam date patterns: "15 മാർച്ച്", "15 ഫെബ്രുവരി 2024"
+        /\b(\d{1,2}\s+(?:ജനുവരി|ഫെബ്രുവരി|മാർച്ച്|ഏപ്രിൽ|മേയ്|ജൂൺ|ജൂലൈ|ഓഗസ്റ്റ്|സെപ്തംബർ|ഒക്ടോബർ|നവംബർ|ഡിസംബർ)(?:\s+\d{2,4})?)\b/i,
+        // Generic numeric date with prefix
+        /(?:दिनांक|तारीख|दिनांकित|on|dated|dinank|తేదీ|தேதி|তারিখ|ದಿನಾಂक|തീയതി)?\s*(\d{1,2}(?:st|nd|rd|th)?(?:\s+[A-Za-z\u0900-\u0D7F]+(?:\s+\d{2,4})?|\s*[-\/.]\s*\d{1,2}\s*[-\/.]\s*\d{2,4}))/i,
+        // Relative: "today", "yesterday", Hindi "कल", "आज", Telugu "ఈ రోజు", "నిన్న"
+        /\b(कल|आज|परसों|yesterday|today|ninna|netru|ఈ రోజు|నిన్న|రేపు|இன்று|நேற்று|আজ|গতকাল|ఎల్లుండి|नेमकं उद्या|आज|നിന്നെ|ഇന്ന്|നാളെ)\b/i
     ];
     for (const pat of dateMatches) {
         pat.lastIndex = 0;
@@ -244,11 +262,28 @@ export function extractEntitiesRuleBased(narrative) {
 
     // 5. Extract Location: known place-nouns first ("village" beats "front of everyone in"),
     // then prepositions (latin ones need word boundaries: "beat" must not match "at")
-    const NOUN_RE = /^(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|गांव|शहर|घर|बाजार|थाना|గ్రామం|ఇల్లు|வீடு|கிராமம்|বাড়ি|গ্রাম|गाव|ಮನೆ|ಶಾಲೆ|വീട്|గ్రామం)$/i;
+    const NOUN_RE = /^(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|office|court|gate|colony|nagar|ward|sector|block|मंदिर|चर्च|मस्जिद|अदालत|थाना|बस अड्डा|कॉलोनी|नगर|वॉर्ड|सेक्टर|गांव|शहर|घर|बाजार|रोड|दुकान|स्कूल|अस्पताल|बैंक|ऑफिस|फैक्ट्री|గ్రామం|ఇల్లు|మార్కెట్|రోడ్డు|దుకాణం|స్కూల్|ఆసుపత్రి|బ్యాంక్|ఆఫీస్|వీడు|கிராமம்|வீடு|சந்தை|சாலை|கடை|பள்ளி|மருத்துவமனை|வங்கி|அலுவலகம்|বাড়ি|গ্রাম|বাজার|রাস্তা|দোকান|স্কুল|হাসপাতাল|ব্যাংক|অফিস|ಗಾವ|ಮನೆ|ಅಂಗಡಿ|ರಸ್ತೆ|ಶಾಲೆ|ಆಸ್ಪತ್ರೆ|ಬ್ಯಾಂಕ್|ಕಛೇರಿ|ഗ്രാമം|വീട്|കട|റോഡ്|സ്കൂൾ|ആശുപത്രി|ബാങ്ക്|ഓഫീസ്)$/i;
     const locMatches = [
-        /\b(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|गांव|शहर|घर|बाजार|थाना|గ్రామం|ఇల్లు|வீடு|கிராமம்|বাড়ি|গ্রাম|गाव|ಮನೆ|ಶಾಲೆ|വീട്|గ్రామం)\b/i,
-        /(?:के\s+सामने|के\s+पास|निकट|में|पर|ग्राम|स्थान|\bnear\b|\bat\b|\bin\b|\boutside\b|\bopposite\b)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){1,3})/i,
-        /([A-Za-z\u0900-\u0D7F]+(?:\s+पंचायत\s+भवन|\s+चौराहा|\s+बाजार|\s+थाना|\s+रोड|\s+गांव))/i
+        // Known place-nouns (highest priority)
+        /\b(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|court|gate|colony|nagar|ward|sector|block|मंदिर|चर्च|मस्जिद|अदालत|थाना|बस अड्डा|कॉलोनी|नगर|वॉर्ड|सेक्टर|गांव|शहर|घर|बाजार|रोड|दुकान|स्कूल|अस्पताल|बैंक|ऑफिस|फैक्ट्री|గ్రామం|ఇల్లు|మార్కెట్|రోడ్డు|దుకాణం|స్కూల్|ఆసుపత్రి|బ్యాంక్|ఆఫీస్|వీడు|கிராமம்|வீடு|சந்தை|சாலை|கடை|பள்ளி|மருத்துவமனை|வங்கி|அலுவலகம்|বাড়ি|গ্রাম|বাজার|রাস্তা|দোকান|স্কুল|হাসপাতাল|ব্যাংক|অফিস|ಗಾವ|ಮನೆ|ಅಂಗಡಿ|ರಸ್ತೆ|ಶಾಲೆ|ಆಸ್ಪತ್ರೆ|ಬ್ಯಾಂಕ್|ಕಛೇರಿ|ഗ്രാമം|വീട്|കട|റോഡ്|സ്കൂൾ|ആശുപത്രി|ബാങ്ക്|ഓഫീസ്)\b/i,
+        // Preposition + place (EN/HI/TE/TA/BN/MR/KN/ML)
+        /(?:के\s+सामने|के\s+पास|निकट|में|पर|ग्राम|स्थान|दगडे|जवळ|पासे|సమీపంలో|ఇందులో|పైన|అరుగు మీద|கிட்ட|அருகில்|உள்ள|মধ্যে|কাছে|ইত্যাদি|ಹತ್ತಿರ|ಒಳಗೆ|അടുത്ത|കുട്ടി|\bnear\b|\bat\b|\bin\b|\boutside\b|\bopposite\b|\bnearby\b|\bat the\b)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){1,3})/i,
+        // Place + compound noun
+        /([A-Za-z\u0900-\u0D7F]+(?:\s+पंचायत\s+भवन|\s+चौराहा|\s+बाजार|\s+थाना|\s+रोड|\s+गांव|\s+మార్కెట్|\s+రోడ్డు|\s+சந்தை|\s+சாலை|\s+বাজার|\s+রাস্তা|\s+ಅಂಗಡಿ|\s+ರಸ್ತೆ))/i,
+        // "outside my house", "near the bus stop" with article/pronoun
+        /(?:outside|near|at|in|opposite|behind|inside|below|above)\s+(?:my|his|her|the|our)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){0,2})/i,
+        // Hindi postpositions: "घर के पास", "बाजार में", "थाने पर"
+        /([A-Za-z\u0900-\u0D7F]+)\s+(?:के\s+पास|के\s+सामने|में|पर|की\s+तरफ|निकट)/i,
+        // Telugu: "ఇంటి దగ్గర", "మార్కెట్ లో"
+        /([\u0C00-\u0C7F]+)\s+(?:సమీపంలో|ఇందులో|పైన|దగ్గర|లో|వద్ద)/i,
+        // Tamil: "வீட்டின் அருகில்", "சந்தையில்"
+        /([\u0B80-\u0BFF]+)\s+(?:அருகில்|உள்ள|கிட்ட|இல்)/i,
+        // Bengali: "বাড়ির কাছে", "বাজারে"
+        /([\u0980-\u09FF]+)\s+(?:কাছে|এর|মধ্যে|ে)/i,
+        // Kannada: "ಮನೆ ಹತ್ತಿರ", "ಅಂಗಡಿ ಒಳಗೆ"
+        /([\u0C80-\u0CFF]+)\s+(?:ಹತ್ತಿರ|ಒಳಗೆ|ಮೇಲೆ|ಕೆಳಗೆ)/i,
+        // Malayalam: "വീട്ടിൽ അടുത്ത", "കടയിൽ"
+        /([\u0D00-\u0D7F]+)\s+(?:അടുത്ത|ഓട്ട്|ിൽ|ൽ)/i
     ];
     for (const pat of locMatches) {
         const m = text.match(pat);

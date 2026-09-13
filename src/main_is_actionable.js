@@ -9,6 +9,23 @@ export function isActionableComplaint(text, entities, retrieved) {
 
     const low = value.toLowerCase();
     const words = value.split(/\s+/).filter(Boolean);
+
+    // Non-complaint closure: narrative explicitly says everything is fine / no issue.
+    // This catches "Nobody hit me, everything is fine" while letting legitimate
+    // complaints through ("मजदूरी नहीं दी" = wage theft IS the crime, not a negation).
+    const NON_COMPLAINT_CLOSURE = [
+        /\b(everything is fine|all is well|no problem|no issue|no complaint|nothing happened|i am fine|i'm fine|all good|no harm|no foul)\b/i,
+        /सब\s+ठीक\s+है|कोई\s+शिकायत\s+नहीं|कोई\s+बात\s+नहीं|कुछ\s+नहीं\s+हुआ/,
+        /అంతా\s+సరే|సమస్య\s+లేదు|ఏమీ\s+జరగలేదు|నాకు\s+ఫర్వాలేదు/,
+        /எல்லாம்\s+சரி|பிரச்சனை\s+இல்லை|ஒன்றும்\s+நடக்கவில்லை/,
+        /সব\s+�িক\s+আছে|কোনো\s+সমস্যা\s+নেই|কিছু\s+হয়নি/,
+        /सगळं\s+ठीक\s+आहे|काही\s+त्रुटी\s+नाही|काहीच\s+झालं\s+नाही/,
+        /ಎಲ್ಲಾ\s+ಸರಿ\s+ಇದೆ|ಯಾವುದೇ\s+ಸಮಸ್ಯೆ\s+ಇಲ್ಲ|ಏನೂ\s+ಆಗಿಲ್ಲ/,
+        /എല്ലാം\s+ശരിയാണ്|ഒന്നും\s+സംഭവിച്ചിട്ടില്ല|പ്രശ്നമില്ല/,
+    ];
+    const isNonComplaint = NON_COMPLAINT_CLOSURE.some((p) => p.test(low));
+    if (isNonComplaint) return false;
+
     // 3-word floor (not 4): genuine short complaints ("ಮೊಬೈಲ್ ಕಳ್ಳತನವಾಗಿದೆ",
     // "mara pitai hui" is still blocked by the 15-char floor) must pass;
     // junk is caught by length + junk-patterns + signal requirements below.
