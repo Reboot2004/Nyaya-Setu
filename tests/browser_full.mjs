@@ -13,7 +13,7 @@
 //   not just local source).
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
-import { CASES } from './gold_cases.mjs';
+import { CASES } from '../data/gold_cases.mjs';
 
 const firstArg = process.argv[2] || '5174';
 const BASE = /^\d+$/.test(firstArg) ? `http://localhost:${firstArg}` : firstArg.replace(/\/$/, '');

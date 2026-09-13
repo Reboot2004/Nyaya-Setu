@@ -1,5 +1,6 @@
-// Shared gold set for extraction/retrieval/draft benchmarks (Node + browser).
-// Human truth — deliberately NOT fitted to the implementation.
+// Shared gold set for extraction/retrieval/draft benchmarks (Node + browser +
+// on-site technique comparison). Human truth — deliberately NOT fitted to the
+// implementation.
 export const CASES = [
     { id: 'E01', lang: 'en', text: 'Ramu hit me with a stick near the bus stand on 15th March', gold: { location: 'bus stand', aggressor: 'Ramu', category: 'assault' } },
     { id: 'E02', lang: 'en', text: 'I was going to vote for my village sarpanch but strangers surrounded me and threatened me', gold: { location: 'unknown', aggressor: 'strangers', category: 'intimidation' } },

@@ -1,4 +1,4 @@
-import { isWebGPUSupported, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage, getEngineStatus, isAIAssistEnabled, setAIAssistEnabled, measureInferenceSpeed } from './llm.js';
+import { isWebGPUSupported, isWebGPUUsable, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage, getEngineStatus, isAIAssistEnabled, setAIAssistEnabled, measureInferenceSpeed } from './llm.js';
 import { retrieveSections, getLoadedStatutes, resetToDefaultStatutes, STATUTE_METADATA, getBhashiniNormalization } from './retrieval.js';
 import { complaintToHtml, downloadComplaint, speakRightsBriefing, speakDraft, stopAudio } from './output.js';
 import { UI_TEXT } from './ui_translations.js';
@@ -262,6 +262,41 @@ if ($('benchBtn')) {
     };
 }
 
+// Technique comparison panel: Rules vs Rules+NER vs Full (LLM when present),
+// scored on-device against a fixed 8-case gold set. Lazy-loads the runner so
+// the main bundle stays light; NER/LLM models download on demand (cached).
+if ($('compareBtn')) {
+    $('compareBtn').onclick = async () => {
+        const btn = $('compareBtn'), status = $('compareStatus'), out = $('compareOut');
+        try {
+            btn.disabled = true;
+            if (status) status.textContent = 'Starting… (rules are instant; NER/LLM download once if needed)';
+            if (out) out.innerHTML = '';
+            const { runTechniqueComparison } = await import('./technique_compare.js');
+            const res = await runTechniqueComparison((p) => {
+                if (status) status.textContent = `Case ${p.done + 1}/${p.total}${p.id ? ` (${p.id})` : ''} — rules → NER → LLM…`;
+            });
+            const cell = (ok) => ok ? '<span style="color:#15803d">✓</span>' : '<span style="color:#b91c1c">✗</span>';
+            const col = (r, k) => `${cell(r[k].score.loc)}${cell(r[k].score.aggr)}${cell(r[k].score.cat)} <small style="color:#64748b">${escHtml(String(r[k].note || ''))}</small>`;
+            const pct = (t, k) => Math.round((100 * t[k]) / Math.max(1, t.n)) + '%';
+            let html = `<div style="font-size:.75rem;color:#475569;margin-bottom:6px;">Device: WebGPU ${res.meta.webgpu ? 'yes' : 'no'} · engine ${escHtml(res.meta.engine?.mode || '?')}${res.meta.engine?.model ? ` (${escHtml(res.meta.engine.model)})` : ''} · NER ${res.meta.ner?.ready ? `ready (${escHtml(res.meta.ner.model || '')})` : 'not loaded'} · columns show loc/aggr/cat</div>`;
+            html += '<table style="border-collapse:collapse;width:100%;font-size:.8rem;"><thead><tr style="background:#f1f5f9;"><th style="border:1px solid #e2e8f0;padding:5px 7px;text-align:left;">Case</th><th style="border:1px solid #e2e8f0;padding:5px 7px;text-align:left;">Rules</th><th style="border:1px solid #e2e8f0;padding:5px 7px;text-align:left;">+NER</th><th style="border:1px solid #e2e8f0;padding:5px 7px;text-align:left;">LLM full</th></tr></thead><tbody>';
+            for (const r of res.rows) {
+                html += `<tr><td style="border:1px solid #e2e8f0;padding:5px 7px;"><strong>${escHtml(r.id)}</strong> <small style="color:#64748b">[${escHtml(r.lang)}]</small><br><small style="color:#64748b">${escHtml(r.text.slice(0, 90))}${r.text.length > 90 ? '…' : ''}</small></td><td style="border:1px solid #e2e8f0;padding:5px 7px;">${col(r, 'rule')}</td><td style="border:1px solid #e2e8f0;padding:5px 7px;">${col(r, 'nerAssist')}</td><td style="border:1px solid #e2e8f0;padding:5px 7px;">${col(r, 'full')}</td></tr>`;
+            }
+            html += '</tbody></table>';
+            const t = res.totals;
+            html += `<div style="margin-top:8px;font-size:.82rem;"><strong>Totals (loc/aggr/cat):</strong> Rules ${t.rule.loc}/${t.rule.aggr}/${t.rule.cat} (${pct(t.rule, 'loc')}/${pct(t.rule, 'aggr')}/${pct(t.rule, 'cat')}) · +NER ${t.nerAssist.loc}/${t.nerAssist.aggr}/${t.nerAssist.cat} · LLM ${t.full.loc}/${t.full.aggr}/${t.full.cat} <span style="color:#64748b">of ${t.rule.n}</span></div>`;
+            if (out) out.innerHTML = html;
+            if (status) status.textContent = 'Done. Winner = highest total; NER/LLM columns show their load state when unavailable.';
+        } catch (e) {
+            if (status) status.textContent = `Comparison failed: ${e?.message || e}`;
+        } finally {
+            btn.disabled = false;
+        }
+    };
+}
+
 // Dev/metrics panel wiring (debug only — hidden in a collapsed <details>)
 try {
     const renderDev = async () => {
@@ -331,9 +366,14 @@ async function retrieveFinal(narrative, topK = 5, timeoutMs = 8000) {
 }
 
 // Automatic LLM fetch (background, non-blocking). Rule engine stays usable.
-if (isWebGPUSupported() && isAIAssistEnabled()) {
+// Gated on a REAL adapter probe (isWebGPUUsable, cached) — API presence alone
+// is not enough: broken/headless drivers expose navigator.gpu but can never
+// create an adapter, and attempting the ~700MB download there wastes minutes.
+if (isAIAssistEnabled()) {
     setTimeout(() => {
-        ensureEngine().then(() => {
+        Promise.resolve(isWebGPUUsable()).then((ok) => {
+            if (!ok) return;
+            ensureEngine().then(() => {
             badge.textContent = '✓ AI Ready (auto-downloaded)';
             badge.style.borderColor = '#34d399';
             badge.style.color = '#065f46';
@@ -342,6 +382,7 @@ if (isWebGPUSupported() && isAIAssistEnabled()) {
         }).catch((err) => {
             console.warn('Auto AI download failed, staying on rules:', err?.message);
             badge.textContent = '⚡ Instant Mode (rule-based, offline)';
+        });
         });
     }, 1500);
 }

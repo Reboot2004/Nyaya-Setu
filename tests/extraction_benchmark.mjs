@@ -16,7 +16,7 @@
 // the reason; run the same gold set in the browser console to fill that column.
 import { extractEntitiesRuleBased, extractEntities, isWebGPUSupported } from '../src/llm.js';
 import { extractEntitiesNER, mapNerEntities } from '../src/ner.js';
-import { CASES } from './gold_cases.mjs';
+import { CASES } from '../data/gold_cases.mjs';
 
 const SKIP_NER = process.argv.includes('--skip-ner');
 const NER_BUDGET_MS = Number(process.env.NER_BUDGET_MS || 60000);

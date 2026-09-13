@@ -72,6 +72,35 @@ export function isWebGPUSupported() {
     return typeof navigator !== 'undefined' && 'gpu' in navigator;
 }
 
+// Stronger than isWebGPUSupported: the API existing is not enough (headless /
+// broken drivers expose navigator.gpu but requestAdapter() hangs or returns
+// null). Cached probe so repeated calls are free. Use this before any heavy
+// model download — attempting a 700MB fetch on a doomed device wastes minutes.
+let adapterProbe = null;
+export function isWebGPUUsable() {
+    if (typeof navigator === 'undefined' || !('gpu' in navigator)) return Promise.resolve(false);
+    if (!adapterProbe) {
+        adapterProbe = (async () => {
+            try {
+                const adapter = await Promise.race([
+                    navigator.gpu.requestAdapter(),
+                    new Promise((resolve) => setTimeout(() => resolve(null), 8000))
+                ]);
+                if (!adapter) return false;
+                // An adapter object alone is not proof: broken/headless drivers
+                // hand one out and fail at device creation. Verify end-to-end.
+                const device = await Promise.race([
+                    adapter.requestDevice(),
+                    new Promise((_, rej) => setTimeout(() => rej(new Error('device-timeout')), 8000))
+                ]);
+                try { device.destroy?.(); } catch { /* ignore */ }
+                return !!device;
+            } catch { return false; }
+        })();
+    }
+    return adapterProbe;
+}
+
 // AI assist is AUTOMATIC where WebGPU exists: model downloads once (~700MB),
 // then cached offline. Opt-out via setAIAssistEnabled(false). Rule engine stays
 // usable during download so low-end tabs never block.
@@ -430,7 +459,8 @@ export async function extractEntities(narrative, opts = {}) {
     }
 
     // Runnable by default: skip 700MB WebGPU download unless explicitly opted in.
-    if (!isAIAssistEnabled() || !isWebGPUSupported()) {
+    // Usability (not mere API presence) gates the download — see isWebGPUUsable.
+    if (!isAIAssistEnabled() || !(await isWebGPUUsable())) {
         return merged;
     }
 

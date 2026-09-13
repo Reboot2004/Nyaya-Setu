@@ -23,6 +23,17 @@ const NER_CANDIDATES = [
 ];
 const NER_DTYPES = ['q8'];
 
+// Test hook: NER_DTYPE=q4 node tests/extraction_benchmark.mjs forces the q4
+// file first (falls back to q8 on failure). Measured 2026-09-13: this repo's
+// q4 file is ~377MB (NOT smaller than q8's ~129MB), so q4 is never default.
+function configuredDtypes() {
+    try {
+        const forced = String((typeof process !== 'undefined' && process.env && process.env.NER_DTYPE) || '').toLowerCase().trim();
+        if (forced && /^[a-z0-9]+$/.test(forced)) return [forced, ...NER_DTYPES.filter((d) => d !== forced)];
+    } catch { /* ignore */ }
+    return NER_DTYPES;
+}
+
 let nerPromise = null;
 let activeModel = null;
 let activeDevice = null;
@@ -44,7 +55,7 @@ export async function ensureNER(onProgress) {
     const devices = pickDevices();
     let lastErr = null;
     for (const model of NER_CANDIDATES) {
-        for (const dtype of NER_DTYPES) {
+        for (const dtype of configuredDtypes()) {
             for (const device of devices) {
                 try {
                     onProgress?.({ model, device, dtype, text: `Loading NER model (${model}, ${device}, ${dtype})…` });
