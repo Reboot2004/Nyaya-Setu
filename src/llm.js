@@ -264,22 +264,24 @@ export function extractEntitiesRuleBased(narrative) {
         }
     }
 
-    // 5. Extract Location: known place-nouns first ("village" beats "front of everyone in"),
-    // then prepositions (latin ones need word boundaries: "beat" must not match "at")
-    const NOUN_RE = /^(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|office|court|gate|colony|nagar|ward|sector|block|मंदिर|चर्च|मस्जिद|अदालत|थाना|बस अड्डा|कॉलोनी|नगर|वॉर्ड|सेक्टर|गांव|शहर|घर|बाजार|रोड|दुकान|स्कूल|अस्पताल|बैंक|ऑफिस|फैक्ट्री|గ్రామం|ఇల్లు|మార్కెట్|రోడ్డు|దుకాణం|స్కూల్|ఆసుపత్రి|బ్యాంక్|ఆఫీస్|వీడు|கிராமம்|வீடு|சந்தை|சாலை|கடை|பள்ளி|மருத்துவமனை|வங்கி|அலுவலகம்|বাড়ি|গ্রাম|বাজার|রাস্তা|দোকান|স্কুল|হাসপাতাল|ব্যাংক|অফিস|ಗಾವ|ಮನೆ|ಅಂಗಡಿ|ರಸ್ತೆ|ಶಾಲೆ|ಆಸ್ಪತ್ರೆ|ಬ್ಯಾಂಕ್|ಕಛೇರಿ|ഗ്രാമം|വീട്|കട|റോഡ്|സ്കൂൾ|ആശുപത്രി|ബാങ്ക്|ഓഫീസ്)$/i;
+    // 5. Extract Location: conservative — only match known place-nouns or clear preposition+place patterns.
+    // Avoids false positives like "me badly" or "my land" being extracted as locations.
+    const NOUN_RE = /^(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|court|gate|colony|nagar|ward|sector|block|పోలీస్\s*స్టేషన్|మార్కెట్|స్కూల్|ఆసుపత్రి|టెంపుల్|కాలేజ్|గావ్|మనె|అంగడి|రస్తె|కంపెనీ|ఇల్లు|వీడు|వ్యవసాయం|భూమి|పొలం|బంగళా|షాపు|హోటల్|సినిమా|సెంటర్|సిటీ|టౌన్|గేట్|కాలనీ|వార్డ్|సెక్టార్|బ్లాక్)$/i;
     const locMatches = [
-        // Known place-nouns (highest priority)
-        /\b(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|court|gate|colony|nagar|ward|sector|block|मंदिर|चर्च|मस्जिद|अदालत|थाना|बस अड्डा|कॉलोनी|नगर|वॉर्ड|सेक्टर|गांव|शहर|घर|बाजार|रोड|दुकान|स्कूल|अस्पताल|बैंक|ऑफिस|फैक्ट्री|గ్రామం|ఇల్లు|మార్కెట్|రోడ్డు|దుకాణం|స్కూల్|ఆసుపత్రి|బ్యాంక్|ఆఫీస్|వీడు|கிராமம்|வீடு|சந்தை|சாலை|கடை|பள்ளி|மருத்துவமனை|வங்கி|அலுவலகம்|বাড়ি|গ্রাম|বাজার|রাস্তা|দোকান|স্কুল|হাসপাতাল|ব্যাংক|অফিস|ಗಾವ|ಮನೆ|ಅಂಗಡಿ|ರಸ್ತೆ|ಶಾಲೆ|ಆಸ್ಪತ್ರೆ|ಬ್ಯಾಂಕ್|ಕಛೇರಿ|ഗ്രാമം|വീട്|കട|റോഡ്|സ്കൂൾ|ആശുപത്രി|ബാങ്ക്|ഓഫീസ്)\b/i,
-        // Preposition + place (EN/HI/TE/TA/BN/MR/KN/ML)
-        /(?:के\s+सामने|के\s+पास|निकट|में|पर|ग्राम|स्थान|दगडे|जवळ|पासे|సమీపంలో|ఇందులో|పైన|అరుగు మీద|கிட்ட|அருகில்|உள்ள|মধ্যে|কাছে|ইত্যাদি|ಹತ್ತಿರ|ಒಳಗೆ|അടുത്ത|കുട്ടി|\bnear\b|\bat\b|\bin\b|\boutside\b|\bopposite\b|\bnearby\b|\bat the\b)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){1,3})/i,
-        // Place + compound noun
-        /([A-Za-z\u0900-\u0D7F]+(?:\s+पंचायत\s+भवन|\s+चौराहा|\s+बाजार|\s+थाना|\s+रोड|\s+गांव|\s+మార్కెట్|\s+రోడ్డు|\s+சந்தை|\s+சாலை|\s+বাজার|\s+রাস্তা|\s+ಅಂಗಡಿ|\s+ರಸ್ತೆ))/i,
-        // "outside my house", "near the bus stop" with article/pronoun
-        /(?:outside|near|at|in|opposite|behind|inside|below|above)\s+(?:my|his|her|the|our)\s+([A-Za-z\u0900-\u0D7F]+(?:\s+[A-Za-z\u0900-\u0D7F]+){0,2})/i,
-        // Hindi postpositions: "घर के पास", "बाजार में", "थाने पर"
-        /([A-Za-z\u0900-\u0D7F]+)\s+(?:के\s+पास|के\s+सामने|में|पर|की\s+तरफ|निकट)/i,
-        // Telugu: "ఇంటి దగ్గర", "మార్కెట్ లో"
-        /([\u0C00-\u0C7F]+)\s+(?:సమీపంలో|ఇందులో|పైన|దగ్గర|లో|వద్ద)/i,
+        // Known place-nouns ONLY (highest confidence)
+        /\b(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|court|gate|colony|nagar|ward|sector|block)\b/i,
+        // Telugu place-nouns
+        /\b(పోలీస్\s*స్టేషన్|మార్కెట్|స్కూల్|ఆసుపత్రి|టెంపుల్|కాలేజ్|గావ్|మనె|అంగడి|రస్తె|కంపెనీ|ఇల్లు|వీడు|వ్యవసాయం|భూమి|పొలం|బంగళా|షాపు|హోటల్|సినిమా|సెంటర్|సిటీ|టౌన్|గేట్|కాలనీ|వార్డ్|సెక్టార్|బ్లాక్)\b/i,
+        // Telugu: "ఇంటి దగ్గర", "మార్కెట్ లో", "స్కూల్ దగ్గర"
+        /([\u0C00-\u0C7F]{2,})\s+(?:సమీపంలో|ఇందులో|పైన|దగ్గర|లో|వద్ద)/i,
+        // Preposition + KNOWN place-noun only (not arbitrary text)
+        /(?:near|at|in|outside|opposite|behind|inside|below|above)\s+(?:the\s+|my\s+|our\s+)?(village|town|city|house|home|market|road|station|shop|office|school|bank|hospital|park|farm|field|plot|yard|land|police station|bus stop|bus stand|temple|church|mosque|college|university|factory|warehouse|court|gate|colony|nagar|ward|sector|block)/i,
+        // "near the bus stop" / "outside my house" — article+place
+        /(?:near|at|in|outside|opposite|behind|inside)\s+(?:the|my|his|her|our)\s+(bus stop|bus stand|house|home|office|school|bank|hospital|market|station|temple|police station)/i,
+        // Place-name + compound: "Rampur village", "Main road", "Bus stand"
+        /([A-Z][a-z]+\s+(?:village|town|road|market|station|colony|nagar|ward|sector))/i,
+        // Hindi: ONLY known place-nouns with postpositions (very conservative)
+        /(गांव|शहर|घर|बाजार|रोड|दुकान|स्कूल|अस्पताल|बैंक|ऑफिस|फैक्ट्री|मंदिर|चर्च|मस्जिद|अदालत|थाना|बस अड्डा|कॉलोनी|नगर|वॉर्ड|सेक्टर)\s+(?:के\s+पास|के\s+सामने|में|पर|की\s+तरफ|निकट)/i,
         // Tamil: "வீட்டின் அருகில்", "சந்தையில்"
         /([\u0B80-\u0BFF]+)\s+(?:அருகில்|உள்ள|கிட்ட|இல்)/i,
         // Bengali: "বাড়ির কাছে", "বাজারে"
@@ -291,12 +293,11 @@ export function extractEntitiesRuleBased(narrative) {
     ];
     for (const pat of locMatches) {
         const m = text.match(pat);
-        if (m && m[1] && (m[1].length > 2 || NOUN_RE.test(m[1].trim())) && !/^(the|a|an|my|me|i|his|her|this|that|मुझे|मेरा|मेरी|हमारा)$/i.test(m[1].trim())) {
-            // strip leading pronouns/articles the preposition pattern swallowed ("me badly...", "me during work")
+        if (m && m[1] && m[1].length >= 2 && !/^(the|a|an|my|me|i|his|her|this|that|मुझे|मेरा|मेरी|हमारा|నా|నాకు|నన్ను)$/i.test(m[1].trim())) {
             let loc = m[1].trim();
             for (let i = 0; i < 2; i++) loc = loc.replace(/^(me|my|the|a|an|this|that|his|her|our|during|at|in)\s+/i, '').trim();
             incidentLoc = loc || 'unknown';
-            if (incidentLoc.length > 2) break;
+            if (incidentLoc.length >= 2) break;
             incidentLoc = 'unknown';
         }
     }
@@ -499,12 +500,27 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
     const phoneLine = cPhone ? `\n${l.phone}: ${cPhone}` : '';
     const stationLine = psName ? `\n${l.station}: ${psName}` : '';
 
+    // Dynamic subject based on complaint category
+    const categorySubjects = {
+        en: { assault: 'Complaint of Physical Assault', intimidation: 'Complaint of Criminal Intimidation', property_fraud: 'Complaint of Property Fraud / Cheating', women_safety: 'Complaint of Offence Against Woman', procedure: 'Complaint Regarding Police Procedure', needs_human_review: 'Complaint for FIR Registration' },
+        hi: { assault: 'शारीरिक हमले की शिकायत', intimidation: 'आपराधिक धमकी की शिकायत', property_fraud: 'संपत्ति धोखाधड़ी की शिकायत', women_safety: 'महिला के विरुद्ध अपराध की शिकायत', procedure: 'पुलिस प्रक्रिया संबंधी शिकायत', needs_human_review: 'FIR दर्ज करने हेतु शिकायत' },
+        te: { assault: 'శారీరక దాడి ఫిర్యాదు', intimidation: 'క్రిమినల్ బెదిరింపు ఫిర్యాదు', property_fraud: 'ఆస్తి మోసం ఫిర్యాదు', women_safety: 'మహిళపై నేరం ఫిర్యాదు', procedure: 'పోలీసు విధానం ఫిర్యాదు', needs_human_review: 'FIR నమోదు కోసం ఫిర్యాదు' },
+        ta: { assault: 'உடல் தாக்குதல் புகார்', intimidation: 'குற்றவியல் மிரட்டல் புகார்', property_fraud: 'சொத்து மோசடி புகார்', women_safety: 'பெண் மீதான குற்ற புகார்', procedure: 'காவல்துறை நடைமுறை புகார்', needs_human_review: 'FIR பதிவு புகார்' },
+        bn: { assault: 'শারীরিক আক্রমণের অভিযোগ', intimidation: 'ফৌজদারি হুমকির অভিযোগ', property_fraud: 'সম্পত্তি প্রতারণার অভিযোগ', women_safety: 'নারীর বিরুদ্ধে অপরাধের অভিযোগ', procedure: 'পুলিশ পদ্ধতি অভিযোগ', needs_human_review: 'FIR রুজুর জন্য অভিযোগ' },
+        mr: { assault: 'शारीरिक हल्ल्याची तक्रार', intimidation: 'गुन्हेगारी धमकीची तक्रार', property_fraud: 'मालमत्ता फसवणुकीची तक्रार', women_safety: 'महिलेविरुद्ध गुन्ह्याची तक्रार', procedure: 'पोलीस प्रक्रिया तक्रार', needs_human_review: 'FIR नोंदीसाठी तक्रार' },
+        kn: { assault: 'ದೈಹಿಕ ಹಲ್ಲೆ ದೂರು', intimidation: 'ಕ್ರಿಮಿನಲ್ ಬೆದರಿಕೆ ದೂರು', property_fraud: 'ಆಸ್ತಿ ವಂಚನೆ ದೂರು', women_safety: 'ಮಹಿಳೆಯ ಮೇಲಿನ ಅಪರಾಧ ದೂರು', procedure: 'ಪೊಲೀಸ್ ಪ್ರಕ್ರಿಯೆ ದೂರು', needs_human_review: 'FIR ದಾಖಲಿಸಲು ದೂರು' },
+        ml: { assault: 'ശാരീരിക ആക്രമണ പരാതി', intimidation: 'ക്രിമിനൽ ഭീഷണി പരാതി', property_fraud: 'സ്വത്ത് തട്ടിപ്പ് പരാതി', women_safety: 'സ്ത്രീക്കെതിരായ കുറ്റം പരാതി', procedure: 'പോലീസ് നടപടി പരാതി', needs_human_review: 'FIR രജിസ്റ്റർ ചെയ്യുന്നതിനുള്ള പരാതി' }
+    };
+    const catSubj = (categorySubjects[lang] || categorySubjects.en)[entities?.category] || (categorySubjects[lang] || categorySubjects.en).needs_human_review;
+    const subjectPrefix = l.subject.split(':')[0] + ':';  // "विषय:" or "Subject:"
+    const dynamicSubject = `${subjectPrefix} ${catSubj} — BNSS 2023, Section 173`;
+
     // ---- Build all 8 drafts with identical structure ----
     const draft = (extraBefore) =>
 `${l.to},
 ${l.station}${stationLine ? `: ${psName}` : ''}
 
-${l.subject}
+${dynamicSubject}
 
 ${l.name}: ${cName}${parentLine}${addressLine}${phoneLine}
 
