@@ -82,6 +82,59 @@ export function detectSourceLang(text) {
     return 'hi';
 }
 
+const SUPPORTED_LANGS = new Set(['en', 'hi', 'te', 'ta', 'bn', 'mr', 'kn', 'ml']);
+
+/**
+ * Detect the actual script of the text and return { lang, supported, scriptName }.
+ * Uses dominant-script analysis for mixed-language text.
+ */
+export function detectScript(text) {
+    if (!text || !text.trim()) return { lang: 'hi', supported: true, scriptName: 'Devanagari' };
+
+    const clean = text.replace(/[\s\d\p{P}]/gu, ''); // strip spaces, numbers, punctuation
+    if (!clean) return { lang: 'hi', supported: true, scriptName: 'Devanagari' };
+
+    const scripts = [
+        { re: /[\u0900-\u097F]/g, lang: 'hi', name: 'Devanagari' },
+        { re: /[\u0C00-\u0C7F]/g, lang: 'te', name: 'Telugu' },
+        { re: /[\u0B80-\u0BFF]/g, lang: 'ta', name: 'Tamil' },
+        { re: /[\u0980-\u09FF]/g, lang: 'bn', name: 'Bengali' },
+        { re: /[\u0C80-\u0CFF]/g, lang: 'kn', name: 'Kannada' },
+        { re: /[\u0D00-\u0D7F]/g, lang: 'ml', name: 'Malayalam' },
+        { re: /[\u0A00-\u0A7F]/g, lang: 'pa', name: 'Gurmukhi (Punjabi)' },
+        { re: /[\u0A80-\u0AFF]/g, lang: 'gu', name: 'Gujarati' },
+        { re: /[\u0B00-\u0B7F]/g, lang: 'or', name: 'Odia' },
+        { re: /[\u0600-\u06FF\u0750-\u077F]/g, lang: 'ur', name: 'Arabic (Urdu)' },
+        { re: /[a-zA-Z]/g, lang: 'en', name: 'Latin' },
+    ];
+
+    let best = { count: 0, lang: 'en', name: 'Latin' };
+    for (const s of scripts) {
+        const matches = clean.match(s.re);
+        const count = matches ? matches.length : 0;
+        if (count > best.count) best = { count, lang: s.lang, name: s.name };
+    }
+
+    return { lang: best.lang, supported: SUPPORTED_LANGS.has(best.lang), scriptName: best.name };
+}
+
+const UNSUPPORTED_WARNING = 'Your language is not fully supported yet. The complaint will be processed using English translation. Results may be less accurate. You may type in Hindi or English for better results.';
+
+/**
+ * Get a translated warning for unsupported languages.
+ * Returns the warning text in the detected language, or null if supported.
+ */
+export async function getUnsupportedLangWarning(text) {
+    const script = detectScript(text);
+    if (script.supported) return null;
+    try {
+        const translated = await translateText(UNSUPPORTED_WARNING, 'en', script.lang);
+        return { lang: script.lang, scriptName: script.scriptName, message: translated };
+    } catch {
+        return { lang: script.lang, scriptName: script.scriptName, message: UNSUPPORTED_WARNING };
+    }
+}
+
 /**
  * Cached translation result (per session, avoids re-translating).
  */

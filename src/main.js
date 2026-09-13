@@ -8,6 +8,7 @@ import { toCPGRAMSSchema, downloadCPGRAMSJson } from './cpgrams.js';
 import { initOfflineIndex, clearIDBCorpus } from './offline_store.js';
 import { detectEmergency, EMERGENCY_CONTACTS } from './emergency.js';
 import { CITIZEN_CATEGORIES, citizenCategoryFor } from '../data/categories.js';
+import { getUnsupportedLangWarning } from './bhashini.js';
 import { titleFor, statuteTextFor } from '../data/statute_i18n.js';
 
 const $ = (id) => document.getElementById(id);
@@ -674,6 +675,14 @@ $('runBtn').onclick = async () => {
     if (safety.piiHint && $('langHint')) {
         $('langHint').textContent = 'Note: avoid Aadhaar/bank numbers in the narrative.';
     }
+
+    // Unsupported language check — warn user before processing
+    try {
+        const langWarning = await getUnsupportedLangWarning(narrative);
+        if (langWarning && $('langHint')) {
+            $('langHint').textContent = `⚠ ${langWarning.message}`;
+        }
+    } catch { /* best-effort warning */ }
     // Defer local Guard + emergency checks until live draft is needed (see below —
     // they run after the "is this even a complaint?" gate so injection probes
     // don't waste GPU time).
