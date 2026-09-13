@@ -9,7 +9,7 @@ import { isActionableComplaint } from '../src/main_is_actionable.js';
 import { extractEntitiesRuleBased } from '../src/llm.js';
 import { cleanStr, isKnown, normalizeCategory, ALLOWED_CATEGORIES } from '../src/shared_sanitize.js';
 import { retrieveSections } from '../src/retrieval.js';
-import { detectSourceLang } from '../src/bhashini.js';
+import { detectSourceLang, detectScript, getUnsupportedLangWarning, translateText } from '../src/bhashini.js';
 
 let passed = 0;
 let failed = 0;
@@ -506,6 +506,105 @@ const e4 = extractEntitiesRuleBased('My neighbor plays loud music at night');
 const r4f = await retrieveSections('My neighbor plays loud music at night', 2);
 const a4f = isActionableComplaint('My neighbor plays loud music at night', e4, r4f);
 assert('civil dispute not actionable', !a4f);
+
+// ════════════════════════════════════════════════════════════════════
+// UNSUPPORTED LANGUAGE DETECTION — detectScript
+// ════════════════════════════════════════════════════════════════════
+section('Unsupported language: detectScript — supported langs');
+assert('Devanagari → hi (supported)', detectScript('नमस्ते').lang === 'hi' && detectScript('नमस्ते').supported);
+assert('Telugu → te (supported)', detectScript('నమస్కారం').lang === 'te' && detectScript('నమస్కారం').supported);
+assert('Tamil → ta (supported)', detectScript('வணக்கம்').lang === 'ta' && detectScript('வணக்கம்').supported);
+assert('Bengali → bn (supported)', detectScript('নমস্কার').lang === 'bn' && detectScript('নমস্কার').supported);
+assert('Kannada → kn (supported)', detectScript('ನಮಸ್ಕಾರ').lang === 'kn' && detectScript('ನಮಸ್ಕಾರ').supported);
+assert('Malayalam → ml (supported)', detectScript('നമസ്കാരം').lang === 'ml' && detectScript('നമസ്കാരം').supported);
+assert('Latin → en (supported)', detectScript('Hello').lang === 'en' && detectScript('Hello').supported);
+
+section('Unsupported language: detectScript — unsupported langs');
+assert('Punjabi → pa (unsupported)', detectScript('ਮੈਂ ਤੁਹਾਡੇ ਨਾਲ ਗੱਲ ਕਰ ਰਿਹਾ ਹਾਂ').lang === 'pa' && !detectScript('ਮੈਂ ਤੁਹਾਡੇ ਨਾਲ ਗੱਲ ਕਰ ਰਿਹਾ ਹਾਂ').supported);
+assert('Gujarati → gu (unsupported)', detectScript('મારું નામ રામ છે').lang === 'gu' && !detectScript('મારું નામ રામ છે').supported);
+assert('Urdu → ur (unsupported)', detectScript('مرحبا دنیا').lang === 'ur' && !detectScript('مرحبا دنیا').supported);
+assert('Odia → or (unsupported)', detectScript('ମୁଁ ରାମ').lang === 'or' && !detectScript('ମୁଁ ରାମ').supported);
+
+section('Unsupported language: detectScript — edge cases');
+assert('empty → hi (default)', detectScript('').lang === 'hi' && detectScript('').supported);
+assert('numbers only → hi (default)', detectScript('12345').lang === 'hi');
+assert('single char Latin → en', detectScript('a').lang === 'en');
+assert('mixed HI+EN → hi (dominant)', detectScript('Hello नमस्ते').lang === 'hi');
+assert('mixed EN+UR → ur (dominant script wins)', detectScript('مرحبا World').lang === 'ur');
+
+section('Unsupported language: detectScript — preserved detection');
+assert('detectSourceLang still works for Hindi', detectSourceLang('नमस्ते') === 'hi');
+assert('detectSourceLang still works for English', detectSourceLang('Hello') === 'en');
+assert('detectSourceLang still works for Telugu', detectSourceLang('నమస్కారం') === 'te');
+
+// ════════════════════════════════════════════════════════════════════
+// UNSUPPORTED LANGUAGE — warning message
+// ════════════════════════════════════════════════════════════════════
+section('Unsupported language: getUnsupportedLangWarning');
+const wHi = await getUnsupportedLangWarning('Hello world');
+assert('English returns null (supported)', wHi === null);
+const wTe = await getUnsupportedLangWarning('నమస్కారం');
+assert('Telugu returns null (supported)', wTe === null);
+const wPa = await getUnsupportedLangWarning('ਮੈਂ ਤੁਹਾਡੇ ਨਾਲ ਗੱਲ ਕਰ ਰਿਹਾ ਹਾਂ');
+assert('Punjabi returns warning object', wPa !== null && wPa.lang === 'pa');
+assert('Punjabi warning has scriptName', wPa?.scriptName === 'Gurmukhi (Punjabi)');
+assert('Punjabi warning message is non-empty', wPa?.message?.length > 10);
+const wGu = await getUnsupportedLangWarning('મારું નામ રામ છે');
+assert('Gujarati returns warning object', wGu !== null && wGu.lang === 'gu');
+assert('Gujarati warning message is non-empty', wGu?.message?.length > 10);
+const wUr = await getUnsupportedLangWarning('مرحبا دنیا');
+assert('Urdu returns warning object', wUr !== null && wUr.lang === 'ur');
+const wOr = await getUnsupportedLangWarning('ମୁଁ ରାମ');
+assert('Odia returns warning object', wOr !== null && wOr.lang === 'or');
+assert('empty input returns null', await getUnsupportedLangWarning('') === null);
+assert('null input returns null', await getUnsupportedLangWarning(null) === null);
+
+// ════════════════════════════════════════════════════════════════════
+// UNSUPPORTED LANGUAGE — Google Translate pseudo-support
+// ════════════════════════════════════════════════════════════════════
+section('Unsupported language: translation for pipeline');
+const paText = 'ਮੇਰੇ ਪੜੋਸੀ ਰਾਮੁ ਨੇ ਮੇਰੀ ਜ਼ਮੀਨ ਤੇ ਕਬਜਾ ਕਰ ਲਿਆ ਹੈ ਅਤੇ ਮੈਨੂੰ ਧਮਕੀ ਦਿੱਤੀ ਹੈ।';
+const paEn = await translateText(paText, 'pa', 'en');
+assert('Punjabi translates to English', paEn.length > 10);
+assert('Punjabi translation mentions land/possession', paEn.toLowerCase().includes('land') || paEn.toLowerCase().includes('neighbor'));
+const paEntities = extractEntitiesRuleBased(paEn);
+assert('entity extraction on translated Punjabi', paEntities.category === 'intimidation' || paEntities.category === 'property_fraud');
+const paSections = await retrieveSections(paEn, 5);
+assert('retrieval on translated Punjabi returns results', paSections.length > 0);
+assert('retrieval includes BNS-351 or BNS-329', paSections.some((s) => s.statute.section === '351' || s.statute.section === '329'));
+
+const guText = 'મારા પડોશીએ મારી જમીન પર ગેરકાયદેસર કબજો કર્યો છે અને મને ધમકી આપી છે.';
+const guEn = await translateText(guText, 'gu', 'en');
+assert('Gujarati translates to English', guEn.length > 10);
+const guSections = await retrieveSections(guEn, 5);
+assert('retrieval on translated Gujarati returns results', guSections.length > 0);
+
+const urText = 'مرحبا، میرا نام رام ہے۔ میرے پڑوسی نے میری زمین پر قبضہ کر لیا ہے۔';
+const urEn = await translateText(urText, 'ur', 'en');
+assert('Urdu translates to English', urEn.length > 10);
+const urSections = await retrieveSections(urEn, 5);
+assert('retrieval on translated Urdu returns results', urSections.length > 0);
+
+const orText = 'ମୋ ପଡ଼ୋଶୀ ମୋ ଜମିରେ ଅନାଧିକୃତ କବଜା କରିଛନ୍ତି।';
+const orEn = await translateText(orText, 'or', 'en');
+assert('Odia translates to English', orEn.length > 10);
+
+section('Unsupported language: full pipeline simulation');
+const fullPa = 'ਮੈਂ ਤੁਹਾਡੇ ਨਾਲ ਗੱਲ ਕਰ ਰਿਹਾ ਹਾਂ। ਮੇਰੇ ਪੜੋਸੀ ਨੇ ਮੇਰੀ ਜ਼ਮੀਨ ਤੇ ਕਬਜਾ ਕਰ ਲਿਆ ਹੈ ਅਤੇ ਮੈਨੂੰ ਜਾਨ ਤੋਂ ਮਾਰਨ ਦੀ ਧਮਕੀ ਦਿੱਤੀ ਹੈ।';
+const script = detectScript(fullPa);
+assert('detected as unsupported', !script.supported);
+const translated = await translateText(fullPa, script.lang, 'en');
+assert('translation is substantive', translated.length > 30);
+const entities = extractEntitiesRuleBased(translated);
+assert('entity extraction works on translated text', entities.category !== 'needs_human_review' || translated.length > 0);
+const sections = await retrieveSections(translated, 5);
+assert('retrieval finds relevant sections', sections.length > 0);
+assert('actionable complaint', isActionableComplaint(translated, entities, sections));
+
+section('Unsupported language: supported langs skip translation');
+assert('Hindi: detectScript.supported is true', detectScript('नमस्ते दुनिया').supported);
+assert('Tamil: detectScript.supported is true', detectScript('வணக்கம் உலகம்').supported);
+assert('Kannada: detectScript.supported is true', detectScript('ನಮಸ್ಕಾರ ಜಗತ್ತು').supported);
 
 // ════════════════════════════════════════════════════════════════════
 // SUMMARY
