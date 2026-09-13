@@ -249,8 +249,9 @@ export async function retrieveSections(narrative, topK = 4) {
                 finalTriggerHits += 1;
             }
             const effectiveMinScore = s.minScore || 4;
-            // Confidence is based on base score only (not translation boost).
-            const confidence = finalScore > 8 ? 'high' : finalScore > 5 ? 'medium' : 'low';
+            // Confidence considers Bhashini dialect boost — if lexicon matched, promote from low.
+            const confidenceInput = finalScore + (bhashiniBoost ? 3 : 0);
+            const confidence = confidenceInput > 8 ? 'high' : confidenceInput > 5 ? 'medium' : 'low';
 
             // Translation boost: small bonus for ranking only, does NOT affect confidence.
             let translationBoost = 0;

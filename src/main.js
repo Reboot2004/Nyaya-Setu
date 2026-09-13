@@ -763,10 +763,10 @@ $('runBtn').onclick = async () => {
         setStep(4);
         if ($('langHint')) $('langHint').textContent = semanticReady ? 'Ranking provisions (semantic + lexical)…' : 'Ranking provisions (lexical; semantic loads in background)…';
         const retT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-        const retrievedAll = await retrieveFinal(narrative, 5);
+        const retrievedAll = await retrieveFinal(narrative, 10);
         pipeRetMs = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - retT0;
         const isPlaceholderPun = (p) => !p || /^as prescribed under/i.test(String(p));
-        const retrieved = retrievedAll.filter((r) => r.confidence !== 'low').slice(0, 3);
+        const retrieved = retrievedAll.filter((r) => r.confidence !== 'low').slice(0, 5);
         lastRetrieved = retrieved;
         const bhashiniInfo = getBhashiniNormalization(narrative);
         const semNote = retrievedAll.some((r) => r.origin === 'both' || r.origin === 'semantic') ? ' · semantic rank on' : '';
