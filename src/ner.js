@@ -65,6 +65,21 @@ function cleanWord(w) {
     return String(w || '').replace(/^##/, '').replace(/^[#\s,;:.!?()"'`]+|[#\s,;:.!?()"'`]+$/g, '').trim();
 }
 
+// A model span is usable only if it occurs in the narrative as a standalone
+// token/span — not as a subword shard of a longer word ('ட்டு' inside 'திருட்டு',
+// 'ळे' inside 'शाळेत'). Tokenizers split Indic words aggressively, so without
+// this check fragments leak into the FIR draft.
+const SEP = '[\\s,;:.!?()"\'`।॥—–-]';
+function occursAsStandaloneToken(narrative, word) {
+    const text = String(narrative || '');
+    const w = String(word || '').trim();
+    if (!w) return false;
+    const toks = text.split(new RegExp(SEP + '+')).filter(Boolean);
+    if (toks.includes(w)) return true;
+    const esc = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp('(^|' + SEP + ')' + esc + '($|' + SEP + ')').test(text);
+}
+
 // Map raw token-classification entities to { location, aggressor }.
 // - LOC/GPE/FAC → location (first high-confidence, possessive-filtered)
 // - PER → aggressor (first high-confidence)
@@ -79,7 +94,13 @@ export function mapNerEntities(entities, narrative) {
         const group = String(e.entity_group || e.entity || '').toUpperCase().replace(/^B-/, '').replace(/^I-/, '');
         const word = cleanWord(e.word);
         const score = typeof e.score === 'number' ? e.score : 0;
-        if (!word || word.length < 2 || score < 0.6) continue;
+        // Never invent: drop low-confidence hits, subword fragments ('##…' pieces
+        // like 'ळे'/'தி' that slip through aggregation), and 1-2 char shards.
+        // A missed short name stays '—' in the draft — the safe direction.
+        if (!word || word.includes('##') || word.length < 3 || score < 0.6) continue;
+        // Fragment guard: the span must occur standalone in the narrative —
+        // rejects shards like 'ட்டு' (inside 'திருட்டு') that pass the length floor.
+        if (!occursAsStandaloneToken(narrative, word)) continue;
         if (!location && locGroups.has(group)) {
             if (!hasPossessiveBefore(narrative, word)) location = word;
         } else if (!aggressor && perGroups.has(group)) {
