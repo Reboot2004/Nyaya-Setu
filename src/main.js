@@ -8,7 +8,7 @@ import { toCPGRAMSSchema, downloadCPGRAMSJson } from './cpgrams.js';
 import { initOfflineIndex, clearIDBCorpus } from './offline_store.js';
 import { detectEmergency, EMERGENCY_CONTACTS } from './emergency.js';
 import { CITIZEN_CATEGORIES, citizenCategoryFor } from '../data/categories.js';
-import { getUnsupportedLangWarning } from './bhashini.js';
+import { getUnsupportedLangWarning, detectScript, translateText } from './bhashini.js';
 import { titleFor, statuteTextFor } from '../data/statute_i18n.js';
 
 const $ = (id) => document.getElementById(id);
@@ -676,13 +676,30 @@ $('runBtn').onclick = async () => {
         $('langHint').textContent = 'Note: avoid Aadhaar/bank numbers in the narrative.';
     }
 
-    // Unsupported language check — warn user before processing
-    try {
-        const langWarning = await getUnsupportedLangWarning(narrative);
-        if (langWarning && $('langHint')) {
-            $('langHint').textContent = `⚠ ${langWarning.message}`;
+    // Unsupported language: translate via Google Translate for pseudo-support
+    let pipelineNarrative = narrative;
+    let originalNarrative = narrative;
+    let translatedFromLang = null;
+    const scriptInfo = detectScript(narrative);
+    if (!scriptInfo.supported) {
+        if ($('langHint')) $('langHint').textContent = `Translating from ${scriptInfo.scriptName}…`;
+        try {
+            const en = await translateText(narrative, scriptInfo.lang, 'en');
+            if (en && en.trim().length >= 15) {
+                pipelineNarrative = en;
+                originalNarrative = narrative;
+                translatedFromLang = scriptInfo.lang;
+            } else {
+                // Translation too short — fall back to warning
+                const w = await getUnsupportedLangWarning(narrative);
+                if (w && $('langHint')) $('langHint').textContent = `⚠ ${w.message}`;
+            }
+        } catch {
+            // Offline or API error — show warning, still try pipeline on original
+            const w = await getUnsupportedLangWarning(narrative);
+            if (w && $('langHint')) $('langHint').textContent = `⚠ ${w.message}`;
         }
-    } catch { /* best-effort warning */ }
+    }
     // Defer local Guard + emergency checks until live draft is needed (see below —
     // they run after the "is this even a complaint?" gate so injection probes
     // don't waste GPU time).
@@ -697,7 +714,7 @@ $('runBtn').onclick = async () => {
         const selectedLanguage = getSelectedLanguage();
 
         setStep(2);
-        let entities = await extractEntities(narrative);
+        let entities = await extractEntities(pipelineNarrative);
         // Local-only: no cloud refinement. Grievance never leaves device.
 
         // Auto-fill intake form fields only with real values (never "Unknown"/JSON)
@@ -717,11 +734,11 @@ $('runBtn').onclick = async () => {
             phone: $('cPhone')?.value || '',
             accused: $('cAccused')?.value || '',
             date: isKnownVal(entities.date) ? cleanVal(entities.date) : '',
-            narrative: narrative
+            narrative: pipelineNarrative
         };
 
-        const retrievedPreview = await retrieveSections(narrative, 3);
-        if (!isActionableComplaint(narrative, entities, retrievedPreview)) {
+        const retrievedPreview = await retrieveSections(pipelineNarrative, 3);
+        if (!isActionableComplaint(pipelineNarrative, entities, retrievedPreview)) {
             alert(t('msgInsufficientComplaint') + '\n\nIf police refuse a FIR, ask for a written acknowledgement and approach the Superintendent of Police (SP). For free advice, call NALSA 15100. In danger, call 112 first.');
             $('langHint').textContent = t('msgInsufficientComplaint');
             $('runBtn').disabled = false;
@@ -732,7 +749,7 @@ $('runBtn').onclick = async () => {
         // Heavy checks deferred: local Guard + emergency interstitial only for live drafts.
         try {
             if ($('langHint')) $('langHint').textContent = 'Local safety check…';
-            const g = await guardCheck(narrative, 12000);
+            const g = await guardCheck(pipelineNarrative, 12000);
             if (!g.ok) {
                 alert(`Blocked by local safety (${g.source}: ${g.reasons.join(', ')}). Please rephrase factually.`);
                 if ($('langHint')) $('langHint').textContent = `Blocked: ${g.reasons.join(', ')}`;
@@ -742,7 +759,7 @@ $('runBtn').onclick = async () => {
             }
         } catch { /* guard best-effort; rule screen already passed */ }
         {
-            const emg = detectEmergency(narrative);
+            const emg = detectEmergency(pipelineNarrative);
             if (emg.emergency) {
                 const modal = $('emergencyModal');
                 if (modal) {
@@ -772,12 +789,12 @@ $('runBtn').onclick = async () => {
         setStep(4);
         if ($('langHint')) $('langHint').textContent = semanticReady ? 'Ranking provisions (semantic + lexical)…' : 'Ranking provisions (lexical; semantic loads in background)…';
         const retT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-        const retrievedAll = await retrieveFinal(narrative, 10);
+        const retrievedAll = await retrieveFinal(pipelineNarrative, 10);
         pipeRetMs = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - retT0;
         const isPlaceholderPun = (p) => !p || /^as prescribed under/i.test(String(p));
         const retrieved = retrievedAll.filter((r) => r.confidence !== 'low').slice(0, 5);
         lastRetrieved = retrieved;
-        const bhashiniInfo = getBhashiniNormalization(narrative);
+        const bhashiniInfo = getBhashiniNormalization(pipelineNarrative);
         const semNote = retrievedAll.some((r) => r.origin === 'both' || r.origin === 'semantic') ? ' · semantic rank on' : '';
         const listForUi = (retrieved.length ? retrieved : retrievedAll.slice(0, 2));
         $('secList').innerHTML = listForUi.length
@@ -795,7 +812,7 @@ $('runBtn').onclick = async () => {
         try {
             if (typeof retrieved !== 'undefined' && retrieved.length > 0) {
                 const { validateSectionsWithGuard } = await import('./guard.js');
-                const validated = await validateSectionsWithGuard(narrative, retrieved);
+                const validated = await validateSectionsWithGuard(pipelineNarrative, retrieved);
                 if (validated.droppedSections && validated.droppedSections.length > 0) {
                     console.log(`Guard 3 dropped ${validated.droppedSections.length} irrelevant sections: ${validated.droppedSections.map((s) => s.statute.section).join(', ')}`);
                     retrieved = validated.validatedSections;
@@ -808,7 +825,7 @@ $('runBtn').onclick = async () => {
             try {
                 if ($('langHint')) $('langHint').textContent = 'Translating English gist on-device…';
                 const { translateGist } = await import('./translate.js');
-                gist = await translateGist(entities.summary || narrative, selectedLanguage, 'en');
+                gist = await translateGist(entities.summary || pipelineNarrative, selectedLanguage, 'en');
             } catch { gist = { text: '', source: 'original' }; }
         }
         lastComplaint = await draftComplaint(complainantInfo, entities, retrieved, selectedLanguage,
@@ -839,7 +856,7 @@ $('runBtn').onclick = async () => {
         try {
             const totalSec2 = (((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - pipeT0) / 1000;
             const m = await import('./devmetrics.js');
-            m.logStudyDraft({ lang: selectedLanguage, narrativeChars: narrative.length, totalSec: totalSec2, retrievalMs: pipeRetMs, sections: lastRetrieved.length });
+            m.logStudyDraft({ lang: selectedLanguage, narrativeChars: pipelineNarrative.length, totalSec: totalSec2, retrievalMs: pipeRetMs, sections: lastRetrieved.length });
         } catch { /* study logging never breaks drafting */ }
         try { saveDraftHistory(); } catch {}
     } catch (err) {
