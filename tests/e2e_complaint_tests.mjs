@@ -84,8 +84,8 @@ describe('E2E Complaint Output Tests', () => {
 
             const catLabels = {
                 assault: ['Physical assault', 'assault', 'హల్లె', 'హత్య'],
-                intimidation: ['Criminal intimidation', 'threat', 'ధమకి', 'బెదరికె'],
-                property_fraud: ['Property fraud', 'property', 'మోసం', 'వంచన'],
+                intimidation: ['Criminal intimidation', 'threat', 'धमकी', 'ధమకి', 'బెదరికె'],
+                property_fraud: ['Property fraud', 'property', 'धोखाधड़ी', 'संपत्ति', 'మోసం', 'వంచన'],
                 women_safety: ['Offence against woman', 'woman', 'dowry', 'మహిళ', 'వధు', 'మహిళె'],
             };
             if (tc.expectCategory) {

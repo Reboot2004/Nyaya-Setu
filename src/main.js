@@ -1,4 +1,4 @@
-import { isWebGPUSupported, isWebGPUUsable, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage, getEngineStatus, isAIAssistEnabled, setAIAssistEnabled, measureInferenceSpeed } from './llm.js';
+import { isWebGPUSupported, isWebGPUUsable, onLoadingProgress, ensureEngine, resetEngine, extractEntities, draftComplaint, detectLanguage, getEngineStatus, isAIAssistEnabled, setAIAssistEnabled, measureInferenceSpeed, offenceCategoryLabel } from './llm.js';
 import { retrieveSections, getLoadedStatutes, resetToDefaultStatutes, STATUTE_METADATA, getBhashiniNormalization } from './retrieval.js';
 import { complaintToHtml, downloadComplaint, speakRightsBriefing, speakDraft, stopAudio } from './output.js';
 import { UI_TEXT } from './ui_translations.js';
@@ -59,6 +59,13 @@ export function applyUiLanguage() {
     if ($('lblAccused')) $('lblAccused').textContent = t('lblAccused');
     if ($('langLabel')) $('langLabel').textContent = t('langLabel');
     if ($('narrative')) $('narrative').placeholder = t('narrativePlaceholder');
+    if ($('cName')) $('cName').placeholder = t('phName');
+    if ($('cParent')) $('cParent').placeholder = t('phParent');
+    if ($('cPhone')) $('cPhone').placeholder = t('phPhone');
+    if ($('cAccused')) $('cAccused').placeholder = t('phAccused');
+    if ($('offlineVoiceBtn') && !$('offlineVoiceBtn').dataset.recording) $('offlineVoiceBtn').textContent = t('offlineVoiceBtn');
+    if ($('aiAssistLabel')) $('aiAssistLabel').textContent = t('aiAssistLabel');
+    if ($('sampleLabel')) $('sampleLabel').textContent = t('trySampleLabel');
     if ($('runBtn')) $('runBtn').textContent = t('runBtn');
     if ($('loadTitle')) $('loadTitle').textContent = t('loadTitle');
     if ($('pipelineTitle')) $('pipelineTitle').textContent = t('pipelineTitle');
@@ -77,6 +84,25 @@ export function applyUiLanguage() {
     if ($('englishBtn')) $('englishBtn').textContent = activeView === 'english' ? t('englishBtnBack') : t('englishBtn');
     if ($('audioBtn')) $('audioBtn').textContent = t('audioBtn');
     if ($('stopAudioBtn')) $('stopAudioBtn').textContent = t('stopAudioBtn');
+    if ($('copyBtn')) $('copyBtn').textContent = t('copyBtn');
+    if ($('installBtn')) $('installBtn').textContent = t('installBtn');
+    if ($('catFilter') && document.querySelector('#catFilter option[value=""]')) document.querySelector('#catFilter option[value=""]').textContent = t('allTopics');
+    if ($('factReviewTitle')) $('factReviewTitle').textContent = t('factReviewTitle');
+    if ($('factReviewDesc')) $('factReviewDesc').textContent = t('factReviewDesc');
+    if ($('factVerifyLabel')) $('factVerifyLabel').textContent = t('factVerifyLabel');
+    if ($('factReviewGoBackBtn')) $('factReviewGoBackBtn').textContent = t('factGoBack');
+    if ($('factReviewProceedBtn')) $('factReviewProceedBtn').textContent = t('factProceed');
+    if ($('emergencyTitle')) $('emergencyTitle').textContent = t('emgTitle');
+    if ($('emergencyDesc')) $('emergencyDesc').textContent = t('emgDesc');
+    if ($('emergencyBackBtn')) $('emergencyBackBtn').textContent = t('emgBack');
+    if ($('emergencyContinueBtn')) $('emergencyContinueBtn').textContent = t('emgContinue');
+    if ($('emgT112')) $('emgT112').textContent = t('emgCall112');
+    if ($('emgT1090')) $('emgT1090').textContent = t('emgCall1090');
+    if ($('emgT1098')) $('emgT1098').textContent = t('emgCall1098');
+    if ($('emgT15100')) $('emgT15100').textContent = t('emgCall15100');
+    if ($('compareTitle')) $('compareTitle').textContent = t('compareTitle');
+    if ($('compareDesc')) $('compareDesc').textContent = t('compareDesc');
+    if ($('compareBtn')) $('compareBtn').textContent = t('compareBtnLabel');
     if ($('appFooter')) $('appFooter').textContent = t('footer');
     if ($('gateTitle')) $('gateTitle').textContent = t('gateTitle');
     if ($('gateSubtitle')) $('gateSubtitle').textContent = t('gateSubtitle');
@@ -114,7 +140,7 @@ function refreshCatFilter() {
     if (!sel) return;
     const lang = getSelectedLanguage();
     const keep = sel.value || '';
-    sel.innerHTML = `<option value="">${lang === 'hi' ? 'सभी विषय' : lang === 'te' ? 'అన్ని అంశాలు' : 'All topics'}</option>` +
+    sel.innerHTML = `<option value="">${escHtml(t('allTopics'))}</option>` +
         CITIZEN_CATEGORIES.map((c) => `<option value="${c.id}">${c.name[lang] || c.name.en}</option>`).join('');
     sel.value = keep;
 }
@@ -172,7 +198,7 @@ async function bootstrapLanguageGate() {
     const selected = ['en', 'hi', 'te', 'ta', 'bn', 'mr', 'kn', 'ml'].includes(fallback) ? fallback : 'en';
 
     if ($('initialLangSelect')) $('initialLangSelect').value = selected;
-    if ($('ipHint')) $('ipHint').textContent = 'Offline ready — no network lookup. District / PS optional below.';
+    if ($('ipHint')) $('ipHint').textContent = t('ipDetecting');
     applyLanguageSelection(selected);
     renderLawsExplorer();
 }
@@ -193,7 +219,7 @@ function refreshComplaintView() {
 $('runBtn').disabled = false;
 
 if (isWebGPUSupported()) {
-    badge.textContent = isAIAssistEnabled() ? '⏳ AI model auto-downloading…' : '⚡ Instant Mode (rule-based, offline)';
+    badge.textContent = isAIAssistEnabled() ? t('badgeDownloading') : t('badgeInstant');
     badge.style.borderColor = '#93c5fd';
     badge.style.color = '#1e40af';
 } else {
@@ -270,11 +296,11 @@ if ($('compareBtn')) {
         const btn = $('compareBtn'), status = $('compareStatus'), out = $('compareOut');
         try {
             btn.disabled = true;
-            if (status) status.textContent = 'Starting… (rules are instant; NER/LLM download once if needed)';
+            if (status) status.textContent = t('compareStarting');
             if (out) out.innerHTML = '';
             const { runTechniqueComparison } = await import('./technique_compare.js');
             const res = await runTechniqueComparison((p) => {
-                if (status) status.textContent = `Case ${p.done + 1}/${p.total}${p.id ? ` (${p.id})` : ''} — rules → NER → LLM…`;
+                if (status) status.textContent = t('compareProgress').replace('{done}', String(p.done + 1)).replace('{total}', String(p.total)).replace('{id}', p.id ? ` (${p.id})` : '');
             });
             const cell = (ok) => ok ? '<span style="color:#15803d">✓</span>' : '<span style="color:#b91c1c">✗</span>';
             const tip = (v) => `loc: ${v.location || '?'} | aggr: ${v.aggressor || '?'} | cat: ${v.category || '?'}`;
@@ -289,9 +315,9 @@ if ($('compareBtn')) {
             const t = res.totals;
             html += `<div style="margin-top:8px;font-size:.82rem;"><strong>Totals (loc/aggr/cat):</strong> Rules ${t.rule.loc}/${t.rule.aggr}/${t.rule.cat} (${pct(t.rule, 'loc')}/${pct(t.rule, 'aggr')}/${pct(t.rule, 'cat')}) · +NER ${t.nerAssist.loc}/${t.nerAssist.aggr}/${t.nerAssist.cat} · LLM ${t.full.loc}/${t.full.aggr}/${t.full.cat} <span style="color:#64748b">of ${t.rule.n}</span></div>`;
             if (out) out.innerHTML = html;
-            if (status) status.textContent = 'Done. Winner = highest total; NER/LLM columns show their load state when unavailable.';
+            if (status) status.textContent = t('compareDone');
         } catch (e) {
-            if (status) status.textContent = `Comparison failed: ${e?.message || e}`;
+            if (status) status.textContent = `${t('compareFailed')} ${e?.message || e}`;
         } finally {
             btn.disabled = false;
         }
@@ -375,14 +401,14 @@ if (isAIAssistEnabled()) {
         Promise.resolve(isWebGPUUsable()).then((ok) => {
             if (!ok) return;
             ensureEngine().then(() => {
-            badge.textContent = '✓ AI Ready (auto-downloaded)';
+            badge.textContent = t('badgeReady');
             badge.style.borderColor = '#34d399';
             badge.style.color = '#065f46';
             badge.classList.add('ok');
             if ($('aiOptin')) $('aiOptin').checked = true;
         }).catch((err) => {
             console.warn('Auto AI download failed, staying on rules:', err?.message);
-            badge.textContent = '⚡ Instant Mode (rule-based, offline)';
+            badge.textContent = t('badgeInstant');
         });
         });
     }, 1500);
@@ -485,7 +511,7 @@ if (SR) {
                 return;
             }
             await startOfflineMemo();
-            $('recBtn').textContent = '⏹ Stop memo';
+            $('recBtn').textContent = t('recBtnStop');
             $('recBtn').classList.add('recording');
             if ($('langHint')) $('langHint').textContent = 'Recording offline memo (audio only, stays on device)…';
         } catch {
@@ -504,12 +530,14 @@ if ($('offlineVoiceBtn')) {
             if (!memoOn) {
                 await voice.startOfflineMemo();
                 memoOn = true;
-                $('offlineVoiceBtn').textContent = '⏹ Stop + Transcribe (offline)';
+                $('offlineVoiceBtn').textContent = t('offlineVoiceStop');
+                $('offlineVoiceBtn').dataset.recording = '1';
                 if ($('langHint')) $('langHint').textContent = 'Recording offline… tap again to stop and transcribe on-device.';
                 return;
             }
             memoOn = false;
-            $('offlineVoiceBtn').textContent = '🎙️ Offline Voice';
+            $('offlineVoiceBtn').textContent = t('offlineVoiceBtn');
+            delete $('offlineVoiceBtn').dataset.recording;
             const blob = await voice.stopOfflineMemo();
             if (!blob || blob.size < 1000) {
                 if ($('langHint')) $('langHint').textContent = 'Empty recording — please try again or type.';
@@ -529,7 +557,7 @@ if ($('offlineVoiceBtn')) {
             }
         } catch (err) {
             memoOn = false;
-            if ($('offlineVoiceBtn')) $('offlineVoiceBtn').textContent = '🎙️ Offline Voice';
+            if ($('offlineVoiceBtn')) { $('offlineVoiceBtn').textContent = t('offlineVoiceBtn'); delete $('offlineVoiceBtn').dataset.recording; }
             alert(`Offline voice failed: ${err?.message || err}. Typing works fully offline.`);
         }
     };
@@ -568,6 +596,11 @@ const DEMO_SAMPLES = {
     'en-hit': { lang: 'en', text: 'On 25th August, near the village square, Ramu and two others blocked my path, hit me with a stick, and threatened to kill me if I demanded my pending wages.' },
     'hi-wage': { lang: 'hi', text: 'मालिक ने तीन महीने की मजदूरी नहीं दी, 15000 रुपये रोक लिए हैं।' },
     'te-land': { lang: 'te', text: 'నా భూమిని కబ్జా చేశారు, పొలంలోకి చొరబడ్డారు।' },
+    'ta-hit': { lang: 'ta', text: 'ராமு என்னை அடித்தார், கொல்வேன் என்று மிரட்டினார்.' },
+    'bn-threat': { lang: 'bn', text: 'আমাকে হুমকি দিয়েছে, টাকা চেয়েছে।' },
+    'mr-beat': { lang: 'mr', text: 'त्यांनी मला मारहाण केली आणि धमकी दिली.' },
+    'kn-beat': { lang: 'kn', text: 'ರಾಮು ನನ್ನನ್ನು ಹೊಡೆದರು.' },
+    'ml-beat': { lang: 'ml', text: 'അയാൾ എന്നെ തല്ലി.' },
 };
 if ($('sampleRow')) {
     $('sampleRow').addEventListener('click', (e) => {
@@ -577,7 +610,7 @@ if ($('sampleRow')) {
         if (!s) return;
         applyLanguageSelection(s.lang);
         if ($('narrative')) $('narrative').value = s.text;
-        if ($('langHint')) $('langHint').textContent = `Sample loaded (${s.lang}) — edit it to match your case, then Review.`;
+        if ($('langHint')) $('langHint').textContent = `${t('sampleLoaded')} (${s.lang})`;
         $('narrative')?.focus();
     });
 }
@@ -618,39 +651,39 @@ function showExtractedFactsReview(entities, retrieved) {
         const dCat = cleanVal(entities.category, 'needs_human_review');
         const factsHtml = `
             <div class="fact-field ${dName === 'unknown' ? 'unknown' : ''}">
-                <div class="fact-label">Complainant Name</div>
-                <div class="fact-value">${dName !== 'unknown' ? escHtml(dName) : '(not given — leave blank, sign by hand)'}</div>
+                <div class="fact-label">${escHtml(t('factName'))}</div>
+                <div class="fact-value">${dName !== 'unknown' ? escHtml(dName) : escHtml(t('factUnknownName'))}</div>
             </div>
             <div class="fact-field ${!dSum || dSum === 'unknown' ? 'unknown' : ''}">
-                <div class="fact-label">Summary of Events</div>
-                <div class="fact-value">${dSum && dSum !== 'unknown' ? escHtml(dSum) : '(not extracted)'}</div>
+                <div class="fact-label">${escHtml(t('factSummary'))}</div>
+                <div class="fact-value">${dSum && dSum !== 'unknown' ? escHtml(dSum) : escHtml(t('factUnknownSummary'))}</div>
             </div>
             <div class="fact-field ${dAgg === 'unknown' ? 'unknown' : ''}">
-                <div class="fact-label">Accused / Aggressor</div>
-                <div class="fact-value">${dAgg !== 'unknown' ? escHtml(dAgg) : '(not identified — describe in draft)'}</div>
+                <div class="fact-label">${escHtml(t('factAccused'))}</div>
+                <div class="fact-value">${dAgg !== 'unknown' ? escHtml(dAgg) : escHtml(t('factUnknownAccused'))}</div>
             </div>
             <div class="fact-field ${dDate === 'unknown' ? 'unknown' : ''}">
-                <div class="fact-label">Date of Incident</div>
-                <div class="fact-value">${dDate !== 'unknown' ? escHtml(dDate) : `Not specified — draft will use today (${escHtml(todayStr)})`}</div>
+                <div class="fact-label">${escHtml(t('factDate'))}</div>
+                <div class="fact-value">${dDate !== 'unknown' ? escHtml(dDate) : `${escHtml(t('factUnknownDate'))} (${escHtml(todayStr)})`}</div>
             </div>
             <div class="fact-field ${dLoc === 'unknown' ? 'unknown' : ''}">
-                <div class="fact-label">Location</div>
-                <div class="fact-value">${dLoc !== 'unknown' ? escHtml(dLoc) : '(not specified)'}</div>
+                <div class="fact-label">${escHtml(t('factLocation'))}</div>
+                <div class="fact-value">${dLoc !== 'unknown' ? escHtml(dLoc) : escHtml(t('factUnknownLoc'))}</div>
             </div>
             <div class="fact-field">
-                <div class="fact-label">Offence Category</div>
-                <div class="fact-value">${escHtml(dCat)}</div>
+                <div class="fact-label">${escHtml(t('factCategory'))}</div>
+                <div class="fact-value">${escHtml(offenceCategoryLabel(dCat, getSelectedLanguage()) || dCat)}</div>
             </div>
         `;
         contentEl.innerHTML = factsHtml;
 
         const statuteHtml = (Array.isArray(retrieved) && retrieved.length) ?
-            `<strong>Potentially Applicable Statutes:</strong><ul style="margin:6px 0 0 16px;">
+            `<strong>${escHtml(t('factStatutes'))}</strong><ul style="margin:6px 0 0 16px;">
                 ${retrieved.slice(0, 3).map(({ statute, confidence }) =>
-                `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title}<br><small>Confidence: ${confidence || 'medium'}</small></li>`
+                `<li><strong>${statute.code} §${statute.section}</strong> — ${statute.title}<br><small>${escHtml(t('factConfidence'))}: ${escHtml(t(confidence === 'high' ? 'confHigh' : confidence === 'low' ? 'confLow' : 'confMedium'))}</small></li>`
             ).join('')}
             </ul>`
-            : '<strong>No specific penal section matched.</strong> General cognizable grievance format will be applied.';
+            : `<strong>${escHtml(t('factNoMatch'))}</strong>`;
         previewEl.innerHTML = statuteHtml;
 
         checkboxEl.checked = false;
@@ -747,7 +780,7 @@ $('runBtn').onclick = async () => {
     // don't waste GPU time).
 
     $('runBtn').disabled = true;
-    $('runBtn').textContent = '⏳ Processing…';
+    $('runBtn').textContent = t('processingBtn');
     const pipeT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     let pipeRetMs = null;
 
@@ -805,7 +838,7 @@ $('runBtn').onclick = async () => {
             if (emg.emergency) {
                 const modal = $('emergencyModal');
                 if (modal) {
-                    $('emergencyMatched') && ($('emergencyMatched').textContent = `Trigger: ${emg.matched}`);
+                    $('emergencyMatched') && ($('emergencyMatched').textContent = `${t('emgTrigger')} ${emg.matched}`);
                     modal.classList.remove('hidden');
                     const proceed = await new Promise((resolve) => {
                         $('emergencyContinueBtn').onclick = () => { modal.classList.add('hidden'); resolve(true); };
@@ -972,8 +1005,8 @@ if ($('copyBtn')) {
         if (!text) return;
         try {
             await navigator.clipboard.writeText(text);
-            $('copyBtn').textContent = '✓ Copied';
-            setTimeout(() => { $('copyBtn').textContent = '📋 Copy Draft'; }, 1500);
+            $('copyBtn').textContent = t('copiedMark');
+            setTimeout(() => { $('copyBtn').textContent = t('copyBtn'); }, 1500);
         } catch {
             // Fallback: select + execCommand
             const ta = document.createElement('textarea');
@@ -982,8 +1015,8 @@ if ($('copyBtn')) {
             ta.select();
             document.execCommand('copy');
             document.body.removeChild(ta);
-            $('copyBtn').textContent = '✓ Copied';
-            setTimeout(() => { $('copyBtn').textContent = '📋 Copy Draft'; }, 1500);
+            $('copyBtn').textContent = t('copiedMark');
+            setTimeout(() => { $('copyBtn').textContent = t('copyBtn'); }, 1500);
         }
     };
 }
@@ -1033,9 +1066,9 @@ if ($('aiOptin')) {
         } else {
             setAIAssistEnabled(on);
             if (on && isWebGPUSupported()) {
-                badge.textContent = '⏳ AI models downloading…';
+                badge.textContent = t('badgeDownloading');
                 ensureEngine().then(() => {
-                    badge.textContent = '✓ AI Ready';
+                    badge.textContent = t('badgeReady');
                     badge.classList.add('ok');
                 }).catch(() => { badge.textContent = '⚡ Instant Mode (rule-based, offline)'; });
             }

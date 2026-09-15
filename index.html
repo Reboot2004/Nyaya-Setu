@@ -365,7 +365,7 @@
     <section class="gate hidden" id="factReviewModal" role="dialog" aria-modal="true" aria-labelledby="factReviewTitle">
         <div class="gate-card" style="max-width:600px; max-height:80vh; overflow-y:auto;">
             <h2 id="factReviewTitle" style="margin-bottom:6px;">Verify Extracted Facts</h2>
-            <p style="font-size:.85rem; color:#475569; margin-bottom:14px;">Review the information extracted from your narrative. Correct or confirm each field before proceeding to statute retrieval. Empty or unknown fields are highlighted.</p>
+            <p id="factReviewDesc" style="font-size:.85rem; color:#475569; margin-bottom:14px;">Review the information extracted from your narrative. Correct or confirm each field before proceeding to statute retrieval. Empty or unknown fields are highlighted.</p>
 
             <div id="factReviewContent" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:12px; margin-bottom:14px; font-size:.88rem; line-height:1.5;">
             </div>
@@ -389,12 +389,12 @@
     <section class="gate hidden" id="emergencyModal" role="alertdialog" aria-modal="true" aria-labelledby="emergencyTitle">
         <div class="gate-card" style="border-color:#fca5a5;">
             <h2 id="emergencyTitle" style="color:#b91c1c;">⚠️ Get to safety first — possible emergency</h2>
-            <p style="font-size:.88rem;color:#1c1917;">Your text suggests imminent danger. Call now before drafting:</p>
+            <p id="emergencyDesc" style="font-size:.88rem;color:#1c1917;">Your text suggests imminent danger. Call now before drafting:</p>
             <ul style="margin:0 0 12px 18px;font-size:.9rem;line-height:1.7;">
-                <li><strong>112</strong> — Emergency (police/fire/medical)</li>
-                <li><strong>1090</strong> — Women helpline</li>
-                <li><strong>1098</strong> — Child helpline</li>
-                <li><strong>15100</strong> — NALSA free legal aid</li>
+                <li><strong>112</strong> — <span id="emgT112">Emergency (police/fire/medical)</span></li>
+                <li><strong>1090</strong> — <span id="emgT1090">Women helpline</span></li>
+                <li><strong>1098</strong> — <span id="emgT1098">Child helpline</span></li>
+                <li><strong>15100</strong> — <span id="emgT15100">NALSA free legal aid</span></li>
             </ul>
             <p id="emergencyMatched" style="font-size:.75rem;color:#64748b;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -462,15 +462,20 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
                 <span id="charCount" style="font-size:.72rem;color:#94a3b8;">0 / 2000</span>
                 <label style="display:flex;gap:5px;align-items:center;cursor:pointer;font-size:.75rem;color:#475569;">
-                    <input type="checkbox" id="aiOptin" style="width:14px;height:14px;"> AI assist (auto-downloads once, then offline)
+                    <input type="checkbox" id="aiOptin" style="width:14px;height:14px;"> <span id="aiAssistLabel">AI assist (auto-downloads once, then offline)</span>
                 </label>
             </div>
 
             <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px;" id="sampleRow" aria-label="Try a sample grievance">
-                <span style="font-size:.75rem;color:#64748b;font-weight:600;">Try a sample:</span>
-                <button class="secondary" type="button" data-sample="en-hit" style="font-size:.75rem;padding:6px 10px;">EN: Hit & threatened</button>
+                <span id="sampleLabel" style="font-size:.75rem;color:#64748b;font-weight:600;">Try a sample:</span>
+                <button class="secondary" type="button" data-sample="en-hit" style="font-size:.75rem;padding:6px 10px;">EN: Hit &amp; threatened</button>
                 <button class="secondary" type="button" data-sample="hi-wage" style="font-size:.75rem;padding:6px 10px;">HI: मजदूरी रोकी</button>
                 <button class="secondary" type="button" data-sample="te-land" style="font-size:.75rem;padding:6px 10px;">TE: భూ ఆక్రమణ</button>
+                <button class="secondary" type="button" data-sample="ta-hit" style="font-size:.75rem;padding:6px 10px;">TA: தாக்குதல்</button>
+                <button class="secondary" type="button" data-sample="bn-threat" style="font-size:.75rem;padding:6px 10px;">BN: হুমকি</button>
+                <button class="secondary" type="button" data-sample="mr-beat" style="font-size:.75rem;padding:6px 10px;">MR: मारहाण</button>
+                <button class="secondary" type="button" data-sample="kn-beat" style="font-size:.75rem;padding:6px 10px;">KN: ಹೊಡೆತ</button>
+                <button class="secondary" type="button" data-sample="ml-beat" style="font-size:.75rem;padding:6px 10px;">ML: മർദ്ദനം</button>
             </div>
 
             <div class="row">
@@ -568,7 +573,7 @@
         <!-- Technique test: Rules vs NER vs LLM on a fixed 8-case gold set -->
         <section class="card" id="compareCard">
             <h2 id="compareTitle">🧪 Technique test — Rules vs NER vs LLM</h2>
-            <p style="font-size:.8rem;color:#475569;margin:6px 0;">Runs 8 fixed grievances (EN/HI/TE/TA) through each extraction technique on <em>this device</em> and scores location / accused / category. NER (~129MB) and LLM (~700MB) download once, then run offline. Nothing leaves the phone.</p>
+            <p id="compareDesc" style="font-size:.8rem;color:#475569;margin:6px 0;">Runs 8 fixed grievances (EN/HI/TE/TA) through each extraction technique on <em>this device</em> and scores location / accused / category. NER (~129MB) and LLM (~700MB) download once, then run offline. Nothing leaves the phone.</p>
             <div class="row" style="margin-top:8px;">
                 <button id="compareBtn" type="button">▶ Run 8-case comparison</button>
                 <span id="compareStatus" style="font-size:.78rem;color:#475569;"></span>

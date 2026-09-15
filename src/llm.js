@@ -400,17 +400,22 @@ export function extractEntitiesRuleBased(narrative) {
     const secondaryRaw = matchedCats.find((k) => toCat(k) !== category) || null;
     const secondaryCategory = secondaryRaw ? toCat(secondaryRaw) : 'needs_human_review';
 
-    // Generate a brief summary from extracted entities (not raw text slice)
-    const catLabel = { assault: 'Physical assault', intimidation: 'Criminal intimidation / Threat', property_fraud: 'Property fraud / Cheating', women_safety: 'Offence against woman', needs_human_review: 'Incident' }[category] || 'Incident';
-    const parts = [];
-    parts.push(catLabel);
-    if (aggressor !== 'unknown') parts.push(`by ${aggressor}`);
-    if (incidentLoc !== 'unknown') parts.push(`at ${incidentLoc}`);
-    if (incidentDate !== 'unknown') parts.push(`on ${incidentDate}`);
-    const generatedSummary = parts.join(' ');
+    // Generate brief summaries from extracted entities (not raw text slice).
+    // Bilingual: `summary` localized for UI/modal/native drafts, `summaryEn`
+    // always English (evaluator gist, English-draft fallback, gist pipeline).
+    // Language-neutral join ('·', no by/at/on connectors).
+    const enLabel = ({ assault: 'Physical assault', intimidation: 'Criminal intimidation / Threat', property_fraud: 'Property fraud / Cheating', women_safety: 'Offence against woman', needs_human_review: 'Incident' }[category] || 'Incident');
+    const natLabel = offenceCategoryLabel(category, detectLanguage(text)) || enLabel;
+    const baseParts = [];
+    if (aggressor !== 'unknown') baseParts.push(aggressor);
+    if (incidentLoc !== 'unknown') baseParts.push(incidentLoc);
+    if (incidentDate !== 'unknown') baseParts.push(incidentDate);
+    const generatedSummary = [natLabel, ...baseParts].join(' · ');
+    const generatedSummaryEn = [enLabel, ...baseParts].join(' · ');
 
     return {
         summary: generatedSummary,
+        summaryEn: generatedSummaryEn,
         complainantName,
         parentName,
         aggressor,
@@ -521,13 +526,15 @@ Input: "He said he will kill me if I don't pay ₹10000"
         const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
 
         // Sanitize: LLM sometimes returns nested objects or echoes the category enum.
-        // Summary must stay a prose string — fall back to rule summary if it looks like JSON.
-        let summary = cleanStr(parsed.summary, '');
-        if (!summary || /^[{[].*[}\]]$/.test(summary) || /"aggressor"|"parentName"|"complainantName"/.test(summary)) {
-            summary = merged.summary;
+        // English prose (the model writes English) feeds summaryEn (gist input);
+        // the localized rule summary stays for UI/native drafts.
+        let summaryEn = cleanStr(parsed.summary, '');
+        if (!summaryEn || /^[{[].*[}\]]$/.test(summaryEn) || /"aggressor"|"parentName"|"complainantName"/.test(summaryEn)) {
+            summaryEn = cleanStr(merged.summaryEn, merged.summary);
         }
         return {
-            ...applyLLMEntities(narrative, merged, parsed || {}, summary),
+            ...applyLLMEntities(narrative, merged, parsed || {}),
+            summaryEn,
             events: [narrative],
             extractionSource: 'llm'
         };
@@ -543,7 +550,9 @@ Input: "He said he will kill me if I don't pay ₹10000"
 // The model may only fill slots rules left unknown, and only with spans it
 // QUOTES from the narrative (groundedSpan) that also pass the possessive
 // guard — everything else falls back to the rule value. Pure + unit-tested.
-export function applyLLMEntities(narrative, merged, parsed, summaryOverride) {
+// `summary` always stays the localized rule summary (UI/native drafts);
+// English model prose is routed to `summaryEn` by the caller.
+export function applyLLMEntities(narrative, merged, parsed) {
     const rule = merged || {};
     const p = parsed || {};
     const fill = (ruleVal, llmVal) => {
@@ -556,7 +565,7 @@ export function applyLLMEntities(narrative, merged, parsed, summaryOverride) {
     if (location !== 'unknown' && !isValidLocation(narrative, location)) {
         location = 'unknown';
     }
-    const summary = summaryOverride !== undefined ? summaryOverride : cleanStr(p.summary, rule.summary);
+    const summary = cleanStr(rule.summary, '');
     // Closed vocabulary: rule category stands unless it abstained.
     const category = (rule.category && rule.category !== 'needs_human_review')
         ? rule.category
@@ -582,6 +591,22 @@ export function applyLLMEntities(narrative, merged, parsed, summaryOverride) {
  * Offence stats, Relevant sections, Request. No fluff.
  * Structure follows BNSS 2023 Section 173.
  */
+// Offence-category labels, all 8 languages — module scope so both the draft
+// builder and the fact-review modal share one table (no drift).
+const OFFENCE_CAT_LABELS = {
+    en: { assault: 'Physical assault / Hurt', intimidation: 'Criminal intimidation / Threat', property_fraud: 'Cheating / Fraud / Property offence', women_safety: 'Offence against woman / Dowry harassment', procedure: 'Procedural complaint (FIR refusal)' },
+    hi: { assault: 'शारीरिक हमला / चोट', intimidation: 'आपराधिक धमकी / धमकी देना', property_fraud: 'धोखाधड़ी / संपत्ति अपराध', women_safety: 'महिला विरुद्ध अपराध / दहेज उत्पीड़न', procedure: 'प्रक्रियात्मक शिकायत (FIR से इनकार)' },
+    te: { assault: 'శారీరక దాడి / గాయం', intimidation: 'నేరపూరిత బెదిరింపు', property_fraud: 'మోసం / ఆస్తి నేరం', women_safety: 'మహిళపై నేరం / కట్నం వేధింపు', procedure: 'ప్రక్రియాత్మక ఫిర్యాదు (FIR నిరాకరణ)' },
+    ta: { assault: 'உடல் தாக்குதல் / காயம்', intimidation: 'குற்றமிழைக்கும் மிரட்டல்', property_fraud: 'மோசடி / சொத்து குற்றம்', women_safety: 'பெண்ணுக்கு எதிரான குற்றம் / தகாத தொல்லை', procedure: 'நடைமுறை புகார் (FIR மறுப்பு)' },
+    bn: { assault: 'শারীরিক আক্রমণ / আঘাত', intimidation: 'ফৌজদারি হুমকি', property_fraud: 'প্রতারণা / সম্পত্তি অপরাধ', women_safety: 'নারী বিরুদ্ধে অপরাধ / যৌতুক হয়রানি', procedure: 'আইনি প্রক্রিয়া সংক্রান্ত অভিযোগ (FIR অস্বীকার)' },
+    mr: { assault: 'शारीरिक हल्ला / जखम', intimidation: 'गैरविहित धमकी', property_fraud: 'फसवणूक / मालमत्ता गुन्हा', women_safety: 'महिला विरुद्ध गुन्हा / दहेज छळ', procedure: 'प्रक्रियात्मक तक्रार (FIR नाकारणी)' },
+    kn: { assault: 'ದೈಹಿಕ ಹಲ್ಲೆ / ಗಾಯ', intimidation: 'ಅಪರಾಧಿಕ ಬೆದರಿಕೆ', property_fraud: 'ವಂಚನೆ / ಆಸ್ತಿ ಅಪರಾಧ', women_safety: 'ಮಹಿಳೆಯ ವಿರುದ್ಧ ಅಪರಾಧ / ವರದಕ್ಷಿಣೆ ಕಿರುಕುಳ', procedure: 'ಪ್ರಕ್ರಿಯಾತ್ಮಕ ದೂರು (FIR ನಿರಾಕರಣೆ)' },
+    ml: { assault: 'ശാരീരിക ആക്രമണം / പരിക്ക്', intimidation: 'കുറ്റകരമായ ഭീഷണി', property_fraud: 'വഞ്ചന / സ്വത്ത് കുറ്റം', women_safety: 'സ്ത്രീക്കെതിരായ കുറ്റം / വധു പീഡനം', procedure: 'നടപടിക്രമ പരാതി (FIR നിരാകരണം)' }
+};
+export function offenceCategoryLabel(cat, lang) {
+    const l = normalizeLanguageCode(lang) || 'en';
+    return (OFFENCE_CAT_LABELS[l] || OFFENCE_CAT_LABELS.en)[normalizeCategory(cat, '')] || '';
+}
 function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, selectedLang, opts = {}) {
     const lang = normalizeLanguageCode(selectedLang) || 'en';
     const todayDate = new Date().toLocaleDateString('en-IN');
@@ -611,10 +636,13 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
     const incidentDate = isKnown(complainantInfo?.date) ? cleanStr(complainantInfo.date)
         : (isKnown(entities?.date) ? cleanStr(entities.date) : todayDate);
 
-    // Narrative: user's own words
+    // Narrative: user's own words; fallback summary matches the draft language
+    // (localized summary for native drafts, English gist for English drafts).
     let narrative = cleanStr(complainantInfo?.narrative, '') || '';
     if (!narrative || narrative === 'unknown' || /^[{[].*[}\]]$/.test(narrative)) {
-        narrative = cleanStr(entities?.summary, '') || '';
+        narrative = (lang === 'en')
+            ? (cleanStr(entities?.summaryEn, '') || cleanStr(entities?.summary, ''))
+            : (cleanStr(entities?.summary, '') || cleanStr(entities?.summaryEn, ''));
     }
     if (!narrative || narrative === 'unknown') narrative = '';
 
@@ -623,16 +651,7 @@ function buildProfessionalPoliceComplaint(complainantInfo, entities, retrieved, 
 
     // ---- Offence category label (concise stats for the complaint) ----
     const cat = normalizeCategory(entities?.category, '');
-    const CAT_LABELS = {
-        en: { assault: 'Physical assault / Hurt', intimidation: 'Criminal intimidation / Threat', property_fraud: 'Cheating / Fraud / Property offence', women_safety: 'Offence against woman / Dowry harassment', procedure: 'Procedural complaint (FIR refusal)' },
-        hi: { assault: 'शारीरिक हमला / चोट', intimidation: 'आपराधिक धमकी / धमकी देना', property_fraud: 'धोखाधड़ी / संपत्ति अपराध', women_safety: 'महिला विरुद्ध अपराध / दहेज उत्पीड़न', procedure: 'प्रक्रियात्मक शिकायत (FIR से इनकार)' },
-        te: { assault: 'శారీరక దాడి / గాయం', intimidation: 'నేరపూరిత బెదిరింపు', property_fraud: 'మోసం / ఆస్తి నేరం', women_safety: 'మహిళపై నేరం / కట్నం వేధింపు', procedure: 'ప్రక్రియాత్మక ఫిర్యాదు (FIR నిరాకరణ)' },
-        ta: { assault: 'உடல் தாக்குதல் / காயம்', intimidation: 'குற்றமிழைக்கும் மிரட்டல்', property_fraud: 'மோசடி / சொத்து குற்றம்', women_safety: 'பெண்ணுக்கு எதிரான குற்றம் / தகாத தொல்லை', procedure: 'நடைமுறை புகார் (FIR மறுப்பு)' },
-        bn: { assault: 'শারীরিক আক্রমণ / আঘাত', intimidation: 'ফৌজদারি হুমকি', property_fraud: 'প্রতারণা / সম্পত্তি অপরাধ', women_safety: 'নারী বিরুদ্ধে অপরাধ / যৌতুক হয়রানি', procedure: 'আইনি প্রক্রিয়া সংক্রান্ত অভিযোগ (FIR অস্বীকার)' },
-        mr: { assault: 'शारीरिक हल्ला / जखम', intimidation: 'गैरविहित धमकी', property_fraud: 'फसवणूक / मालमत्ता गुन्हा', women_safety: 'महिला विरुद्ध गुन्हा / दहेज छळ', procedure: 'प्रक्रियात्मक तक्रार (FIR नाकारणी)' },
-        kn: { assault: 'ದೈಹಿಕ ಹಲ್ಲೆ / ಗಾಯ', intimidation: 'ಅಪರಾಧಿಕ ಬೆದರಿಕೆ', property_fraud: 'ವಂಚನೆ / ಆಸ್ತಿ ಅಪರಾಧ', women_safety: 'ಮಹಿಳೆಯ ವಿರುದ್ಧ ಅಪರಾಧ / ವರದಕ್ಷಿಣೆ ಕಿರುಕುಳ', procedure: 'ಪ್ರಕ್ರಿಯಾತ್ಮಕ ದೂರು (FIR ನಿರಾಕರಣೆ)' },
-        ml: { assault: 'ശാരീരിക ആക്രമണം / പരിക്ക്', intimidation: 'കുറ്റകരമായ ഭീഷണി', property_fraud: 'വഞ്ചന / സ്വത്ത് കുറ്റം', women_safety: 'സ്ത്രീക്കെതിരായ കുറ്റം / വധു പീഡനം', procedure: 'നടപടിക്രമ പരാതി (FIR നിരാകരണം)' }
-    };
+    const CAT_LABELS = OFFENCE_CAT_LABELS;
     const catLabel = (CAT_LABELS[lang] || CAT_LABELS.en)[cat] || '';
     // Secondary offence (multi-offence narratives): shown as "Also relevant: ..."
     // so the second crime isn't silently dropped. Never equals primary.

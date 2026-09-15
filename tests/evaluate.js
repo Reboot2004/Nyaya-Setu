@@ -65,11 +65,14 @@ class EvaluationFramework {
     }
     evaluateEntityExtraction(expected, actual) {
         const matches = {
-            // summary: fuzzy first-word overlap (synthetic summaries vary)
+            // summary: fuzzy first-word overlap (synthetic summaries vary).
+            // Golds are English gists, so score the English gist (summaryEn),
+            // not the localized UI summary.
             summary: (() => {
-                if (!expected.summary || !actual.summary) return false;
+                const actualSummary = actual.summaryEn || actual.summary;
+                if (!expected.summary || !actualSummary) return false;
                 const a = expected.summary.toLowerCase().split(/\s+/)[0];
-                const b = actual.summary.toLowerCase();
+                const b = actualSummary.toLowerCase();
                 return b.includes(a) || expected.summary.toLowerCase().includes(b.split(/\s+/)[0]);
             })(),
             aggressor: actual.aggressor === expected.aggressor || (expected.aggressor !== 'unknown' && actual.aggressor.toLowerCase().includes(expected.aggressor.toLowerCase().split(' ')[0])) || (expected.aggressor === 'unknown' && actual.aggressor === 'unknown'),
