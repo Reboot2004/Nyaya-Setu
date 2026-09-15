@@ -1,14 +1,10 @@
-// Nyaya-Setu CPU NER fallback — multilingual token-classification via transformers.js.
-// OPT-IN ONLY (measured decision 2026-09-13, tests/extraction_benchmark.mjs):
-// the smallest viable multilingual checkpoint is ~129MB (distilbert q8; the
-// repo's "q4" file is ~377MB, not smaller) yet adds zero measured gain over the
-// rule engine, so the pipeline does NOT auto-load it. Enable explicitly via
-// extractEntities(narrative, { ner: true }) or preloadNER().
-// Sits between instant regex rules and the 700MB WebLLM model when enabled:
-//   rules (instant, offline) → NER (~129MB q8, CPU/WASM, lazy) → LLM (WebGPU).
-// Only fills UNKNOWN slots (location/aggressor); never overrides confident rule
-// values. Best-effort: lazy-loaded, cached, timeout-guarded, fails soft to null
-// so the pipeline never blocks on model download.
+// Nyaya-Setu CPU NER assist — multilingual token-classification via transformers.js.
+// Loaded proactively in the background (see main.js preload, same pattern as the
+// semantic index) and used by extractEntities for every draft: fills UNKNOWN
+// slots (location/aggressor) the regex misses; never overrides confident rule
+// values. q8 int8 (~129MB, same weight class as MiniLM); the repo's "q4" file
+// is ~377MB, NOT smaller, so it is not attempted. Best-effort throughout:
+// lazy-loaded, cached, timeout-guarded, fails soft to null.
 import { hasPossessiveBefore } from './shared_sanitize.js';
 
 // Small multilingual NER checkpoints (Xenova ONNX). Tried in order; first that

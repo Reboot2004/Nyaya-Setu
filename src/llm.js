@@ -437,11 +437,11 @@ export async function extractEntities(narrative, opts = {}) {
     const ruleEntities = extractEntitiesRuleBased(narrative);
     const merged = { ...ruleEntities, extractionSource: 'rule' };
 
-    // CPU NER supplement (OPT-IN ONLY via opts.ner — measured decision 2026-09-13):
-    // the smallest viable multilingual checkpoint (distilbert q8) is ~129MB yet
-    // adds zero measured gain over rules (benchmark 29/29 vs 29/29), so it must
-    // not tax every user's download. src/ner.js stays for opt-in/future use.
-    const wantNER = opts.ner ?? false;
+    // CPU NER assist (browser default-ON, opt-out via opts.ner=false): fills
+    // slots the regex leaves unknown, using context instead of keyword lists.
+    // Never overrides a confident rule value; guarded against fragments and
+    // possessive-generics (see src/ner.js). Skipped in Node unless enabled.
+    const wantNER = opts.ner ?? (typeof window !== 'undefined');
     if (wantNER && (!isKnown(merged.location) || !isKnown(merged.aggressor))) {
         try {
             const nerMod = await import('./ner.js');
