@@ -32,11 +32,14 @@ A citizen speaks or types their grievance in any of 8 Indian languages. The app:
 | **Evaluation scenarios** | 50 across 8 languages |
 | **Complaint gate accuracy** | 100% (50/50) |
 | **Statute retrieval recall** | 100% (every expected section found) |
-| **Entity extraction recall** | 74.4% (rule-based; LLM boosts on WebGPU) |
+| **Entity extraction recall** | 72.4% (50-scenario eval; 29/29/29 on the fixed gold set below) |
+| **Extraction benchmark (gold set)** | 29/29 location, 29/29 accused, 29/29 category (8 languages) |
+| **Retrieval QA** | 79/79 (multilingual, false-positive, completeness) |
 | **Corpus size** | 1059 slots (358 BNS + 531 BNSS + 170 BSA) |
 | **Curated sections** | 56 with official titles from indialawacts.in |
 | **Zero placeholders** | Every section has real statutory text |
 | **Test suite** | 252/252 pass (comprehensive edge cases) |
+| **On-site technique test** | Website button scores Rules vs NER vs LLM live on-device (8 gold cases) |
 | **Languages supported** | 8 UI + unlimited via Google Translate pseudo-support |
 
 ---
@@ -59,10 +62,12 @@ A citizen speaks or types their grievance in any of 8 Indian languages. The app:
 └──────────────────────────────┬───────────────────────────────────────┘
                                ▼
 ┌─ Understand ─────────────────────────────────────────────────────────┐
-│ Entity extraction: rule regex (all devices) +                        │
-│ Llama-3.2-1B q4 assist (WebGPU, Qwen-0.5B fallback) ·              │
-│ Citizen MUST verify extracted facts in review modal ·                │
-│ Unknowns highlighted, JSON-bleed sanitized                           │
+│ Entity extraction: rule regex (all devices, 29/29 gold) +              │
+│ Llama-3.2-1B q4 assist (WebGPU with real adapter probe, Qwen fallback) │
+│ NER is opt-in only (129MB, zero measured gain over rules) ·            │
+│ Multi-offence second category flagged, never dropped ·                 │
+│ Citizen MUST verify extracted facts in review modal ·                  │
+│ Unknowns highlighted, JSON-bleed sanitized                             │
 └──────────────────────────────┬───────────────────────────────────────┘
                                ▼
 ┌─ Retrieve (fused) ───────────────────────────────────────────────────┐
@@ -125,9 +130,19 @@ Punjabi, Gujarati, Odia, Urdu, and 50+ other languages get **pseudo-support** vi
 === 50-Scenario Evaluation (8 languages) ===
 
 Total: 50 | Passed filtering: 50 | Failed: 0
-  Entity Extraction Recall: 74.4%
+  Entity Extraction Recall: 72.4%
   Statute Retrieval Recall: 100.0%
   Filtering Accuracy: 100.0%
+
+=== Extraction Benchmark (29 gold cases, human truth, 8 langs) ===
+  Rules: 29/29 location, 29/29 accused, 29/29 category
+  Combined pipeline: identical (NER adds nothing measurable → opt-in only)
+
+=== Retrieval QA ===
+  79/79 (short, multilingual, false-positive, similarity, completeness)
+
+=== Technique Compare (subset of gold set, 8 cases) ===
+  8/8 scoring parity in Node; website button runs Rules/NER/LLM live
 
 === Comprehensive Test Suite ===
   252/252 pass (safety, emergency, sanitizer, actionability,
@@ -156,6 +171,11 @@ node tests/comprehensive_tests.mjs        # 252 edge case tests
 node tests/e2e_complaint_tests.mjs        # 7 E2E complaint output tests
 node tests/translation_voice_tests.mjs    # 39 translation tests
 node tests/qa_comprehensive_tests.mjs     # 79 QA tests
+node tests/extraction_benchmark.mjs       # 29-case gold benchmark (rule/NER/LLM)
+node tests/technique_compare_tests.mjs    # 8-case on-site subset parity
+node tests/stt_smoke.mjs                  # Whisper-tiny load + silence decode
+node tests/browser_full.mjs [base-url]    # full pipeline in real Chromium
+                                          # (local dev server or deployed URL)
 ```
 
 ---
@@ -196,9 +216,10 @@ What works well:
 
 What needs improvement:
 - Offline STT accuracy on budget devices (Whisper-tiny is slow on tabs)
-- Entity recall for non-English scripts (74.4%, rule-based)
+- Entity recall for non-English scripts (72.4% on the 50-scenario eval)
 - Full gazette ingestion (56/1059 curated, rest have titles only)
 - Field validation with real users at kiosks
+- WebGPU LLM column unmeasurable in CI (no GPU); verify on-device via the website test button
 
 ---
 
