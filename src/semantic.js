@@ -128,10 +128,16 @@ export async function retrieveFused(narrative, lexicalResults, topK = 5, weights
         // absolute-anchored (score 14 ~= certain hit), so lone weak-but-only signals
         // keep their confidence instead of collapsing to low.
         const lexN = entry.lex ? Math.max((entry.lex.score || 0) / lexMax, Math.min(1, (entry.lex.score || 0) / 14)) : null;
-        const semN = entry.cos === null ? null : (entry.cos * 0.5 + 0.5);
+        // Absent-from-semantic-topK counts AGAINST (0.40, below any real match):
+        // previously a null semantic silently scored as if neutral, so lex-only
+        // entries (e.g. incidental "house" matching house-crime sections) outranked
+        // entries with both signals. Measured 2026-09: TEST-025/037 regressions.
+        const semN = entry.cos === null ? 0.40 : (entry.cos * 0.5 + 0.5);
+        // semN is never null now (absent => 0.40 penalty above), so fusion is
+        // always the weighted blend; lex-only entries can no longer outrank
+        // dual-signal entries on relative-norm inflation alone.
         let combined;
-        if (lexN !== null && semN !== null) combined = weights.sem * semN + weights.lex * lexN;
-        else if (lexN !== null) combined = lexN;
+        if (lexN !== null) combined = weights.sem * semN + weights.lex * lexN;
         else combined = weights.sem * semN;
         const curated = isCuratedStatute(statute);
         if (curated) combined += 0.04;

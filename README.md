@@ -36,7 +36,8 @@ A citizen speaks or types their grievance in any of 8 Indian languages. The app:
 | **Extraction benchmark (gold set)** | 29/29 location, 29/29 accused, 29/29 category (8 languages) |
 | **Retrieval QA** | 79/79 (multilingual, false-positive, completeness) |
 | **Corpus size** | 1059 slots (358 BNS + 531 BNSS + 170 BSA) |
-| **Curated sections** | 56 with official titles from indialawacts.in |
+| **Curated sections** | 62 with official titles from indialawacts.in |
+| **Non-curated sections** | title-keyword triggers generated at load (searchable by description, not just section number) |
 | **Zero placeholders** | Every section has real statutory text |
 | **Test suite** | 252/252 pass (comprehensive edge cases) |
 | **On-site technique test** | Website button scores Rules vs NER vs LLM live on-device (8 gold cases) |

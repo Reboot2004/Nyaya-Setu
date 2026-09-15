@@ -2495,8 +2495,22 @@ export const BASE_STATUTES = [
       "beats",
       "hit",
       "slapped",
+      "slap",
       "punched",
+      "punch",
       "kicked",
+      "rod",
+      "stick",
+      "sticks",
+      "bruise",
+      "bruises",
+      "injury",
+      "injuries",
+      "injured",
+      "wound",
+      "wounds",
+      "bleeding",
+      "pushed",
       "marpeet",
       "maara",
       "peeta",
@@ -2504,15 +2518,21 @@ export const BASE_STATUTES = [
       "पीटा",
       "मारा",
       "थप्पड़",
-      "కొట్టారు",
+      "घायल",
+      "जख्म",
+      "जखम",
       "కొట్టాడు",
       "కొట్టింది",
+      "కొట్టారు",
       "அடித்தார்",
       "அடித்தான்",
       "kottaru",
       "kottadu",
       "nannu kottaru",
-      "মারধর"
+      "মারধর",
+      "আঘাত",
+      "ಗಾಯ",
+      "പരിക്ക്"
     ],
     "negTriggers": [],
     "minScore": 4,
@@ -6525,18 +6545,32 @@ export const BASE_STATUTES = [
     "code": "BNS",
     "section": "305",
     "title": "Theft in a dwelling house, or means of transportation or place of worship, etc.",
-    "text": "Bharatiya Nyaya Sanhita, 2023 — official title above. Full Gazette clause pending legal-aid verification — see https://www.indiacode.nic.in/.",
+    "text": "Theft committed inside a dwelling house, a vehicle or vessel used for transport, or a place of worship is punished more severely than simple theft.",
     "punishment": "As prescribed under Bharatiya Nyaya Sanhita, 2023 Gazette.",
     "triggers": [
       "bns 305",
       "bns section 305",
       "section 305",
       "धारा 305",
-      "సెక్షన్ 305"
+      "సెక్షన్ 305",
+      "dwelling theft",
+      "house theft",
+      "vehicle theft",
+      "train theft",
+      "bus theft",
+      "temple theft",
+      "theft at home",
+      "घर में चोरी",
+      "गाड़ी में चोरी",
+      "मंदिर में चोरी",
+      "ghar me chori",
+      "ఇంట్లో దొంగతనం",
+      "வீட்டில் திருட்டு",
+      "ಮನೆಯಲ್ಲಿ ಕಳ್ಳತನ"
     ],
     "negTriggers": [],
-    "minScore": 6,
-    "verified": "official-title",
+    "minScore": 4,
+    "verified": "curated",
     "category": "property",
     "chapter": "Chapter XV: Of Offences Against Property",
     "source": "Official India Code: https://www.indiacode.nic.in/"
@@ -6546,18 +6580,27 @@ export const BASE_STATUTES = [
     "code": "BNS",
     "section": "306",
     "title": "Theft by clerk or servant of property in possession of master",
-    "text": "Bharatiya Nyaya Sanhita, 2023 — official title above. Full Gazette clause pending legal-aid verification — see https://www.indiacode.nic.in/.",
+    "text": "Theft by a clerk, servant or employee of property entrusted to them by the master or employer.",
     "punishment": "As prescribed under Bharatiya Nyaya Sanhita, 2023 Gazette.",
     "triggers": [
       "bns 306",
       "bns section 306",
       "section 306",
       "धारा 306",
-      "సెక్షన్ 306"
+      "సెక్షన్ 306",
+      "servant theft",
+      "employee theft",
+      "clerk stole",
+      "maid stole",
+      "servant stole",
+      "employee stole",
+      "नौकर ने चोरी",
+      "कर्मचारी ने चोरी",
+      "naukar ne chori"
     ],
     "negTriggers": [],
-    "minScore": 6,
-    "verified": "official-title",
+    "minScore": 4,
+    "verified": "curated",
     "category": "property",
     "chapter": "Chapter XV: Of Offences Against Property",
     "source": "Official India Code: https://www.indiacode.nic.in/"
@@ -6727,18 +6770,28 @@ export const BASE_STATUTES = [
     "code": "BNS",
     "section": "314",
     "title": "Dishonest Misappropriation of Property",
-    "text": "Bharatiya Nyaya Sanhita, 2023 — official title above. Full Gazette clause pending legal-aid verification — see https://www.indiacode.nic.in/.",
+    "text": "Dishonestly misappropriating movable property in one's possession, or converting it to one's own use instead of returning it.",
     "punishment": "As prescribed under Bharatiya Nyaya Sanhita, 2023 Gazette.",
     "triggers": [
       "bns 314",
       "bns section 314",
       "section 314",
       "धारा 314",
-      "సెక్షన్ 314"
+      "సెక్షన్ 314",
+      "misappropriation",
+      "misappropriated",
+      "kept the money",
+      "did not return money",
+      "converted to own use",
+      "गबन",
+      "पैसे हड़प लिए",
+      "रकम हड़प",
+      "gaban",
+      "hadap"
     ],
     "negTriggers": [],
-    "minScore": 6,
-    "verified": "official-title",
+    "minScore": 4,
+    "verified": "curated",
     "category": "property",
     "chapter": "Chapter XV: Of Offences Against Property",
     "source": "Official India Code: https://www.indiacode.nic.in/"
@@ -6810,18 +6863,26 @@ export const BASE_STATUTES = [
     "code": "BNS",
     "section": "317",
     "title": "Stolen Property",
-    "text": "Bharatiya Nyaya Sanhita, 2023 — official title above. Full Gazette clause pending legal-aid verification — see https://www.indiacode.nic.in/.",
+    "text": "Receiving, retaining or dealing in property known or believed to be stolen.",
     "punishment": "As prescribed under Bharatiya Nyaya Sanhita, 2023 Gazette.",
     "triggers": [
       "bns 317",
       "bns section 317",
       "section 317",
       "धारा 317",
-      "సెక్షన్ 317"
+      "సెక్షన్ 317",
+      "stolen goods",
+      "receiving stolen",
+      "bought stolen goods",
+      "sold stolen goods",
+      "chor bazaar",
+      "चोरी का माल",
+      "चोर बाजार",
+      "chori ka maal"
     ],
     "negTriggers": [],
-    "minScore": 6,
-    "verified": "official-title",
+    "minScore": 4,
+    "verified": "curated",
     "category": "property",
     "chapter": "Chapter XV: Of Offences Against Property",
     "source": "Official India Code: https://www.indiacode.nic.in/"
@@ -6971,18 +7032,30 @@ export const BASE_STATUTES = [
     "code": "BNS",
     "section": "324",
     "title": "Mischief",
-    "text": "Bharatiya Nyaya Sanhita, 2023 — official title above. Full Gazette clause pending legal-aid verification — see https://www.indiacode.nic.in/.",
+    "text": "Causing wrongful loss or damage to public or private property, including vandalism and destruction.",
     "punishment": "As prescribed under Bharatiya Nyaya Sanhita, 2023 Gazette.",
     "triggers": [
       "bns 324",
       "bns section 324",
       "section 324",
       "धारा 324",
-      "సెక్షన్ 324"
+      "సెక్షన్ 324",
+      "mischief",
+      "vandalism",
+      "vandalised",
+      "damaged property",
+      "broke windows",
+      "crop damage",
+      "तोड़फोड़",
+      "नुकसान पहुंचाया",
+      "संपत्ति को नुकसान",
+      "todphod",
+      "nuksaan",
+      "சேதம்"
     ],
     "negTriggers": [],
-    "minScore": 6,
-    "verified": "official-title",
+    "minScore": 4,
+    "verified": "curated",
     "category": "property",
     "chapter": "Chapter XV: Of Offences Against Property",
     "source": "Official India Code: https://www.indiacode.nic.in/"
@@ -7109,18 +7182,27 @@ export const BASE_STATUTES = [
     "code": "BNS",
     "section": "330",
     "title": "House-Trespass and House-Breaking",
-    "text": "Bharatiya Nyaya Sanhita, 2023 — official title above. Full Gazette clause pending legal-aid verification — see https://www.indiacode.nic.in/.",
+    "text": "Entering a house to commit an offence, or breaking into a house; punished more severely when committed at night.",
     "punishment": "As prescribed under Bharatiya Nyaya Sanhita, 2023 Gazette.",
     "triggers": [
       "bns 330",
       "bns section 330",
       "section 330",
       "धारा 330",
-      "సెక్షన్ 330"
+      "సెక్షన్ 330",
+      "housebreaking",
+      "house-breaking",
+      "broke into house",
+      "house break-in",
+      "night house trespass",
+      "सेंधमारी",
+      "घर में घुसकर चोरी",
+      "रात में घर में घुसा",
+      "sendhmari"
     ],
     "negTriggers": [],
-    "minScore": 6,
-    "verified": "official-title",
+    "minScore": 4,
+    "verified": "curated",
     "category": "property",
     "chapter": "Chapter XV: Of Offences Against Property",
     "source": "Official India Code: https://www.indiacode.nic.in/"
@@ -21650,17 +21732,63 @@ export const BASE_STATUTES = [
 
 const LOCAL_STORAGE_KEY = 'nyaya_setu_dynamic_statutes_v4';
 
+// ---- Title-keyword enrichment (measured: 601 entries were findable ONLY by
+// section number, since their triggers were ["bns 73", "section 73", ...]).
+// Non-curated entries get distinctive title words as triggers at LOAD time
+// (zero churn to this file), and placeholder boilerplate text is replaced by
+// the official title so search haystacks + future vector builds encode
+// substance instead of "pending legal-aid verification" boilerplate.
+// Safety: curated entries are untouched; official-title minScore (6) means a
+// lone generic word (3-5 pts) can never surface alone — 2+ hits required.
+const TITLE_STOP = new Set(('of,the,and,or,for,with,from,into,onto,upon,to,in,on,at,by,an,a,etc,order,under,against,between,through,during,without,within,whom,whose,that,this,those,these,such,than,then,when,where,while,who,punishment,punishable,punishments,offence,offences,offense,offenses,section,sections,act,acts,code,chapter,part,clause,indian,bharatiya,nyaya,sanhita,nagarik,suraksha,sakshya,adhiniyam,2023,law,laws,relating,related,regard,regarding,respect,manner,certain,person,persons,whoever,circumstances,means,making,makes,commit,commits,commiting,attempt,attempts,intent,intention,order,etc,case,cases,property,person,life,death,imprisonment,fine,either,extent,term,which,shall,liable,described,above,first,second,third,also,other,otherwise,same,said,every,any,all,its,his,her,their,our,your,having,being,doing,cause,causes,causing,use,uses,using,gives,giving,takes,taking,does,doing,done,made,make,plus,including,include,namely,viz,etc').split(','));
+const PLACEHOLDER_TEXT_RE = /pending legal-aid verification/i;
+
+export function isPlaceholderText(t) {
+    return typeof t === 'string' && PLACEHOLDER_TEXT_RE.test(t);
+}
+
+// Distinctive lowercase title tokens (len>=4, hyphen-split, deduped, capped).
+export function titleKeywords(title, cap = 10) {
+    const out = [];
+    const seen = new Set();
+    for (const w of String(title || '').toLowerCase().split(/[^a-z]+/)) {
+        if (w.length < 4 || TITLE_STOP.has(w) || seen.has(w)) continue;
+        seen.add(w);
+        out.push(w);
+        if (out.length >= cap) break;
+    }
+    return out;
+}
+
+function enrichStatute(s) {
+    if (!s || s.verified === 'curated') return s;
+    const have = new Set((s.triggers || []).map((t) => String(t).toLowerCase()));
+    const add = titleKeywords(s.title).filter((k) => !have.has(k));
+    const text = isPlaceholderText(s.text) ? (s.title || '') : s.text;
+    if (!add.length && text === s.text) return s;
+    return { ...s, triggers: [...(s.triggers || []), ...add], text };
+}
+
+// Enrich any statute list (used by getLoadedStatutes + scripts/build_vectors.mjs).
+export function getEnrichedStatutes(list) {
+    if (!Array.isArray(list)) return list;
+    return list.map(enrichStatute);
+}
+
+let enrichedCache = null;
+
 export function getLoadedStatutes() {
     try {
         if (typeof window !== 'undefined' && window.localStorage) {
             const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (stored) {
                 const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                if (Array.isArray(parsed) && parsed.length > 0) return getEnrichedStatutes(parsed);
             }
         }
     } catch (e) { console.warn('Could not read cached statutes:', e); }
-    return BASE_STATUTES;
+    if (!enrichedCache) enrichedCache = getEnrichedStatutes(BASE_STATUTES);
+    return enrichedCache;
 }
 
 export function saveDynamicStatutes(statutesList) {
@@ -21672,7 +21800,8 @@ export function saveDynamicStatutes(statutesList) {
 export function resetToDefaultStatutes() {
     try { if (typeof window !== 'undefined') localStorage.removeItem(LOCAL_STORAGE_KEY); }
     catch (e) { console.error('Failed to reset:', e); }
-    return BASE_STATUTES;
+    if (!enrichedCache) enrichedCache = getEnrichedStatutes(BASE_STATUTES);
+    return enrichedCache;
 }
 
 // Procedural-rights audio briefing (prototype text, not legal advice).
