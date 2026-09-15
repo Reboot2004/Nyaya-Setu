@@ -84,10 +84,12 @@ export async function runTechniqueComparison(onProgress) {
     for (const c of COMPARE_CASES) {
         onProgress?.({ done: i, total: COMPARE_CASES.length, id: c.id });
         const rule = pick(extractEntitiesRuleBased(c.text));
+        // llm:false isolates the NER layer — without it, WebGPU devices would
+        // run the LLM override at the end and this column would duplicate Full.
         let nerAssist = { ...rule, note: nerReady ? 'rule+ner' : 'ner-unavailable (rules shown)' };
         if (nerReady) {
             try {
-                const e = await extractEntities(c.text, { ner: true, nerTimeoutMs: 15000 });
+                const e = await extractEntities(c.text, { ner: true, llm: false, nerTimeoutMs: 15000 });
                 nerAssist = { ...pick(e), note: e.extractionSource || 'rule+ner' };
             } catch { nerAssist = { ...rule, note: 'ner-error (rules shown)' }; }
         }

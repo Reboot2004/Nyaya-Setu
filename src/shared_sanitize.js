@@ -107,3 +107,13 @@ export function isValidLocation(text, locValue) {
     if (/^(unknown|—|-|n\/a)$/i.test(v)) return false;
     return !hasPossessiveBefore(text, v);
 }
+
+// Anti-hallucination gate for model-extracted spans: a model may only fill a
+// name/place/date it QUOTES from the narrative — never invent one. Returns the
+// cleaned value when verbatim-present (case-insensitive), else null.
+// ("bus stop" in "Near the bus stop…" passes; an invented "Delhi" fails.)
+export function groundedSpan(narrative, value) {
+    const v = cleanStr(value, '');
+    if (!v || v === 'unknown') return null;
+    return String(narrative || '').toLowerCase().includes(v.toLowerCase()) ? v : null;
+}

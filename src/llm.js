@@ -426,7 +426,7 @@ const ALLOWED_CATEGORIES = new Set(['assault', 'intimidation', 'property_fraud',
 
 // Shared sanitizer — single source of truth for both llm.js and main.js.
 // Imported by main via ./shared_sanitize.js to avoid duplicating this logic.
-import { cleanStr, isKnown, normalizeCategory, hasPossessiveBefore, isValidLocation } from './shared_sanitize.js';
+import { cleanStr, isKnown, normalizeCategory, hasPossessiveBefore, isValidLocation, groundedSpan } from './shared_sanitize.js';
 
 export async function extractEntities(narrative, opts = {}) {
     const ruleEntities = extractEntitiesRuleBased(narrative);
@@ -460,7 +460,8 @@ export async function extractEntities(narrative, opts = {}) {
 
     // Runnable by default: skip 700MB WebGPU download unless explicitly opted in.
     // Usability (not mere API presence) gates the download — see isWebGPUUsable.
-    if (!isAIAssistEnabled() || !(await isWebGPUUsable())) {
+    // opts.llm === false isolates lower layers (used by the technique panel).
+    if (opts.llm === false || !isAIAssistEnabled() || !(await isWebGPUUsable())) {
         return merged;
     }
 
@@ -525,27 +526,54 @@ Input: "He said he will kill me if I don't pay ₹10000"
         if (!summary || /^[{[].*[}\]]$/.test(summary) || /"aggressor"|"parentName"|"complainantName"/.test(summary)) {
             summary = merged.summary;
         }
-        // Validate LLM location against the same possessive guard as rules+NER:
-        // a "my village" style answer from the model is corrected to unknown.
-        let llmLoc = cleanStr(parsed.location, merged.location);
-        if (llmLoc !== 'unknown' && !isValidLocation(narrative, llmLoc)) {
-            llmLoc = 'unknown';
-        }
         return {
-            summary,
-            complainantName: cleanStr(parsed.complainantName, merged.complainantName),
-            parentName: cleanStr(parsed.parentName, merged.parentName),
-            aggressor: cleanStr(parsed.aggressor, merged.aggressor),
-            date: cleanStr(parsed.date, merged.date),
-            location: llmLoc,
-            category: normalizeCategory(parsed.category, merged.category),
-            secondaryCategory: normalizeCategory(parsed.secondaryCategory, merged.secondaryCategory || 'needs_human_review'),
+            ...applyLLMEntities(narrative, merged, parsed || {}, summary),
             events: [narrative],
             extractionSource: 'llm'
         };
     } catch {
         return merged;
     }
+}
+
+// Merge model output over rule entities — gap-fill ONLY, never override.
+// Measured on-device 2026-09 (technique panel: LLM 3/6/8 vs rules 8/8/8):
+// the model hallucinates places ("Ramu and Shyam beat me" -> invented
+// location) and misreads non-English entities, so verified rule values stand.
+// The model may only fill slots rules left unknown, and only with spans it
+// QUOTES from the narrative (groundedSpan) that also pass the possessive
+// guard — everything else falls back to the rule value. Pure + unit-tested.
+export function applyLLMEntities(narrative, merged, parsed, summaryOverride) {
+    const rule = merged || {};
+    const p = parsed || {};
+    const fill = (ruleVal, llmVal) => {
+        if (isKnown(ruleVal)) return cleanStr(ruleVal);
+        return groundedSpan(narrative, llmVal) || cleanStr(ruleVal);
+    };
+    let location = fill(rule.location, p.location);
+    // Possessive/origin answers are corrected even when quoted
+    // ("my village" IS in the text, but still not an incident place).
+    if (location !== 'unknown' && !isValidLocation(narrative, location)) {
+        location = 'unknown';
+    }
+    const summary = summaryOverride !== undefined ? summaryOverride : cleanStr(p.summary, rule.summary);
+    // Closed vocabulary: rule category stands unless it abstained.
+    const category = (rule.category && rule.category !== 'needs_human_review')
+        ? rule.category
+        : normalizeCategory(p.category, rule.category || 'needs_human_review');
+    const secondaryCategory = (rule.secondaryCategory && rule.secondaryCategory !== 'needs_human_review')
+        ? rule.secondaryCategory
+        : normalizeCategory(p.secondaryCategory, rule.secondaryCategory || 'needs_human_review');
+    return {
+        summary,
+        complainantName: fill(rule.complainantName, p.complainantName),
+        parentName: fill(rule.parentName, p.parentName),
+        aggressor: fill(rule.aggressor, p.aggressor),
+        date: fill(rule.date, p.date),
+        location,
+        category,
+        secondaryCategory
+    };
 }
 
 /**

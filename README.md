@@ -41,6 +41,7 @@ A citizen speaks or types their grievance in any of 8 Indian languages. The app:
 | **Zero placeholders** | Every section has real statutory text |
 | **Test suite** | 252/252 pass (comprehensive edge cases) |
 | **On-site technique test** | Website button scores Rules vs NER vs LLM live on-device (8 gold cases) |
+| **Measured on-device (WebGPU+Llama-3.2-1B)** | Rules 8/8/8 vs LLM 3/6/8 — rules stay primary; LLM fills unknowns only, with quoted spans |
 | **Languages supported** | 8 UI + unlimited via Google Translate pseudo-support |
 
 ---
