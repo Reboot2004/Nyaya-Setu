@@ -1,13 +1,16 @@
 # Nyaya-Setu — Client-Side Indic Legal Co-Pilot
 
-> **"From days and ₹500-1500 in petition-writer fees → minutes at zero cost."**
+> **"From days and ₹500–1500 in petition-writer fees → minutes at zero cost."**
 
 Offline-first PWA that converts spoken or typed grievances into fact-reviewed,
 statute-cited police-complaint drafts — with 8-language support, on-device AI,
 and zero cloud dependency. Built for rural kiosks, low-end phones, and citizens
 who get turned away at police desks.
 
-**Unleash LLM Innovation Challenge 2026** · Open Innovation + Smart Governance · AIKosh Dataset Track
+- 🌐 **Live Web Application:** [https://nyaya-setu-nu.vercel.app/](https://nyaya-setu-nu.vercel.app/)
+- 👥 **Team ID:** `TEAM-MT1AT79G-A1E828` (Team Nyaya-Setu)
+- 🏆 **Track:** Unleash LLM Innovation Challenge 2026 · Open Innovation + Smart Governance · AIKosh Dataset Track
+- 📹 **Demo Video Pitch:** `TEAM-MT1AT79G-A1E828.mp4` (5m 14s demo video)
 
 ---
 
